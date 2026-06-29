@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/* ─── Light mode (default) ─── */
+@theme {
+  --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background:        hsl(215 28% 94%);
+  --color-foreground:        hsl(222 47% 11%);
+  --color-card:              hsl(0 0% 100%);
+  --color-card-foreground:   hsl(222 47% 11%);
+  --color-popover:           hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222 47% 11%);
+  --color-primary:           hsl(199 89% 42%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary:         hsl(215 20% 88%);
+  --color-secondary-foreground: hsl(222 47% 11%);
+  --color-muted:             hsl(215 20% 90%);
+  --color-muted-foreground:  hsl(215 16% 47%);
+  --color-accent:            hsl(215 20% 88%);
+  --color-accent-foreground: hsl(222 47% 11%);
+  --color-destructive:       hsl(0 72% 51%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border:            hsl(215 20% 84%);
+  --color-input:             hsl(215 20% 84%);
+  --color-ring:              hsl(199 89% 42%);
+
+  /* Sidebar stays dark always for premium look */
+  --color-sidebar:               hsl(224 60% 6%);
+  --color-sidebar-foreground:    hsl(210 20% 90%);
+  --color-sidebar-primary:       hsl(199 89% 48%);
+  --color-sidebar-primary-foreground: hsl(0 0% 100%);
+  --color-sidebar-accent:        hsl(215 30% 13%);
+  --color-sidebar-border:        hsl(215 30% 12%);
+  --color-sidebar-ring:          hsl(199 89% 48%);
+  --color-sidebar-muted:         hsl(215 16% 55%);
+
+  --radius: 0.625rem;
+}
+
+/* ─── Dark mode overrides ─── */
+.dark {
+  --color-background:        hsl(224 71% 4%);
+  --color-foreground:        hsl(210 20% 96%);
+  --color-card:              hsl(224 60% 6.5%);
+  --color-card-foreground:   hsl(210 20% 96%);
+  --color-popover:           hsl(224 60% 6.5%);
+  --color-popover-foreground: hsl(210 20% 96%);
+  --color-primary:           hsl(199 89% 48%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary:         hsl(215 28% 14%);
+  --color-secondary-foreground: hsl(210 20% 96%);
+  --color-muted:             hsl(215 28% 11%);
+  --color-muted-foreground:  hsl(217 10% 58%);
+  --color-accent:            hsl(215 28% 14%);
+  --color-accent-foreground: hsl(210 20% 96%);
+  --color-destructive:       hsl(0 62% 56%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border:            hsl(215 28% 16%);
+  --color-input:             hsl(215 28% 16%);
+  --color-ring:              hsl(199 89% 48%);
+}
+
+@layer base {
+  *, *::before, *::after {
+    border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 10px; }
+  * { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
+}
+
+@layer utilities {
+  .glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+  .card-shadow {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .card-shadow-dark {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 24px rgba(0,0,0,0.25);
+  }
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(14,165,233,0.25);
+  }
+}
