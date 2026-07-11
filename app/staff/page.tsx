@@ -151,46 +151,46 @@ export default function StaffPage() {
       title="Staff Management"
       subtitle={`${totalStaff} total staff members`}
       action={
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
-          <Plus className="w-4 h-4" /> Add Staff
+        <button onClick={openAdd} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.98] cursor-pointer">
+          <Plus className="w-4.5 h-4.5" /> Add Staff Member
         </button>
       }
     >
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Staff",   value: totalStaff,    icon: Users,      color: "text-blue-500",  bg: "bg-blue-50" },
-          { label: "Active",        value: activeStaff,   icon: UserCheck,  color: "text-green-500", bg: "bg-green-50" },
-          { label: "Mobile Access", value: mobileEnabled, icon: Smartphone, color: "text-cyan-500",  bg: "bg-cyan-50" },
-          { label: "On Leave",      value: onLeave,       icon: Clock,      color: "text-amber-500", bg: "bg-amber-50" },
+          { label: "Total Staff",   value: totalStaff,    icon: Users,      color: "text-blue-600 dark:text-blue-400",  bg: "bg-blue-500/10" },
+          { label: "Active",        value: activeStaff,   icon: UserCheck,  color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
+          { label: "Mobile Access", value: mobileEnabled, icon: Smartphone, color: "text-cyan-600 dark:text-cyan-400",  bg: "bg-cyan-500/10" },
+          { label: "On Leave",      value: onLeave,       icon: Clock,      color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
         ].map((stat) => (
-          <div key={stat.label} className="bg-card rounded-2xl border border-border p-5 flex items-center gap-4">
-            <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", stat.bg)}>
-              <stat.icon className={cn("w-5 h-5", stat.color)} />
+          <div key={stat.label} className="bg-card rounded-2xl border border-border/80 p-5 flex items-center gap-4 hover:shadow-md transition-shadow duration-200">
+            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner", stat.bg)}>
+              <stat.icon className={cn("w-6 h-6", stat.color)} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl font-extrabold text-foreground">{stat.value}</p>
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">{stat.label}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-card rounded-2xl border border-border p-4 mb-4 flex flex-col sm:flex-row gap-3">
+      <div className="bg-card rounded-2xl border border-border/80 p-4 mb-5 flex flex-col sm:flex-row gap-3 shadow-sm">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border/80 bg-background/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
             placeholder="Search by name, email or ID…"
             value={search} onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className="px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+        <select className="px-3.5 py-2.5 rounded-xl border border-border/80 bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium cursor-pointer" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
           <option value="All">All Roles</option>
           {ROLES.map((r) => <option key={r}>{r}</option>)}
         </select>
-        <select className="px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" value={filterAccess} onChange={(e) => setFilterAccess(e.target.value)}>
+        <select className="px-3.5 py-2.5 rounded-xl border border-border/80 bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium cursor-pointer" value={filterAccess} onChange={(e) => setFilterAccess(e.target.value)}>
           <option value="All">Mobile: All</option>
           <option value="Enabled">Access Enabled</option>
           <option value="Disabled">Access Disabled</option>
@@ -198,24 +198,24 @@ export default function StaffPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border/80 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Staff Member</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Role / Dept</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Shift</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Status</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Mobile Access</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Last Active</th>
-                <th className="text-right px-5 py-3.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Actions</th>
+              <tr className="border-b border-border/60 bg-muted/40">
+                <th className="text-left px-5 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Staff Member</th>
+                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Role / Dept</th>
+                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Shift</th>
+                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Mobile Access</th>
+                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Last Active</th>
+                <th className="text-right px-5 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border/40">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-muted-foreground">
+                  <td colSpan={7} className="text-center py-16 text-muted-foreground font-medium">
                     <UserX className="w-8 h-8 mx-auto mb-2 opacity-40" />
                     No staff members match your filters.
                   </td>
@@ -224,53 +224,68 @@ export default function StaffPage() {
               {filtered.map((s) => (
                 <tr
                   key={s.id}
-                  className={cn("hover:bg-muted/20 transition-colors", drawerStaff?.id === s.id && "bg-primary/5")}
+                  className={cn("hover:bg-muted/30 transition-colors duration-150", drawerStaff?.id === s.id && "bg-emerald-500/5")}
                 >
                   {/* Avatar + name — clickable to open drawer */}
                   <td className="px-5 py-4">
                     <button
                       onClick={() => setDrawerStaff(drawerStaff?.id === s.id ? null : s)}
-                      className="flex items-center gap-3 group text-left w-full"
+                      className="flex items-center gap-3 group text-left w-full cursor-pointer"
                     >
                       <div className={cn("w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0", avatarColor(s.id))}>
                         {s.avatar}
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                        <p className="font-semibold text-foreground group-hover:text-emerald-500 transition-colors flex items-center gap-1">
                           {s.name}
                           <ChevronRight className={cn("w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all", drawerStaff?.id === s.id && "opacity-100 rotate-90")} />
                         </p>
-                        <p className="text-xs text-muted-foreground">{s.id} · {s.email}</p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">{s.id} · {s.email}</p>
                       </div>
                     </button>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold", ROLE_COLORS[s.role])}>{s.role}</span>
-                    <p className="text-xs text-muted-foreground mt-1">{s.department}</p>
+                    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border", 
+                      s.role === "Floor Supervisor" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20" :
+                      s.role === "QA Engineer" ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20" :
+                      s.role === "Dispatch Staff" ? "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20" :
+                      s.role === "Procurement" ? "bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20" :
+                      s.role === "Production Lead" ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20" :
+                      "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
+                    )}>{s.role}</span>
+                    <p className="text-xs text-muted-foreground font-semibold mt-1">{s.department}</p>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-lg">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg border border-border/40 font-medium">
                       {SHIFT_ICON[s.shift]}{s.shift}
                     </span>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold", STATUS_COLORS[s.status])}>{s.status}</span>
+                    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                      s.status === "Active" ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20" :
+                      s.status === "Inactive" ? "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20" :
+                      "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"
+                    )}>{s.status}</span>
                   </td>
                   <td className="px-4 py-4">
                     <button
                       onClick={() => toggleAccess(s.id)}
-                      className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all", s.mobileAccess ? "bg-cyan-100 text-cyan-700 hover:bg-cyan-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
+                      className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer", 
+                        s.mobileAccess 
+                          ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20 hover:bg-cyan-500/20" 
+                          : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/20"
+                      )}
                     >
                       {s.mobileAccess ? <><ShieldCheck className="w-3.5 h-3.5" /> Enabled</> : <><ShieldOff className="w-3.5 h-3.5" /> Disabled</>}
                     </button>
                   </td>
-                  <td className="px-4 py-4 text-xs text-muted-foreground whitespace-nowrap">{s.lastActive}</td>
+                  <td className="px-4 py-4 text-xs text-muted-foreground font-semibold whitespace-nowrap">{s.lastActive}</td>
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Edit">
+                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg border border-border/80 hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-600 transition-all" title="Edit">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Remove">
+                      <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded-lg border border-border/80 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all" title="Remove">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -281,8 +296,8 @@ export default function StaffPage() {
           </table>
         </div>
         {filtered.length > 0 && (
-          <div className="px-5 py-3 border-t border-border text-xs text-muted-foreground">
-            Showing {filtered.length} of {totalStaff} staff members · Click a name to view activity
+          <div className="px-5 py-3 border-t border-border/60 bg-muted/20 text-xs text-muted-foreground font-semibold">
+            Showing {filtered.length} of {totalStaff} staff members · Click a name to view activity history
           </div>
         )}
       </div>

@@ -37,7 +37,7 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
 
-    const Content = ({ mobile = false }: { mobile?: boolean }) => {
+    const renderContent = (mobile = false) => {
         const isCollapsed = !mobile && collapsed;
         return (
             <div
@@ -47,14 +47,16 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                     isCollapsed ? "w-[64px]" : "w-[240px]"
                 )}
                 style={{
-                    background: "linear-gradient(180deg, hsl(142 60% 5%) 0%, hsl(142 55% 7%) 100%)",
+                    background: "linear-gradient(180deg, hsl(142 70% 8%) 0%, hsl(142 65% 12%) 50%, hsl(142 60% 15%) 100%)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.3)",
                 }}
             >
                 {/* Logo Row */}
                 <div
                     className={cn(
-                        "flex items-center h-[60px] px-3 border-b border-sidebar-border shrink-0 gap-2.5",
-                        isCollapsed ? "justify-center" : "justify-between"
+                        "flex items-center h-[64px] px-4 border-b border-white/5 shrink-0 gap-2.5",
+                        isCollapsed ? "justify-center" : "justify-between",
+                        "bg-gradient-to-b from-white/5 to-transparent"
                     )}
                 >
                     <div className={cn("flex items-center gap-2.5 min-w-0", isCollapsed && "justify-center")}>
@@ -89,82 +91,46 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                 {isCollapsed && (
                     <button
                         onClick={() => onCollapse(false)}
-                        className="mx-auto mt-3 p-1.5 rounded-lg text-sidebar-muted hover:text-white hover:bg-sidebar-accent transition-colors"
+                        className="mx-auto mt-3 p-1.5 rounded-lg text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all duration-200"
                         title="Expand sidebar"
                     >
                         <PanelLeftOpen className="w-4 h-4" />
                     </button>
                 )}
 
-                {/* Nav */}
-                <nav className={cn("flex-1 py-4 space-y-0.5 overflow-y-auto", isCollapsed ? "px-2" : "px-3")}>
-                    {!isCollapsed && (
-                        <p className="text-[9px] font-700 tracking-widest text-sidebar-muted/60 uppercase px-2 mb-3">Main Menu</p>
-                    )}
+                {/* Nav Links */}
+                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin">
                     {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = pathname ? (pathname === item.href || pathname.startsWith(item.href + "/")) : false;
+                        const active = pathname ? (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))) : false;
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                onClick={mobile ? onMobileClose : undefined}
-                                title={isCollapsed ? item.label : undefined}
+                                onClick={() => mobile && onMobileClose()}
                                 className={cn(
-                                    "group flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200",
-                                    isCollapsed ? "px-2 py-2.5 justify-center" : "px-3 py-2.5",
-                                    isActive
-                                        ? "bg-gradient-to-r from-emerald-500/20 to-green-500/10 text-emerald-400 border border-emerald-500/25 shadow-sm"
-                                        : "text-sidebar-muted hover:text-white hover:bg-sidebar-accent"
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 relative group",
+                                    active
+                                        ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/15"
+                                        : "text-sidebar-muted hover:text-white hover:bg-white/5 border border-transparent"
                                 )}
                             >
-                                <Icon
-                                    className={cn(
-                                        "w-4 h-4 shrink-0 transition-transform group-hover:scale-110",
-                                        isActive && "text-emerald-400"
-                                    )}
-                                />
+                                <item.icon className={cn("w-4.5 h-4.5 shrink-0 transition-colors", active ? "text-emerald-400" : "text-sidebar-muted group-hover:text-white")} />
                                 {!isCollapsed && <span className="truncate">{item.label}</span>}
-                                {isActive && !isCollapsed && (
-                                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                )}
                             </Link>
                         );
                     })}
-
-                    {!isCollapsed && (
-                        <>
-                            <div className="my-4 border-t border-sidebar-border" />
-                            <p className="text-[9px] font-700 tracking-widest text-sidebar-muted/60 uppercase px-2 mb-3">Tools</p>
-                        </>
-                    )}
-                    {isCollapsed && <div className="my-3 border-t border-sidebar-border" />}
-
-                    <Link
-                        href="/mobile-staff"
-                        target="_blank"
-                        title={isCollapsed ? "Mobile Staff App" : undefined}
-                        className={cn(
-                            "group flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200",
-                            isCollapsed ? "px-2 py-2.5 justify-center" : "px-3 py-2.5",
-                            "text-sidebar-muted hover:text-white hover:bg-sidebar-accent"
-                        )}
-                    >
-                        <Smartphone className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
-                        {!isCollapsed && <span className="truncate">Mobile Staff App</span>}
-                    </Link>
-                </nav>
+                </div>
 
                 {/* Bottom user hint */}
                 {!isCollapsed && (
-                    <div className="p-3 border-t border-sidebar-border">
-                        <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-sidebar-accent/50">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-[10px] font-700 shrink-0">
+                    <div className="p-4 border-t border-white/5 bg-gradient-to-t from-white/5 to-transparent">
+                        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-[11px] font-700 shrink-0 shadow-lg shadow-emerald-500/20">
                                 AD
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-600 text-white truncate">Admin User</p>
-                                <p className="text-[10px] text-sidebar-muted truncate">admin@pcbmfg.in</p>
+                                <p className="text-[10px] text-zinc-500 truncate">admin@pcbmfg.in</p>
                             </div>
                         </div>
                     </div>
@@ -176,14 +142,14 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
     return (
         <>
             <div className="hidden md:flex h-screen sticky top-0 shrink-0">
-                <Content />
+                {renderContent(false)}
             </div>
 
             {mobileOpen && (
                 <div className="fixed inset-0 z-50 md:hidden">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onMobileClose} />
                     <div className="absolute left-0 top-0 h-full z-50">
-                        <Content mobile />
+                        {renderContent(true)}
                     </div>
                 </div>
             )}

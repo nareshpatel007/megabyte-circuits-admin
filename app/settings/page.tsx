@@ -17,20 +17,20 @@ function MaskedInput({
   const [show, setShow] = useState(false);
   const [val, setVal] = useState(defaultValue || "");
   return (
-    <div>
-      <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold text-foreground uppercase tracking-wider">{label}</label>
       <div className="relative">
         <input
           type={show ? "text" : "password"}
           value={val}
           onChange={(e) => setVal(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 pr-10 text-sm bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full px-3.5 py-3 pr-10 text-sm bg-background/50 border border-border/85 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
         />
         <button
           type="button"
           onClick={() => setShow(!show)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
@@ -51,13 +51,13 @@ function PlainInput({
   type?: string;
 }) {
   return (
-    <div>
-      <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold text-foreground uppercase tracking-wider">{label}</label>
       <input
         type={type}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full px-3.5 py-3 text-sm bg-background/50 border border-border/85 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
       />
     </div>
   );
@@ -66,20 +66,20 @@ function PlainInput({
 function ToggleRow({ label, description, defaultOn = false }: { label: string; description: string; defaultOn?: boolean }) {
   const [on, setOn] = useState(defaultOn);
   return (
-    <div className="flex items-start justify-between py-3 border-b border-border/50 last:border-0">
+    <div className="flex items-start justify-between py-4 border-b border-border/40 last:border-0">
       <div>
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground mt-1 font-medium">{description}</p>
       </div>
       <button
         onClick={() => setOn(!on)}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ml-4 ${
-          on ? "bg-primary" : "bg-muted"
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ml-4 cursor-pointer ${
+          on ? "bg-emerald-500" : "bg-muted"
         }`}
       >
         <span
           className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-            on ? "translate-x-4" : "translate-x-0.5"
+            on ? "translate-x-4.5" : "translate-x-0.5"
           }`}
         />
       </button>
@@ -97,15 +97,15 @@ function SettingsSection({
   onSave: () => void;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <div className="flex items-center justify-between mb-5">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+    <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+        <h3 className="text-sm font-bold text-foreground tracking-tight">{title}</h3>
         <button
           onClick={onSave}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 text-xs font-medium rounded-lg hover:bg-primary/20 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-lg hover:bg-emerald-500 hover:text-white transition-all cursor-pointer"
         >
           <Save className="w-3.5 h-3.5" />
-          Save
+          Save Changes
         </button>
       </div>
       {children}
@@ -118,11 +118,11 @@ export default function SettingsPage() {
     <DashboardLayout title="App & Integration Settings" subtitle="Manage API keys and service configurations">
       <div className="max-w-3xl space-y-5">
         {/* Warning Banner */}
-        <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 rounded-xl px-4 py-3">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <p className="text-xs font-medium">
-            API keys are sensitive. Changes take effect immediately across all production services.
-          </p>
+        <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-xl px-4 py-3.5 shadow-sm">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="text-xs font-semibold">
+                API keys are sensitive. Changes take effect immediately across all production services. Please store them securely.
+            </p>
         </div>
 
         {/* Razorpay */}

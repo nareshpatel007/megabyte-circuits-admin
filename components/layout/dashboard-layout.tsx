@@ -35,8 +35,8 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
           className="flex items-center justify-between px-5 md:px-7 py-4 border-b border-border/60 shrink-0"
           style={{
             background: theme === "light"
-              ? "linear-gradient(90deg, rgba(14,165,233,0.04) 0%, transparent 60%)"
-              : "linear-gradient(90deg, rgba(14,165,233,0.06) 0%, transparent 60%)",
+              ? "linear-gradient(90deg, rgba(16,185,129,0.04) 0%, transparent 60%)"
+              : "linear-gradient(90deg, rgba(16,185,129,0.06) 0%, transparent 60%)",
           }}
         >
           <div>

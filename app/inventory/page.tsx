@@ -97,188 +97,188 @@ export default function InventoryPage() {
     setDeleteId(null);
   };
 
-  return (
-    <DashboardLayout title="Component Inventory" subtitle={`${items.length} components tracked`}>
-      <div className="space-y-4">
-        {/* Low stock alert */}
-        {lowStockCount > 0 && (
-          <div className="flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 rounded-xl px-4 py-3">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span className="text-sm font-medium">
-              {lowStockCount} component{lowStockCount > 1 ? "s" : ""} at or below low-stock threshold
-            </span>
-          </div>
-        )}
-
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search by name or SKU..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <button
-            onClick={openAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            Add Component
-          </button>
-        </div>
-
-        {/* Table */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-background/40">
-                  {["Component Name", "SKU", "Unit Price", "Qty", "Threshold", "Status", "Actions"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                      No components match your search.
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((item) => {
-                    const isAlert = item.availableQuantity <= item.lowStockThreshold;
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`border-b border-border/50 hover:bg-accent/30 transition-colors ${
-                          isAlert ? "bg-yellow-500/5" : ""
-                        }`}
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {isAlert && <AlertTriangle className="w-3 h-3 text-yellow-400 shrink-0" />}
-                            <span className={`font-medium ${isAlert ? "text-yellow-400" : "text-foreground"}`}>
-                              {item.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{item.sku}</td>
-                        <td className="px-4 py-3 text-foreground whitespace-nowrap">₹{item.unitPrice.toFixed(2)}</td>
-                        <td className={`px-4 py-3 font-semibold whitespace-nowrap ${isAlert ? "text-yellow-400" : "text-foreground"}`}>
-                          {item.availableQuantity.toLocaleString("en-IN")}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                          {item.lowStockThreshold.toLocaleString("en-IN")}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusStyle[item.status]}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => openEdit(item)}
-                              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteId(item.id)}
-                              className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+    return (
+        <DashboardLayout title="Component Inventory" subtitle={`${items.length} components tracked`}>
+            <div className="space-y-5">
+                {/* Low stock alert */}
+                {lowStockCount > 0 && (
+                    <div className="flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-xl px-4 py-3.5 shadow-sm">
+                        <AlertTriangle className="w-5 h-5 shrink-0" />
+                        <span className="text-sm font-semibold">
+                            {lowStockCount} component{lowStockCount > 1 ? "s" : ""} at or below low-stock threshold. Please reorder.
+                        </span>
+                    </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
 
-      {/* Add/Edit Modal */}
-      <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <Dialog.Title className="text-base font-semibold text-foreground">
-                {editing ? "Edit Component" : "Add Component"}
-              </Dialog.Title>
-              <Dialog.Close className="p-1.5 rounded-md hover:bg-accent text-muted-foreground">
-                <X className="w-4 h-4" />
-              </Dialog.Close>
-            </div>
-
-            <div className="space-y-4">
-              {[
-                { key: "name", label: "Component Name", placeholder: "e.g. 10kΩ 0603 Resistor", type: "text" },
-                { key: "sku", label: "SKU", placeholder: "e.g. RES-10K-0603", type: "text" },
-                { key: "unitPrice", label: "Unit Price (₹)", placeholder: "e.g. 0.15", type: "number" },
-                { key: "availableQuantity", label: "Available Quantity", placeholder: "e.g. 50000", type: "number" },
-                { key: "lowStockThreshold", label: "Low Stock Threshold", placeholder: "e.g. 10000", type: "number" },
-              ].map((f) => (
-                <div key={f.key}>
-                  <label className="block text-xs font-medium text-foreground mb-1">{f.label}</label>
-                  <input
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={form[f.key as keyof typeof form]}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
+                {/* Controls */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                            type="search"
+                            placeholder="Search by name or SKU..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
+                        />
+                    </div>
+                    <button
+                        onClick={openAdd}
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.98] shrink-0 cursor-pointer"
+                    >
+                        <Plus className="w-4.5 h-4.5" />
+                        Add Component
+                    </button>
                 </div>
-              ))}
+
+                {/* Table */}
+                <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-border/60 bg-muted/40">
+                                    {["Component Name", "SKU", "Unit Price", "Qty", "Threshold", "Status", "Actions"].map((h) => (
+                                        <th key={h} className="px-5 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
+                                            No components match your search.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filtered.map((item) => {
+                                        const isAlert = item.availableQuantity <= item.lowStockThreshold;
+                                        return (
+                                            <tr
+                                                key={item.id}
+                                                className={`border-b border-border/40 hover:bg-muted/30 transition-colors duration-150 ${
+                                                    isAlert ? "bg-yellow-500/5 hover:bg-yellow-500/10" : ""
+                                                }`}
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        {isAlert && <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />}
+                                                        <span className={`font-semibold ${isAlert ? "text-yellow-600 dark:text-yellow-400" : "text-foreground"}`}>
+                                                            {item.name}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4 font-mono text-xs font-semibold text-muted-foreground whitespace-nowrap">{item.sku}</td>
+                                                <td className="px-5 py-4 text-foreground font-semibold whitespace-nowrap">₹{item.unitPrice.toFixed(2)}</td>
+                                                <td className={`px-5 py-4 font-bold whitespace-nowrap ${isAlert ? "text-yellow-600 dark:text-yellow-400" : "text-foreground"}`}>
+                                                    {item.availableQuantity.toLocaleString("en-IN")}
+                                                </td>
+                                                <td className="px-5 py-4 text-muted-foreground font-semibold whitespace-nowrap">
+                                                    {item.lowStockThreshold.toLocaleString("en-IN")}
+                                                </td>
+                                                <td className="px-5 py-4 whitespace-nowrap">
+                                                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold ${statusStyle[item.status]}`}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openEdit(item)}
+                                                            className="p-1.5 rounded-lg border border-border/80 hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-600 transition-all"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteId(item.id)}
+                                                            className="p-1.5 rounded-lg border border-border/80 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <Dialog.Close className="flex-1 px-4 py-2 text-sm border border-border rounded-lg text-muted-foreground hover:bg-accent transition-colors">
-                Cancel
-              </Dialog.Close>
-              <button
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-              >
-                {editing ? "Save Changes" : "Add Component"}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+            {/* Add/Edit Modal */}
+            <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+                            <Dialog.Title className="text-base font-bold text-foreground tracking-tight">
+                                {editing ? "Edit Component Specs" : "Add New Component"}
+                            </Dialog.Title>
+                            <Dialog.Close className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all">
+                                <X className="w-4.5 h-4.5" />
+                            </Dialog.Close>
+                        </div>
 
-      {/* Delete Confirm */}
-      <Dialog.Root open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl">
-            <Dialog.Title className="text-base font-semibold text-foreground mb-2">Delete Component?</Dialog.Title>
-            <p className="text-sm text-muted-foreground mb-5">This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <Dialog.Close className="flex-1 px-4 py-2 text-sm border border-border rounded-lg text-muted-foreground hover:bg-accent transition-colors">
-                Cancel
-              </Dialog.Close>
-              <button
-                onClick={() => deleteId && handleDelete(deleteId)}
-                className="flex-1 px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </DashboardLayout>
-  );
+                        <div className="space-y-4">
+                            {[
+                                { key: "name", label: "Component Name", placeholder: "e.g. 10kΩ 0603 Resistor", type: "text" },
+                                { key: "sku", label: "SKU Code", placeholder: "e.g. RES-10K-0603", type: "text" },
+                                { key: "unitPrice", label: "Unit Price (₹)", placeholder: "e.g. 0.15", type: "number" },
+                                { key: "availableQuantity", label: "Available Quantity", placeholder: "e.g. 50000", type: "number" },
+                                { key: "lowStockThreshold", label: "Low Stock Threshold", placeholder: "e.g. 10000", type: "number" },
+                            ].map((f) => (
+                                <div key={f.key} className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider">{f.label}</label>
+                                    <input
+                                        type={f.type}
+                                        placeholder={f.placeholder}
+                                        value={form[f.key as keyof typeof form]}
+                                        onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                                        className="w-full px-3.5 py-3 text-sm bg-background/50 border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3 mt-6 pt-4 border-t border-border/60">
+                            <Dialog.Close className="flex-1 px-4 py-3 text-sm border border-border/80 rounded-xl text-muted-foreground font-bold hover:bg-muted transition-colors">
+                                Cancel
+                            </Dialog.Close>
+                            <button
+                                onClick={handleSave}
+                                className="flex-1 px-4 py-3 text-sm bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.98] cursor-pointer"
+                            >
+                                {editing ? "Save Changes" : "Create Item"}
+                            </button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+
+            {/* Delete Confirm */}
+            <Dialog.Root open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl">
+                        <Dialog.Title className="text-base font-bold text-foreground mb-2">Delete Component?</Dialog.Title>
+                        <p className="text-sm text-muted-foreground mb-6 font-medium">This action cannot be undone. It will remove the item permanently from Megabyte database.</p>
+                        <div className="flex gap-3">
+                            <Dialog.Close className="flex-1 px-4 py-3 text-sm border border-border/80 rounded-xl text-muted-foreground font-bold hover:bg-muted transition-colors">
+                                Cancel
+                            </Dialog.Close>
+                            <button
+                                onClick={() => deleteId && handleDelete(deleteId)}
+                                className="flex-1 px-4 py-3 text-sm bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors shadow-md hover:shadow-lg shadow-red-500/10 cursor-pointer"
+                            >
+                                Delete Item
+                            </button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+        </DashboardLayout>
+    );
 }

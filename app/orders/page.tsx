@@ -47,206 +47,208 @@ export default function OrdersPage() {
     toast.success(`Order ${orderId} status updated to "${newStatus}"`);
   };
 
-  return (
-    <DashboardLayout title="Orders & Quotes" subtitle={`${orders.length} total orders`}>
-      <div className="space-y-4">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search by order ID or client..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="sm:w-44 px-3 py-2 text-sm bg-card border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {ALL_STATUSES.map((s) => (
-              <option key={s} value={s}>{s === "All" ? "All Statuses" : s}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Table */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-background/40">
-                  {["Order ID", "Client", "Date", "PCB Type", "Amount", "Status", "Actions"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                      No orders match your filters.
-                    </td>
-                  </tr>
-                ) : (
-                  paginated.map((order) => (
-                    <tr
-                      key={order.id}
-                      className="border-b border-border/50 hover:bg-accent/30 transition-colors"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-primary whitespace-nowrap">{order.id}</td>
-                      <td className="px-4 py-3 text-foreground whitespace-nowrap">{order.clientName}</td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{order.date}</td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{order.pcbType}</td>
-                      <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                        ₹{order.amount.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[order.status]}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <button
-                          onClick={() => setSelectedOrder(order)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
-                        >
-                          <Eye className="w-3 h-3" />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-background/30">
-              <span className="text-xs text-muted-foreground">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1.5 rounded hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-7 h-7 text-xs rounded ${
-                      p === page
-                        ? "bg-primary text-white font-semibold"
-                        : "hover:bg-accent text-muted-foreground"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Order Detail Modal */}
-      <Dialog.Root open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl p-6 shadow-2xl">
-            {selectedOrder && (
-              <>
-                <div className="flex items-start justify-between mb-5">
-                  <div>
-                    <Dialog.Title className="text-base font-semibold text-foreground">
-                      {selectedOrder.id}
-                    </Dialog.Title>
-                    <p className="text-xs text-muted-foreground mt-0.5">{selectedOrder.clientName} · {selectedOrder.date}</p>
-                  </div>
-                  <Dialog.Close className="p-1.5 rounded-md hover:bg-accent text-muted-foreground">
-                    <X className="w-4 h-4" />
-                  </Dialog.Close>
-                </div>
-
-                {/* PCB Parameters */}
-                <div className="mb-5">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">PCB Parameters</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      ["Base Material", selectedOrder.params.baseMaterial],
-                      ["Layers", String(selectedOrder.params.layers)],
-                      ["Dimensions", selectedOrder.params.dimensions + " mm"],
-                      ["Copper Thickness", selectedOrder.params.copperThickness],
-                      ["Mask Color", selectedOrder.params.maskColor],
-                      ["Surface Finish", selectedOrder.params.surfaceFinish],
-                    ].map(([k, v]) => (
-                      <div key={k} className="bg-background rounded-lg p-3 border border-border">
-                        <p className="text-[10px] text-muted-foreground mb-0.5">{k}</p>
-                        <p className="text-xs font-semibold text-foreground">{v}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* File Downloads */}
-                <div className="mb-5">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Files</h4>
-                  <div className="space-y-2">
-                    {["Gerber Files (.zip)", "BOM File (.xlsx)"].map((file) => (
-                      <button
-                        key={file}
-                        onClick={() => toast.success(`Downloading ${file}...`)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg bg-background border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                      >
-                        <span className="text-xs font-medium text-foreground">{file}</span>
-                        <Download className="w-3.5 h-3.5 text-primary" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Status Updater */}
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Update Status</h4>
-                  <div className="flex items-center gap-3">
-                    <select
-                      defaultValue={selectedOrder.status}
-                      onChange={(e) => updateStatus(selectedOrder.id, e.target.value as Order["status"])}
-                      className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {["Pending", "In Review", "Sent to JLC", "Manufacturing", "Shipped", "Cancelled"].map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Amount</p>
-                      <p className="text-sm font-bold text-foreground">₹{selectedOrder.amount.toLocaleString("en-IN")}</p>
+    return (
+        <DashboardLayout title="Orders & Quotes" subtitle={`${orders.length} total orders`}>
+            <div className="space-y-5">
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                            type="search"
+                            placeholder="Search by order ID or client..."
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                            className="w-full pl-9 pr-4 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        />
                     </div>
-                  </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                        className="sm:w-48 px-3.5 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium cursor-pointer"
+                    >
+                        {ALL_STATUSES.map((s) => (
+                            <option key={s} value={s}>{s === "All" ? "All Statuses" : s}</option>
+                        ))}
+                    </select>
                 </div>
-              </>
-            )}
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </DashboardLayout>
-  );
+
+                {/* Table */}
+                <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-border/60 bg-muted/40">
+                                    {["Order ID", "Client", "Date", "PCB Type", "Amount", "Status", "Actions"].map((h) => (
+                                        <th key={h} className="px-5 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginated.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
+                                            No orders match your filters.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    paginated.map((order) => (
+                                        <tr
+                                            key={order.id}
+                                            className="border-b border-border/40 hover:bg-muted/30 transition-colors duration-150"
+                                        >
+                                            <td className="px-5 py-4 font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{order.id}</td>
+                                            <td className="px-5 py-4 text-foreground font-semibold whitespace-nowrap">{order.clientName}</td>
+                                            <td className="px-5 py-4 text-muted-foreground font-medium whitespace-nowrap">{order.date}</td>
+                                            <td className="px-5 py-4 text-muted-foreground font-medium whitespace-nowrap">{order.pcbType}</td>
+                                            <td className="px-5 py-4 font-bold text-foreground whitespace-nowrap">
+                                                ₹{order.amount.toLocaleString("en-IN")}
+                                            </td>
+                                            <td className="px-5 py-4 whitespace-nowrap">
+                                                <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold ${statusColors[order.status]}`}>
+                                                    {order.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4 whitespace-nowrap">
+                                                <button
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all font-semibold"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                    View Specs
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-5 py-4 border-t border-border/60 bg-muted/20">
+                            <span className="text-xs text-muted-foreground font-medium">
+                                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} orders
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="p-2 rounded-lg border border-border/80 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <ChevronLeft className="w-4 h-4 text-foreground" />
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPage(p)}
+                                        className={`w-8 h-8 text-xs rounded-lg transition-all ${
+                                            p === page
+                                                ? "bg-emerald-500 text-white font-bold shadow-md shadow-emerald-500/10"
+                                                : "border border-border/80 hover:bg-muted text-muted-foreground font-medium"
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="p-2 rounded-lg border border-border/80 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <ChevronRight className="w-4 h-4 text-foreground" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Order Detail Modal */}
+            <Dialog.Root open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl p-6 md:p-8 shadow-2xl">
+                        {selectedOrder && (
+                            <>
+                                <div className="flex items-start justify-between mb-6 pb-4 border-b border-border/60">
+                                    <div>
+                                        <Dialog.Title className="text-lg font-bold text-foreground tracking-tight">
+                                            Order Details
+                                        </Dialog.Title>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            ID: <span className="font-mono text-emerald-600 font-bold">{selectedOrder.id}</span> · Client: <span className="font-semibold text-foreground">{selectedOrder.clientName}</span>
+                                        </p>
+                                    </div>
+                                    <Dialog.Close className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all">
+                                        <X className="w-4.5 h-4.5" />
+                                    </Dialog.Close>
+                                </div>
+
+                                {/* PCB Parameters */}
+                                <div className="mb-6">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">PCB Parameters</h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            ["Base Material", selectedOrder.params.baseMaterial],
+                                            ["Layers", String(selectedOrder.params.layers)],
+                                            ["Dimensions", selectedOrder.params.dimensions + " mm"],
+                                            ["Copper Thickness", selectedOrder.params.copperThickness],
+                                            ["Mask Color", selectedOrder.params.maskColor],
+                                            ["Surface Finish", selectedOrder.params.surfaceFinish],
+                                        ].map(([k, v]) => (
+                                            <div key={k} className="bg-background/50 rounded-xl p-3 border border-border/60">
+                                                <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">{k}</p>
+                                                <p className="text-xs font-bold text-foreground">{v}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* File Downloads */}
+                                <div className="mb-6">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Technical Documents</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                        {["Gerber Files (.zip)", "BOM File (.xlsx)"].map((file) => (
+                                            <button
+                                                key={file}
+                                                onClick={() => toast.success(`Downloading ${file}...`)}
+                                                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-background/50 border border-border/80 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-left"
+                                            >
+                                                <span className="text-xs font-bold text-foreground">{file}</span>
+                                                <Download className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Status Updater */}
+                                <div className="pt-4 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Update Stage</h4>
+                                        <select
+                                            defaultValue={selectedOrder.status}
+                                            onChange={(e) => updateStatus(selectedOrder.id, e.target.value as Order["status"])}
+                                            className="w-full px-3 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 font-medium cursor-pointer"
+                                        >
+                                            {["Pending", "In Review", "Sent to JLC", "Manufacturing", "Shipped", "Cancelled"].map((s) => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="sm:text-right bg-emerald-500/5 sm:bg-transparent p-3.5 sm:p-0 rounded-xl border border-emerald-500/10 sm:border-transparent">
+                                        <p className="text-xs text-muted-foreground font-semibold">Total Amount</p>
+                                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">₹{selectedOrder.amount.toLocaleString("en-IN")}</p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+        </DashboardLayout>
+    );
 }
