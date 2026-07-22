@@ -170,71 +170,98 @@ function OrderStatusManager() {
             )}
 
             {loading ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">Loading statuses...</div>
+                <div className="py-12 text-center text-xs text-muted-foreground font-medium">Loading statuses...</div>
             ) : (
-                <div className="divide-y divide-border/40 max-h-[420px] overflow-y-auto pr-1">
-                    {statuses.map((item) => (
-                        <div key={item.id} className="py-3 flex items-center justify-between gap-3">
-                            {editingId === item.id ? (
-                                <div className="flex-1 flex items-center gap-3">
-                                    <input
-                                        type="text"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        className="flex-1 px-3 py-1.5 text-sm bg-background border border-emerald-500 rounded-xl text-foreground font-medium"
-                                    />
-                                    <input
-                                        type="color"
-                                        value={editColor}
-                                        onChange={(e) => setEditColor(e.target.value)}
-                                        className="w-8 h-8 p-0.5 rounded-xl bg-background border border-border cursor-pointer"
-                                    />
-                                    <button
-                                        onClick={() => handleUpdate(item.id)}
-                                        className="p-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
-                                    >
-                                        <Check className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setEditingId(null)}
-                                        className="p-1.5 bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-3">
-                                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color || "#10b981" }} />
-                                        <div>
-                                            <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                                            <p className="text-[10px] text-muted-foreground font-mono">slug: {item.slug}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => {
-                                                setEditingId(item.id);
-                                                setEditName(item.name);
-                                                setEditColor(item.color || "#10b981");
-                                            }}
-                                            className="p-2 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all cursor-pointer"
-                                            title="Edit"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(item.id)}
-                                            className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ))}
+                <div className="overflow-x-auto rounded-xl border border-border/60">
+                    <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr className="bg-muted/50 border-b border-border/60 text-muted-foreground uppercase tracking-wider font-bold">
+                                <th className="py-3 px-4 w-12 text-center">#</th>
+                                <th className="py-3 px-4">Status Color</th>
+                                <th className="py-3 px-4">Status Name</th>
+                                <th className="py-3 px-4 text-center">Sort Order</th>
+                                <th className="py-3 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                            {statuses.map((item, idx) => (
+                                <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                                    {editingId === item.id ? (
+                                        <>
+                                            <td className="py-3 px-4 font-mono text-center text-muted-foreground">{idx + 1}</td>
+                                            <td className="py-3 px-4">
+                                                <input
+                                                    type="color"
+                                                    value={editColor}
+                                                    onChange={(e) => setEditColor(e.target.value)}
+                                                    className="w-8 h-8 p-0.5 rounded-xl bg-background border border-border cursor-pointer"
+                                                />
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <input
+                                                    type="text"
+                                                    value={editName}
+                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    className="w-full px-3 py-1.5 text-sm bg-background border border-emerald-500 rounded-xl text-foreground font-medium focus:outline-none"
+                                                />
+                                            </td>
+                                            <td className="py-3 px-4 text-center font-mono text-muted-foreground">{item.sort_order}</td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => handleUpdate(item.id)}
+                                                        className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" /> Save
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingId(null)}
+                                                        className="px-3 py-1.5 bg-muted text-muted-foreground hover:text-foreground rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" /> Cancel
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="py-3.5 px-4 font-mono text-center text-muted-foreground font-semibold">{idx + 1}</td>
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-3.5 h-3.5 rounded-full shadow-sm shrink-0 border border-white/20" style={{ backgroundColor: item.color || "#10b981" }} />
+                                                    <span className="font-mono text-[11px] text-muted-foreground uppercase">{item.color || "#10b981"}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3.5 px-4 font-bold text-foreground text-sm">{item.name}</td>
+                                            <td className="py-3.5 px-4 text-center font-mono font-semibold text-muted-foreground">{item.sort_order}</td>
+                                            <td className="py-3.5 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingId(item.id);
+                                                            setEditName(item.name);
+                                                            setEditColor(item.color || "#10b981");
+                                                        }}
+                                                        className="p-2 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all cursor-pointer"
+                                                        title="Edit Status"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
+                                                        title="Delete Status"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
         </div>
@@ -358,7 +385,7 @@ export default function SettingsPage() {
 
     return (
         <DashboardLayout title="Settings & Management" subtitle="Configure order pipeline statuses, integrations, and notification rules">
-            <div className="max-w-4xl space-y-6">
+            <div className="w-full space-y-6">
                 {/* Navigation Tabs */}
                 <div className="flex border-b border-border/80 gap-2 overflow-x-auto pb-px">
                     {tabs.map((tab) => (
