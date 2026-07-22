@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical } from "lucide-react";
+import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface StatusItem {
@@ -23,6 +23,10 @@ function OrderStatusManager() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState("");
     const [editColor, setEditColor] = useState("");
+
+    // Action loading states
+    const [actionLoading, setActionLoading] = useState(false);
+    const [actionId, setActionId] = useState<number | null>(null);
 
     const fetchStatuses = async () => {
         try {
@@ -51,6 +55,8 @@ function OrderStatusManager() {
             toast.error("Status name is required");
             return;
         }
+        setActionLoading(true);
+        const toastId = toast.loading("Creating new status...");
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch("/api/admin/statuses", {
@@ -63,15 +69,17 @@ function OrderStatusManager() {
             });
             const data = await res.json();
             if (data.status) {
-                toast.success("Status created successfully");
+                toast.success("Status created successfully", { id: toastId });
                 setNewName("");
                 setIsAdding(false);
                 fetchStatuses();
             } else {
-                toast.error(data.message || "Failed to create status");
+                toast.error(data.message || "Failed to create status", { id: toastId });
             }
         } catch (err) {
-            toast.error("Error creating status");
+            toast.error("Error creating status", { id: toastId });
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -80,6 +88,9 @@ function OrderStatusManager() {
             toast.error("Status name is required");
             return;
         }
+        setActionLoading(true);
+        setActionId(id);
+        const toastId = toast.loading("Updating status...");
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/statuses/${id}`, {
@@ -92,19 +103,25 @@ function OrderStatusManager() {
             });
             const data = await res.json();
             if (data.status) {
-                toast.success("Status updated successfully");
+                toast.success("Status updated successfully", { id: toastId });
                 setEditingId(null);
                 fetchStatuses();
             } else {
-                toast.error(data.message || "Failed to update status");
+                toast.error(data.message || "Failed to update status", { id: toastId });
             }
         } catch (err) {
-            toast.error("Error updating status");
+            toast.error("Error updating status", { id: toastId });
+        } finally {
+            setActionLoading(false);
+            setActionId(null);
         }
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure you want to delete this status?")) return;
+        setActionLoading(true);
+        setActionId(id);
+        const toastId = toast.loading("Deleting status...");
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/statuses/${id}`, {
@@ -113,13 +130,16 @@ function OrderStatusManager() {
             });
             const data = await res.json();
             if (data.status) {
-                toast.success("Status deleted successfully");
+                toast.success("Status deleted successfully", { id: toastId });
                 fetchStatuses();
             } else {
-                toast.error(data.message || "Failed to delete status");
+                toast.error(data.message || "Failed to delete status", { id: toastId });
             }
         } catch (err) {
-            toast.error("Error deleting status");
+            toast.error("Error deleting status", { id: toastId });
+        } finally {
+            setActionLoading(false);
+            setActionId(null);
         }
     };
 
