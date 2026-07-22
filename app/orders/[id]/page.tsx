@@ -62,7 +62,6 @@ export default function OrderDetailPage() {
     
     // Status change form
     const [newStatus, setNewStatus] = useState("");
-    const [adminName, setAdminName] = useState("Admin");
     const [remark, setRemark] = useState("");
 
     const fetchOrderDetail = async () => {
@@ -108,6 +107,16 @@ export default function OrderDetailPage() {
         try {
             const matchedStatus = statuses.find(s => s.name.toLowerCase() === newStatus.toLowerCase());
             const token = localStorage.getItem("admin_token");
+            
+            // Auto detect logged in admin ID from stored user profile
+            const savedAdminUser = localStorage.getItem("admin_user");
+            let loggedInAdminId = null;
+            if (savedAdminUser) {
+                try {
+                    const parsed = JSON.parse(savedAdminUser);
+                    loggedInAdminId = parsed.id || null;
+                } catch (e) {}
+            }
 
             const res = await fetch(`/api/admin/orders/${orderId}`, {
                 method: "PUT",
@@ -118,7 +127,7 @@ export default function OrderDetailPage() {
                 body: JSON.stringify({
                     status: newStatus,
                     status_id: matchedStatus ? matchedStatus.id : null,
-                    admin_name: adminName,
+                    admin_id: loggedInAdminId,
                     remark: remark
                 })
             });
@@ -235,17 +244,6 @@ export default function OrderDetailPage() {
                                         <option key={s.id} value={s.name}>{s.name}</option>
                                     ))}
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Admin Name</label>
-                                <input
-                                    type="text"
-                                    value={adminName}
-                                    onChange={(e) => setAdminName(e.target.value)}
-                                    placeholder="Enter your name"
-                                    className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
                             </div>
 
                             <div>
