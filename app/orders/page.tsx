@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, Loader2, ArrowLeft, Calendar, User, Mail, Phone, FileText, CheckCircle2 } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import Link from "next/link";
 
 interface StatusItem {
     id: number;
@@ -19,6 +20,15 @@ interface OrderMeta {
     pcb_order_id: number;
     meta_key: string;
     meta_value: string;
+}
+
+interface StatusHistory {
+    id: number;
+    pcb_order_id: number;
+    admin_name: string;
+    status_name: string;
+    remark: string | null;
+    created_at: string;
 }
 
 interface ApiOrder {
@@ -37,6 +47,7 @@ interface ApiOrder {
     created_at: string;
     metas?: OrderMeta[];
     status_details?: StatusItem;
+    status_histories?: StatusHistory[];
 }
 
 const PAGE_SIZE = 10;
@@ -49,9 +60,8 @@ export default function OrdersPage() {
     const [statusFilter, setStatusFilter] = useState("All");
     const [page, setPage] = useState(1);
     
-    // Modal states
+    // Quick preview modal state
     const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
-    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     // Fetch live orders and pipeline statuses
     const fetchData = async () => {
@@ -101,43 +111,6 @@ export default function OrdersPage() {
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-    // Update Status Action
-    const handleStatusUpdate = async (orderId: number, newStatusName: string) => {
-        setUpdatingStatus(true);
-        const toastId = toast.loading("Updating order status...");
-        try {
-            const matchedStatus = statuses.find(s => s.name.toLowerCase() === newStatusName.toLowerCase());
-            const token = localStorage.getItem("admin_token");
-
-            const res = await fetch(`/api/admin/orders/${orderId}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    status: newStatusName,
-                    status_id: matchedStatus ? matchedStatus.id : null
-                })
-            });
-
-            const data = await res.json();
-            if (data.status || data.success) {
-                toast.success(`Order #${selectedOrder?.order_number || orderId} status updated to "${newStatusName}"`, { id: toastId });
-                fetchData();
-                if (selectedOrder?.id === orderId) {
-                    setSelectedOrder(prev => prev ? { ...prev, status: newStatusName, status_id: matchedStatus ? matchedStatus.id : prev.status_id } : null);
-                }
-            } else {
-                toast.error(data.message || "Failed to update status", { id: toastId });
-            }
-        } catch (err) {
-            toast.error("Error updating order status", { id: toastId });
-        } finally {
-            setUpdatingStatus(false);
-        }
-    };
 
     // Helper to get meta key value
     const getMetaValue = (order: ApiOrder, key: string, fallback = "N/A") => {
@@ -243,13 +216,25 @@ export default function OrdersPage() {
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-5 text-right whitespace-nowrap">
-                                                        <button
-                                                            onClick={() => setSelectedOrder(order)}
-                                                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold cursor-pointer"
-                                                        >
-                                                            <Eye className="w-3.5 h-3.5" />
-                                                            Manage Order
-                                                        </button>
+                                                        <div className="inline-flex items-center gap-2">
+                                                            {/* Quick Preview Button */}
+                                                            <button
+                                                                onClick={() => setSelectedOrder(order)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs font-bold cursor-pointer"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                                Quick Preview
+                                                            </button>
+
+                                                            {/* Details Button */}
+                                                            <Link
+                                                                href={`/orders/${order.id}`}
+                                                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold cursor-pointer"
+                                                            >
+                                                                <ExternalLink className="w-3.5 h-3.5" />
+                                                                Detail
+                                                            </Link>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -299,31 +284,23 @@ export default function OrdersPage() {
                 </div>
             </div>
 
-            {/* Single Order Details & Status Manager Modal */}
+            {/* Quick Preview Modal */}
             <Dialog.Root open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-card border border-border/80 rounded-2xl p-6 md:p-8 shadow-2xl space-y-6">
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border/80 rounded-2xl p-6 md:p-8 shadow-2xl space-y-5">
                         {selectedOrder && (
                             <>
-                                {/* Header */}
                                 <div className="flex items-start justify-between pb-4 border-b border-border/60">
                                     <div>
                                         <div className="flex items-center gap-3">
                                             <span className="text-xl font-black text-foreground font-mono">#{selectedOrder.order_number}</span>
-                                            <span
-                                                className="px-3 py-0.5 rounded-full text-xs font-extrabold border"
-                                                style={{
-                                                    backgroundColor: `${statuses.find(s => s.name.toLowerCase() === selectedOrder.status.toLowerCase())?.color || "#10b981"}20`,
-                                                    color: statuses.find(s => s.name.toLowerCase() === selectedOrder.status.toLowerCase())?.color || "#10b981",
-                                                    borderColor: `${statuses.find(s => s.name.toLowerCase() === selectedOrder.status.toLowerCase())?.color || "#10b981"}40`
-                                                }}
-                                            >
+                                            <span className="px-3 py-0.5 rounded-full text-xs font-extrabold border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                                                 {selectedOrder.status}
                                             </span>
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1 font-medium">
-                                            Board Name: <span className="font-bold text-foreground">{selectedOrder.board_name}</span> · Created on {new Date(selectedOrder.created_at).toLocaleString()}
+                                            Board: <span className="font-bold text-foreground">{selectedOrder.board_name}</span>
                                         </p>
                                     </div>
                                     <Dialog.Close className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer">
@@ -331,97 +308,20 @@ export default function OrdersPage() {
                                     </Dialog.Close>
                                 </div>
 
-                                {/* Quick Info Bar */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div className="bg-muted/40 p-4 rounded-xl border border-border/60">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
-                                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">₹{Number(selectedOrder.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                                    </div>
-                                    <div className="bg-muted/40 p-4 rounded-xl border border-border/60">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Unit Price</p>
-                                        <p className="text-lg font-bold text-foreground mt-0.5">₹{Number(selectedOrder.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                                    </div>
-                                    <div className="bg-muted/40 p-4 rounded-xl border border-border/60">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Estimated Delivery</p>
-                                        <p className="text-sm font-bold text-foreground mt-1 font-mono">{selectedOrder.delivery_date || getMetaValue(selectedOrder, 'delivery_date', '3-5 Days')}</p>
-                                    </div>
+                                <div className="grid grid-cols-2 gap-3 bg-muted/30 p-4 rounded-xl text-xs">
+                                    <div><span className="text-muted-foreground">Amount:</span> <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
+                                    <div><span className="text-muted-foreground">Email:</span> <span className="font-bold text-foreground">{selectedOrder.user_email}</span></div>
+                                    <div><span className="text-muted-foreground">Mobile:</span> <span className="font-bold text-foreground">{selectedOrder.user_mobile}</span></div>
+                                    <div><span className="text-muted-foreground">Delivery:</span> <span className="font-bold text-foreground">{selectedOrder.delivery_date || 'N/A'}</span></div>
                                 </div>
 
-                                {/* Customer Info */}
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                                        <User className="w-4 h-4 text-emerald-500" /> Customer Information
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 p-4 rounded-xl border border-border/60 text-xs">
-                                        <div>
-                                            <span className="text-muted-foreground font-semibold block">Customer Name</span>
-                                            <span className="font-bold text-foreground">{selectedOrder.customer_name || "N/A"}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground font-semibold block">Email Address</span>
-                                            <span className="font-bold text-foreground">{selectedOrder.user_email}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground font-semibold block">Mobile Number</span>
-                                            <span className="font-bold text-foreground">{selectedOrder.user_mobile}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground font-semibold block">GST Number</span>
-                                            <span className="font-bold text-foreground">{getMetaValue(selectedOrder, 'gst_number', 'N/A')}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Full PCB Specifications */}
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                                        <FileText className="w-4 h-4 text-emerald-500" /> Technical Parameters & Meta Data
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1">
-                                        {selectedOrder.metas && selectedOrder.metas.length > 0 ? (
-                                            selectedOrder.metas.map((meta) => (
-                                                <div key={meta.id} className="bg-background/80 rounded-xl p-3 border border-border/60">
-                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase truncate">{meta.meta_key.replace(/_/g, ' ')}</p>
-                                                    <p className="text-xs font-bold text-foreground mt-0.5 truncate">{meta.meta_value}</p>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="col-span-3 text-xs text-muted-foreground italic">No extra metadata recorded.</div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Gerber File Downloads */}
-                                {getMetaValue(selectedOrder, 'gerber_file_url', '') && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-foreground">Gerber Design Files</h4>
-                                        <a
-                                            href={getMetaValue(selectedOrder, 'gerber_file_url', '#')}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-between px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-500 hover:text-white transition-all w-full sm:w-auto gap-3"
-                                        >
-                                            <span>Download Gerber Files ({getMetaValue(selectedOrder, 'gerber_file_name', 'gerber.zip')})</span>
-                                            <Download className="w-4 h-4" />
-                                        </a>
-                                    </div>
-                                )}
-
-                                {/* Pipeline Stage Update Control */}
-                                <div className="pt-4 border-t border-border/60 space-y-3">
-                                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-foreground">Update Manufacturing Pipeline Status</h4>
-                                    <div className="flex flex-col sm:flex-row items-center gap-3">
-                                        <select
-                                            value={selectedOrder.status}
-                                            onChange={(e) => handleStatusUpdate(selectedOrder.id, e.target.value)}
-                                            disabled={updatingStatus}
-                                            className="flex-1 w-full px-4 py-3 text-sm bg-background border border-emerald-500/50 rounded-xl text-foreground font-bold focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50"
-                                        >
-                                            {statuses.map((s) => (
-                                                <option key={s.id} value={s.name}>{s.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div className="pt-2 flex justify-end gap-3">
+                                    <Link
+                                        href={`/orders/${selectedOrder.id}`}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-md hover:bg-emerald-600 transition-all text-xs"
+                                    >
+                                        <ExternalLink className="w-4 h-4" /> Go to Full Order Detail Page
+                                    </Link>
                                 </div>
                             </>
                         )}
