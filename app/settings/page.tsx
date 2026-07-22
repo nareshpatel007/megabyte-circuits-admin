@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface StatusItem {
     id: number;
@@ -176,12 +177,14 @@ function OrderStatusManager() {
                     />
                     <button
                         onClick={handleCreate}
-                        className="px-3.5 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-all cursor-pointer flex items-center gap-1"
+                        disabled={actionLoading}
+                        className="px-3.5 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
                     >
-                        <Check className="w-4 h-4" /> Save
+                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Save
                     </button>
                     <button
                         onClick={() => setIsAdding(false)}
+                        disabled={actionLoading}
                         className="px-3.5 py-2 bg-muted text-muted-foreground hover:text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1"
                     >
                         <X className="w-4 h-4" /> Cancel
@@ -190,7 +193,7 @@ function OrderStatusManager() {
             )}
 
             {loading ? (
-                <div className="py-12 text-center text-xs text-muted-foreground font-medium">Loading statuses...</div>
+                <LoadingSpinner text="Loading order statuses..." />
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-border/60">
                     <table className="w-full text-left text-xs border-collapse">
@@ -230,12 +233,14 @@ function OrderStatusManager() {
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
                                                         onClick={() => handleUpdate(item.id)}
-                                                        className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                                        disabled={actionLoading}
+                                                        className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 font-bold transition-all flex items-center gap-1 cursor-pointer"
                                                     >
-                                                        <Check className="w-3.5 h-3.5" /> Save
+                                                        {actionLoading && actionId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
                                                     </button>
                                                     <button
                                                         onClick={() => setEditingId(null)}
+                                                        disabled={actionLoading}
                                                         className="px-3 py-1.5 bg-muted text-muted-foreground hover:text-foreground rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer"
                                                     >
                                                         <X className="w-3.5 h-3.5" /> Cancel
@@ -262,17 +267,19 @@ function OrderStatusManager() {
                                                             setEditName(item.name);
                                                             setEditColor(item.color || "#10b981");
                                                         }}
-                                                        className="p-2 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all cursor-pointer"
+                                                        disabled={actionLoading}
+                                                        className="p-2 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all cursor-pointer disabled:opacity-50"
                                                         title="Edit Status"
                                                     >
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(item.id)}
-                                                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
+                                                        disabled={actionLoading}
+                                                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer disabled:opacity-50"
                                                         title="Delete Status"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        {actionLoading && actionId === item.id ? <Loader2 className="w-4 h-4 animate-spin text-red-500" /> : <Trash2 className="w-4 h-4" />}
                                                     </button>
                                                 </div>
                                             </td>
