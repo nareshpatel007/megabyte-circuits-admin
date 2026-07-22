@@ -120,21 +120,6 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                         );
                     })}
                 </div>
-
-                {/* Bottom user hint */}
-                {!isCollapsed && (
-                    <div className="p-4 border-t border-white/5 bg-gradient-to-t from-white/5 to-transparent">
-                        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-[11px] font-700 shrink-0 shadow-lg shadow-emerald-500/20">
-                                AD
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-xs font-600 text-white truncate">Admin User</p>
-                                <p className="text-[10px] text-zinc-500 truncate">admin@pcbmfg.in</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         );
     };
