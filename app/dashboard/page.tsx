@@ -297,8 +297,8 @@ export default function DashboardPage() {
                                     </div>
                                     <span
                                         className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${svc.ok
-                                                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                                : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                            ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                            : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                                             }`}
                                     >
                                         {svc.status}
