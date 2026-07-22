@@ -80,13 +80,17 @@ export async function handleApiProxy(
         }
 
         // Call backend API (Laravel backend endpoint)
-        let apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api";
+        let apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
         if (apiUrl.endsWith("/")) {
             apiUrl = apiUrl.slice(0, -1);
         }
-        const formattedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
-        const apiRes = await fetch(`${apiUrl}${formattedEndpoint}`, fetchOptions);
+        let path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+        if (!apiUrl.endsWith("/api") && !path.startsWith("/api/")) {
+            path = `/api${path}`;
+        }
+
+        const apiRes = await fetch(`${apiUrl}${path}`, fetchOptions);
         const text = await apiRes.text();
 
         return new NextResponse(text, {
