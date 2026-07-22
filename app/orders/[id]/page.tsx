@@ -59,7 +59,7 @@ export default function OrderDetailPage() {
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
-    
+
     // Status change form
     const [newStatus, setNewStatus] = useState("");
     const [remark, setRemark] = useState("");
@@ -107,15 +107,15 @@ export default function OrderDetailPage() {
         try {
             const matchedStatus = statuses.find(s => s.name.toLowerCase() === newStatus.toLowerCase());
             const token = localStorage.getItem("admin_token");
-            
+
             // Auto detect logged in admin ID from stored user profile
-            const savedAdminUser = localStorage.getItem("admin_user");
+            const savedAdminUser = localStorage.getItem("user") || localStorage.getItem("admin_user");
             let loggedInAdminId = null;
             if (savedAdminUser) {
                 try {
                     const parsed = JSON.parse(savedAdminUser);
                     loggedInAdminId = parsed.id || null;
-                } catch (e) {}
+                } catch (e) { }
             }
 
             const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -326,17 +326,6 @@ export default function OrderDetailPage() {
                                 </table>
                             </div>
                         </div>
-
-                        {/* Raw Format Reference Row Display */}
-                        {order.status_histories && order.status_histories.length > 0 && (
-                            <div className="p-3 bg-muted/40 rounded-xl border border-border/60 space-y-1 font-mono text-[11px] text-muted-foreground max-h-36 overflow-y-auto">
-                                {order.status_histories.map(h => (
-                                    <div key={h.id} className="truncate">
-                                        User: <span className="font-bold text-foreground">{h.admin?.name || (h.admin_id ? `Admin #${h.admin_id}` : 'Admin')}</span> - Status: <span className="font-bold text-emerald-500">{h.status_name}</span> - Timestamp: <span className="text-slate-500">{new Date(h.created_at).toISOString().replace('T', ' ').substring(0, 19)}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
 

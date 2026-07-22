@@ -54,7 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const adminInfo = data.data || data.admin || {};
         const token = adminInfo.access_token || data.token || "";
 
-        const userData: User = {
+        const userData: User & { id?: number } = {
+            id: adminInfo.id || adminInfo.admin_id || data.admin_id || 1,
             email: adminInfo.email || email,
             name: adminInfo.name || "Admin User",
         };
