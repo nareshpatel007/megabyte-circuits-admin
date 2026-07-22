@@ -133,15 +133,17 @@ export default function OrderDetailPage() {
             });
 
             const data = await res.json();
-            if (data.status || data.success) {
+            if (res.ok && (data.status || data.success)) {
                 toast.success(`Status updated to "${newStatus}"`, { id: toastId });
                 setOrder(data.data);
                 setRemark("");
             } else {
-                toast.error(data.message || "Failed to update status", { id: toastId });
+                toast.error(data.message || data.error || "Failed to update status", { id: toastId });
+                console.error("Status update response error:", data);
             }
-        } catch (err) {
-            toast.error("Error updating order status", { id: toastId });
+        } catch (err: any) {
+            console.error("Status update catch error:", err);
+            toast.error(err?.message || "Error updating order status", { id: toastId });
         } finally {
             setUpdating(false);
         }
@@ -176,6 +178,17 @@ export default function OrderDetailPage() {
             </DashboardLayout>
         );
     }
+
+    // Date Formatter (DD-MM-YYYY)
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return "N/A";
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return dateString;
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    };
 
     const currentStatusColor = statuses.find(s => s.name.toLowerCase() === order.status.toLowerCase())?.color || "#10b981";
 
@@ -217,11 +230,11 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Estimated Delivery</p>
-                        <p className="text-base font-bold text-foreground mt-1 font-mono">{order.delivery_date || getMetaValue('delivery_date', '3-5 Days')}</p>
+                        <p className="text-base font-bold text-foreground mt-1 font-mono">{formatDate(order.delivery_date || getMetaValue('delivery_date'))}</p>
                     </div>
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Submitted On</p>
-                        <p className="text-xs font-bold text-foreground mt-1 font-mono">{new Date(order.created_at).toLocaleString()}</p>
+                        <p className="text-xs font-bold text-foreground mt-1 font-mono">{formatDate(order.created_at)}</p>
                     </div>
                 </div>
 
