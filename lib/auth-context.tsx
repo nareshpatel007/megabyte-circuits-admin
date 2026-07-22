@@ -37,13 +37,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
-        // In production, this would call an API
-        // For demo, we'll accept any credentials
-        const userData = { email, name: "Admin User" };
-        
+        const response = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.status) {
+            throw new Error(data.message || "Invalid credentials");
+        }
+
+        const userData = {
+            id: data.admin?.id,
+            email: data.admin?.email || email,
+            name: data.admin?.name || "Admin User",
+            token: data.token,
+        };
+
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("user", JSON.stringify(userData));
-        
+        if (data.token) {
+            localStorage.setItem("admin_token", data.token);
+        }
+
         setIsAuthenticated(true);
         setUser(userData);
         router.push("/dashboard");

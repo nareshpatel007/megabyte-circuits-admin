@@ -8,22 +8,23 @@ import { useAuth } from "@/lib/auth-context";
 export default function LoginPage() {
     const router = useRouter();
     const { login } = useAuth();
-    const [email, setEmail] = useState("admin@domain.com");
-    const [password, setPassword] = useState("123456789");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-
-        // Simulate network latency for realistic feel
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setError(null);
 
         try {
             await login(email, password);
-        } catch (error) {
-            console.error(error);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Login failed. Please check your credentials.");
+        } finally {
             setIsLoading(false);
         }
     };
@@ -79,6 +80,12 @@ export default function LoginPage() {
                     <p className="text-sm text-zinc-400 text-center mb-8 font-medium">
                         Admin Control Panel
                     </p>
+
+                    {error && (
+                        <div className="w-full mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center font-medium">
+                            {error}
+                        </div>
+                    )}
 
                     <form onSubmit={handleLogin} className="space-y-6 w-full">
                         <div className="space-y-2">
