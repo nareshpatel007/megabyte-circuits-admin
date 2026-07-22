@@ -51,21 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(data.message || "Invalid credentials");
         }
 
-        const userData = {
-            id: data.admin?.id,
-            email: data.admin?.email || email,
-            name: data.admin?.name || "Admin User",
-            token: data.token,
+        const adminInfo = data.data || data.admin || {};
+        const token = adminInfo.access_token || data.token || "";
+
+        const userData: User = {
+            email: adminInfo.email || email,
+            name: adminInfo.name || "Admin User",
         };
 
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("user", JSON.stringify(userData));
-        if (data.token) {
-            localStorage.setItem("admin_token", data.token);
+        if (token) {
+            localStorage.setItem("admin_token", token);
         }
 
-        setIsAuthenticated(true);
         setUser(userData);
+        setIsAuthenticated(true);
         router.push("/dashboard");
     };
 

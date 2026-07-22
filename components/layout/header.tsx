@@ -19,7 +19,7 @@ const notifications = [
 
 export default function Header({ onMenuClick }: HeaderProps) {
     const { theme, toggleTheme } = useTheme();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const [userOpen, setUserOpen] = useState(false);
     const [bellOpen, setBellOpen] = useState(false);
     const userRef = useRef<HTMLDivElement>(null);
@@ -129,8 +129,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
                             <User className="w-4 h-4 text-white" />
                         </div>
                         <div className="hidden sm:block text-left">
-                            <p className="text-xs font-600 text-foreground leading-tight">Admin User</p>
-                            <p className="text-[10px] text-muted-foreground">Super Admin</p>
+                            <p className="text-xs font-600 text-foreground leading-tight">{user?.name || "Admin User"}</p>
+                            <p className="text-[10px] text-muted-foreground">Administrator</p>
                         </div>
                         <ChevronDown
                             className={cn(
@@ -152,8 +152,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
                                     <User className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-600 text-foreground">Admin User</p>
-                                    <p className="text-[11px] text-zinc-500">admin@pcbmfg.in</p>
+                                    <p className="text-sm font-600 text-foreground">{user?.name || "Admin User"}</p>
+                                    <p className="text-[11px] text-zinc-500 truncate max-w-[130px]">{user?.email || "admin@domain.com"}</p>
                                 </div>
                             </div>
 
