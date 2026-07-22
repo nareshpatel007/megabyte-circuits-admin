@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || "";
-const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || "";
+const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || process.env.NEXT_API_TOKEN || "";
 
 export async function handleApiProxy(
     req: NextRequest,
@@ -57,7 +57,7 @@ export async function handleApiProxy(
             } else {
                 // Otherwise, read from request
                 const contentType = req.headers.get("content-type");
-                
+
                 if (contentType && contentType.includes("multipart/form-data")) {
                     // Handle FormData (file uploads)
                     const formData = await req.formData();
@@ -79,9 +79,14 @@ export async function handleApiProxy(
             }
         }
 
-        // Call backend API
-        const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";        
-        const apiRes = await fetch(`${apiUrl}${endpoint}`, fetchOptions);
+        // Call backend API (Laravel backend endpoint)
+        let apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api";
+        if (apiUrl.endsWith("/")) {
+            apiUrl = apiUrl.slice(0, -1);
+        }
+        const formattedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+        const apiRes = await fetch(`${apiUrl}${formattedEndpoint}`, fetchOptions);
         const text = await apiRes.text();
 
         return new NextResponse(text, {
