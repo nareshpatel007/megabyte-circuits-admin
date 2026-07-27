@@ -61,7 +61,7 @@ export default function OrdersPage() {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [page, setPage] = useState(1);
-    
+
     // Quick preview modal state
     const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
 
@@ -308,8 +308,8 @@ export default function OrdersPage() {
                                         key={p}
                                         onClick={() => setPage(p)}
                                         className={`w-8 h-8 text-xs rounded-xl font-bold transition-all cursor-pointer ${p === page
-                                                ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                                                : "border border-border/80 hover:bg-muted text-muted-foreground"
+                                            ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                                            : "border border-border/80 hover:bg-muted text-muted-foreground"
                                             }`}
                                     >
                                         {p}
