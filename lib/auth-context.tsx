@@ -4,14 +4,18 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/navigation";
 
 interface User {
+    id: number;
+    username?: string;
     email: string;
     name: string;
+    role?: string;
+    permissions?: string[];
 }
 
 interface AuthContextType {
     isAuthenticated: boolean;
     user: User | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (usernameOrEmail: string, password: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
 }
@@ -36,13 +40,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (usernameOrEmail: string, password: string) => {
         const response = await fetch("/api/admin/login", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({
+                username: usernameOrEmail,
+                email: usernameOrEmail,
+                password
+            }),
         });
 
         const data = await response.json();
@@ -54,10 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const adminInfo = data.data || data.admin || {};
         const token = adminInfo.access_token || data.token || "";
 
-        const userData: User & { id?: number } = {
+        const userData: User = {
             id: adminInfo.id || adminInfo.admin_id || data.admin_id || 1,
-            email: adminInfo.email || email,
+            username: adminInfo.username || usernameOrEmail,
+            email: adminInfo.email || usernameOrEmail,
             name: adminInfo.name || "Admin User",
+            role: adminInfo.role || "Admin",
+            permissions: adminInfo.permissions || []
         };
 
         localStorage.setItem("isAuthenticated", "true");

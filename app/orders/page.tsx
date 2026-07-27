@@ -58,6 +58,8 @@ export default function OrdersPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
     const [page, setPage] = useState(1);
     
     // Quick preview modal state
@@ -69,8 +71,12 @@ export default function OrdersPage() {
             const token = localStorage.getItem("admin_token");
             const headers = { Authorization: `Bearer ${token}` };
 
+            let url = "/api/admin/orders?sort_by=delivery_date&sort_order=desc";
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
+
             const [ordersRes, statusesRes] = await Promise.all([
-                fetch("/api/admin/orders", { headers }),
+                fetch(url, { headers }),
                 fetch("/api/admin/statuses", { headers })
             ]);
 
@@ -93,7 +99,7 @@ export default function OrdersPage() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [startDate, endDate]);
 
     // Filter logic
     const filtered = orders.filter((o) => {
@@ -112,6 +118,14 @@ export default function OrdersPage() {
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+    // Helper to format date as "17 Dec 2026"
+    const formatDeliveryDate = (dateString?: string | null) => {
+        if (!dateString || dateString === 'N/A') return 'N/A';
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return dateString;
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
     // Helper to get meta key value
     const getMetaValue = (order: ApiOrder, key: string, fallback = "N/A") => {
         if (!order.metas) return fallback;
@@ -120,10 +134,10 @@ export default function OrdersPage() {
     };
 
     return (
-        <DashboardLayout title="Orders & Management" subtitle={`${orders.length} total orders recorded`}>
+        <DashboardLayout title="Orders & Management" subtitle={`${orders.length} total orders recorded (Sorted by Delivery Date desc)`}>
             <div className="w-full space-y-5">
                 {/* Search & Filter Header Bar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-3">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <input
@@ -131,14 +145,40 @@ export default function OrdersPage() {
                             placeholder="Search by Order #, Board Name, Email, or Mobile..."
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            className="w-full pl-10 pr-4 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all"
                         />
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        {/* Date Range Filters */}
+                        <div className="flex items-center gap-1.5 bg-card border border-border/80 rounded-xl px-3 py-1.5 text-xs">
+                            <span className="text-muted-foreground font-bold">From:</span>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="bg-transparent text-foreground font-bold focus:outline-none cursor-pointer"
+                            />
+                            <span className="text-muted-foreground font-bold">To:</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="bg-transparent text-foreground font-bold focus:outline-none cursor-pointer"
+                            />
+                            {(startDate || endDate) && (
+                                <button
+                                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                                    className="ml-1 text-red-500 font-bold hover:text-red-600"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+
                         <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                            className="w-full sm:w-56 px-3.5 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 font-bold transition-all cursor-pointer"
+                            className="px-3.5 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold transition-all cursor-pointer"
                         >
                             <option value="All">All Pipeline Statuses</option>
                             {statuses.map((s) => (
@@ -159,7 +199,8 @@ export default function OrdersPage() {
                                     <tr className="bg-muted/80 border-b border-border/80 text-foreground uppercase tracking-wider font-extrabold text-[11px]">
                                         <th className="py-3.5 px-5">Order #</th>
                                         <th className="py-3.5 px-5">Board & Customer</th>
-                                        <th className="py-3.5 px-5">Date</th>
+                                        <th className="py-3.5 px-5">Delivery Date</th>
+                                        <th className="py-3.5 px-5">Layers</th>
                                         <th className="py-3.5 px-5">Specs Overview</th>
                                         <th className="py-3.5 px-5">Order Amount</th>
                                         <th className="py-3.5 px-5">Pipeline Status</th>
@@ -169,7 +210,7 @@ export default function OrdersPage() {
                                 <tbody className="divide-y divide-border/40">
                                     {paginated.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
+                                            <td colSpan={8} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
                                                 No orders matched your search or status filter.
                                             </td>
                                         </tr>
@@ -177,6 +218,7 @@ export default function OrdersPage() {
                                         paginated.map((order) => {
                                             const matchedStatus = statuses.find(s => s.name.toLowerCase() === order.status.toLowerCase());
                                             const statusColor = matchedStatus?.color || "#10b981";
+                                            const layerCount = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
 
                                             return (
                                                 <tr key={order.id} className="hover:bg-muted/20 transition-colors">
@@ -189,14 +231,19 @@ export default function OrdersPage() {
                                                             <p className="text-[11px] text-muted-foreground font-medium">{order.customer_name || order.user_email}</p>
                                                         </div>
                                                     </td>
-                                                    <td className="py-4 px-5 font-medium text-foreground whitespace-nowrap">
-                                                        {new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    <td className="py-4 px-5 font-bold text-foreground font-mono whitespace-nowrap">
+                                                        {formatDeliveryDate(order.delivery_date)}
+                                                    </td>
+                                                    <td className="py-4 px-5 whitespace-nowrap">
+                                                        <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20 text-xs">
+                                                            {layerCount} {layerCount === '1' ? 'Layer' : 'Layers'}
+                                                        </span>
                                                     </td>
                                                     <td className="py-4 px-5 whitespace-nowrap">
                                                         <div className="flex items-center gap-1.5 font-medium text-foreground">
-                                                            <span className="bg-muted px-2 py-0.5 rounded font-bold">{getMetaValue(order, 'layers', '2')} Layers</span>
-                                                            <span>·</span>
                                                             <span>{getMetaValue(order, 'qty', '5')} Pcs</span>
+                                                            <span>·</span>
+                                                            <span>{getMetaValue(order, 'thickness', '1.6mm')}</span>
                                                         </div>
                                                     </td>
                                                     <td className="py-4 px-5 font-extrabold text-foreground text-sm whitespace-nowrap">
@@ -217,7 +264,6 @@ export default function OrdersPage() {
                                                     </td>
                                                     <td className="py-4 px-5 text-right whitespace-nowrap">
                                                         <div className="inline-flex items-center gap-2">
-                                                            {/* Quick Preview Button */}
                                                             <button
                                                                 onClick={() => setSelectedOrder(order)}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs font-bold cursor-pointer"
@@ -225,8 +271,6 @@ export default function OrdersPage() {
                                                                 <Eye className="w-3.5 h-3.5" />
                                                                 Quick Preview
                                                             </button>
-
-                                                            {/* Details Button */}
                                                             <Link
                                                                 href={`/orders/${order.id}`}
                                                                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold cursor-pointer"
@@ -312,7 +356,7 @@ export default function OrdersPage() {
                                     <div><span className="text-muted-foreground">Amount:</span> <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
                                     <div><span className="text-muted-foreground">Email:</span> <span className="font-bold text-foreground">{selectedOrder.user_email}</span></div>
                                     <div><span className="text-muted-foreground">Mobile:</span> <span className="font-bold text-foreground">{selectedOrder.user_mobile}</span></div>
-                                    <div><span className="text-muted-foreground">Delivery:</span> <span className="font-bold text-foreground">{selectedOrder.delivery_date || 'N/A'}</span></div>
+                                    <div><span className="text-muted-foreground">Delivery:</span> <span className="font-bold text-foreground">{formatDeliveryDate(selectedOrder.delivery_date)}</span></div>
                                 </div>
 
                                 <div className="pt-2 flex justify-end gap-3">

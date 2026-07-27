@@ -90,15 +90,15 @@ export default function LoginPage() {
                     <form onSubmit={handleLogin} className="space-y-6 w-full">
                         <div className="space-y-2">
                             <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest block">
-                                Email Address
+                                Username or Email Address
                             </label>
                             <div className="relative group">
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                                 <input
-                                    type="email"
+                                    type="text"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@pcbmfg.in"
+                                    placeholder="Username or admin@pcbmfg.in"
                                     className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-zinc-950/40 border border-zinc-800 text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/60 focus:bg-zinc-950/80 transition-all duration-200 text-sm"
                                     required
                                 />

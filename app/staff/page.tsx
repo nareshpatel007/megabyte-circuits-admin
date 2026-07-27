@@ -1,580 +1,408 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import {
-  mockStaff, mockStaffActivity,
-  StaffMember, StaffRole, StaffStatus, StaffActivity,
-} from "@/lib/mock-data";
-import {
-  UserCog, Plus, Search, Smartphone, ShieldCheck, ShieldOff,
-  Pencil, Trash2, X, Check, Users, UserCheck, UserX, Clock,
-  Mail, Phone, Building2, Moon, Sun, Sunset, ChevronRight,
-  Activity, Package, ArrowRight, Eye, Truck, BadgeCheck, BadgeX,
-  FileText, CreditCard, Calendar, Wifi, WifiOff,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Users, UserPlus, Shield, Key, Edit, Trash2, CheckCircle, XCircle, Search, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import Link from "next/link";
+import * as Dialog from "@radix-ui/react-dialog";
 
-const ROLES: StaffRole[] = [
-  "Floor Supervisor", "QA Engineer", "Dispatch Staff",
-  "Procurement", "Production Lead", "Assembly Technician",
-];
-const DEPARTMENTS = ["Production", "Quality", "Logistics", "Supply Chain"];
-const SHIFTS = ["Morning", "Evening", "Night"] as const;
-
-const ROLE_COLORS: Record<StaffRole, string> = {
-  "Floor Supervisor": "bg-blue-100 text-blue-700",
-  "QA Engineer": "bg-purple-100 text-purple-700",
-  "Dispatch Staff": "bg-orange-100 text-orange-700",
-  "Procurement": "bg-teal-100 text-teal-700",
-  "Production Lead": "bg-cyan-100 text-cyan-700",
-  "Assembly Technician": "bg-rose-100 text-rose-700",
-};
-
-const STATUS_COLORS: Record<StaffStatus, string> = {
-  Active: "bg-green-100 text-green-700",
-  Inactive: "bg-gray-100 text-gray-500",
-  "On Leave": "bg-yellow-100 text-yellow-700",
-};
-
-const SHIFT_ICON: Record<string, React.ReactNode> = {
-  Morning: <Sun className="w-3 h-3" />,
-  Evening: <Sunset className="w-3 h-3" />,
-  Night: <Moon className="w-3 h-3" />,
-};
-
-const AVATAR_COLORS = [
-  "from-cyan-400 to-blue-600",
-  "from-purple-400 to-indigo-600",
-  "from-orange-400 to-rose-600",
-  "from-teal-400 to-green-600",
-  "from-pink-400 to-rose-600",
-  "from-amber-400 to-orange-600",
-];
-
-const ACTION_META: Record<StaffActivity["action"], { icon: React.ReactNode; color: string; dot: string }> = {
-  "Status Update":      { icon: <ArrowRight className="w-3.5 h-3.5" />, color: "bg-blue-100 text-blue-700",   dot: "bg-blue-500" },
-  "Order Viewed":       { icon: <Eye className="w-3.5 h-3.5" />,        color: "bg-gray-100 text-gray-600",   dot: "bg-gray-400" },
-  "Dispatch Confirmed": { icon: <Truck className="w-3.5 h-3.5" />,      color: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
-  "QC Passed":          { icon: <BadgeCheck className="w-3.5 h-3.5" />, color: "bg-green-100 text-green-700", dot: "bg-green-500" },
-  "QC Failed":          { icon: <BadgeX className="w-3.5 h-3.5" />,     color: "bg-rose-100 text-rose-700",   dot: "bg-rose-500" },
-  "Invoice Sent":       { icon: <FileText className="w-3.5 h-3.5" />,   color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
-  "Payment Marked":     { icon: <CreditCard className="w-3.5 h-3.5" />, color: "bg-teal-100 text-teal-700",   dot: "bg-teal-500" },
-};
-
-function avatarColor(id: string) {
-  const idx = parseInt(id.replace("STF-", ""), 10) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[idx];
+interface Role {
+    id: number;
+    name: string;
+    slug: string;
+    description: string;
 }
 
-type ModalMode = "add" | "edit" | null;
-
-const EMPTY_FORM = {
-  name: "", email: "", phone: "",
-  role: "Floor Supervisor" as StaffRole,
-  department: "Production",
-  shift: "Morning" as "Morning" | "Evening" | "Night",
-  status: "Active" as StaffStatus,
-  mobileAccess: false,
-};
+interface StaffUser {
+    id: number;
+    name: string;
+    username: string;
+    email: string;
+    status: string;
+    role_id: number | null;
+    role_name?: string;
+    last_login_at: string | null;
+    created_at: string;
+}
 
 export default function StaffPage() {
-  const [staff, setStaff] = useState<StaffMember[]>(mockStaff);
-  const [search, setSearch] = useState("");
-  const [filterRole, setFilterRole] = useState<string>("All");
-  const [filterAccess, setFilterAccess] = useState<string>("All");
-  const [modal, setModal] = useState<ModalMode>(null);
-  const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
-  const [drawerStaff, setDrawerStaff] = useState<StaffMember | null>(null);
+    const [staff, setStaff] = useState<StaffUser[]>([]);
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
 
-  const totalStaff = staff.length;
-  const activeStaff = staff.filter((s) => s.status === "Active").length;
-  const mobileEnabled = staff.filter((s) => s.mobileAccess).length;
-  const onLeave = staff.filter((s) => s.status === "On Leave").length;
+    // Modal state
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
 
-  const filtered = staff.filter((s) => {
-    const q = search.toLowerCase();
-    const matchesSearch = s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
-    const matchesRole = filterRole === "All" || s.role === filterRole;
-    const matchesAccess = filterAccess === "All" || (filterAccess === "Enabled" && s.mobileAccess) || (filterAccess === "Disabled" && !s.mobileAccess);
-    return matchesSearch && matchesRole && matchesAccess;
-  });
+    // Form fields
+    const [name, setName] = useState("");
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [roleId, setRoleId] = useState<string>("");
+    const [status, setStatus] = useState("active");
+    const [submitting, setSubmitting] = useState(false);
 
-  function openAdd() { setForm(EMPTY_FORM); setEditTarget(null); setModal("add"); }
-  function openEdit(s: StaffMember) {
-    setForm({ name: s.name, email: s.email, phone: s.phone, role: s.role, department: s.department, shift: s.shift, status: s.status, mobileAccess: s.mobileAccess });
-    setEditTarget(s); setModal("edit");
-  }
-  function closeModal() { setModal(null); setEditTarget(null); }
+    const fetchData = async () => {
+        try {
+            const token = localStorage.getItem("admin_token");
+            const headers = { Authorization: `Bearer ${token}` };
 
-  function handleSave() {
-    if (!form.name.trim() || !form.email.trim()) { toast.error("Name and email are required."); return; }
-    if (modal === "add") {
-      const nextId = `STF-${String(staff.length + 1).padStart(3, "0")}`;
-      const initials = form.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-      setStaff((prev) => [{ id: nextId, ...form, avatar: initials, joinedDate: new Date().toISOString().split("T")[0], lastActive: "Never" }, ...prev]);
-      toast.success(`${form.name} added to staff.`);
-    } else if (modal === "edit" && editTarget) {
-      setStaff((prev) => prev.map((s) => s.id === editTarget.id ? { ...s, ...form } : s));
-      if (drawerStaff?.id === editTarget.id) setDrawerStaff((prev) => prev ? { ...prev, ...form } : prev);
-      toast.success(`${form.name} updated.`);
-    }
-    closeModal();
-  }
+            const [staffRes, rolesRes] = await Promise.all([
+                fetch("/api/admin/staff", { headers }),
+                fetch("/api/admin/roles", { headers })
+            ]);
 
-  function toggleAccess(id: string) {
-    setStaff((prev) => prev.map((s) => {
-      if (s.id !== id) return s;
-      const next = !s.mobileAccess;
-      toast.success(`Mobile access ${next ? "granted to" : "revoked from"} ${s.name}.`);
-      return { ...s, mobileAccess: next };
-    }));
-    if (drawerStaff?.id === id) setDrawerStaff((prev) => prev ? { ...prev, mobileAccess: !prev.mobileAccess } : prev);
-  }
+            const staffData = await staffRes.json();
+            const rolesData = await rolesRes.json();
 
-  function confirmDelete() {
-    if (!deleteTarget) return;
-    setStaff((prev) => prev.filter((s) => s.id !== deleteTarget.id));
-    if (drawerStaff?.id === deleteTarget.id) setDrawerStaff(null);
-    toast.success(`${deleteTarget.name} removed from staff.`);
-    setDeleteTarget(null);
-  }
+            if (staffData.status || staffData.data) {
+                setStaff(staffData.data || []);
+            }
+            if (rolesData.status || rolesData.data) {
+                setRoles(rolesData.data || []);
+            }
+        } catch (err) {
+            console.error("Failed to load staff data:", err);
+            toast.error("Failed to load staff members");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const drawerActivity = drawerStaff ? (mockStaffActivity[drawerStaff.id] ?? []) : [];
-  const uniqueOrders = new Set(drawerActivity.map((a) => a.orderId)).size;
+    useEffect(() => {
+        fetchData();
+    }, []);
 
-  return (
-    <DashboardLayout
-      title="Staff Management"
-      subtitle={`${totalStaff} total staff members`}
-      action={
-        <button onClick={openAdd} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.98] cursor-pointer">
-          <Plus className="w-4.5 h-4.5" /> Add Staff Member
-        </button>
-      }
-    >
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Total Staff",   value: totalStaff,    icon: Users,      color: "text-blue-600 dark:text-blue-400",  bg: "bg-blue-500/10" },
-          { label: "Active",        value: activeStaff,   icon: UserCheck,  color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10" },
-          { label: "Mobile Access", value: mobileEnabled, icon: Smartphone, color: "text-cyan-600 dark:text-cyan-400",  bg: "bg-cyan-500/10" },
-          { label: "On Leave",      value: onLeave,       icon: Clock,      color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-card rounded-2xl border border-border/80 p-5 flex items-center gap-4 hover:shadow-md transition-shadow duration-200">
-            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner", stat.bg)}>
-              <stat.icon className={cn("w-6 h-6", stat.color)} />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">{stat.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+    const resetForm = () => {
+        setName("");
+        setUsername("");
+        setEmail("");
+        setPassword("");
+        setRoleId("");
+        setStatus("active");
+        setEditingUser(null);
+    };
 
-      {/* Filters */}
-      <div className="bg-card rounded-2xl border border-border/80 p-4 mb-5 flex flex-col sm:flex-row gap-3 shadow-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border/80 bg-background/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
-            placeholder="Search by name, email or ID…"
-            value={search} onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select className="px-3.5 py-2.5 rounded-xl border border-border/80 bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium cursor-pointer" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-          <option value="All">All Roles</option>
-          {ROLES.map((r) => <option key={r}>{r}</option>)}
-        </select>
-        <select className="px-3.5 py-2.5 rounded-xl border border-border/80 bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium cursor-pointer" value={filterAccess} onChange={(e) => setFilterAccess(e.target.value)}>
-          <option value="All">Mobile: All</option>
-          <option value="Enabled">Access Enabled</option>
-          <option value="Disabled">Access Disabled</option>
-        </select>
-      </div>
+    const handleSaveUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
 
-      {/* Table */}
-      <div className="bg-card rounded-2xl border border-border/80 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/60 bg-muted/40">
-                <th className="text-left px-5 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Staff Member</th>
-                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Role / Dept</th>
-                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Shift</th>
-                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Mobile Access</th>
-                <th className="text-left px-4 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Last Active</th>
-                <th className="text-right px-5 py-4 font-bold text-muted-foreground text-xs uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center py-16 text-muted-foreground font-medium">
-                    <UserX className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    No staff members match your filters.
-                  </td>
-                </tr>
-              )}
-              {filtered.map((s) => (
-                <tr
-                  key={s.id}
-                  className={cn("hover:bg-muted/30 transition-colors duration-150", drawerStaff?.id === s.id && "bg-emerald-500/5")}
-                >
-                  {/* Avatar + name — clickable to open drawer */}
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => setDrawerStaff(drawerStaff?.id === s.id ? null : s)}
-                      className="flex items-center gap-3 group text-left w-full cursor-pointer"
-                    >
-                      <div className={cn("w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0", avatarColor(s.id))}>
-                        {s.avatar}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground group-hover:text-emerald-500 transition-colors flex items-center gap-1">
-                          {s.name}
-                          <ChevronRight className={cn("w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all", drawerStaff?.id === s.id && "opacity-100 rotate-90")} />
-                        </p>
-                        <p className="text-xs text-muted-foreground font-medium mt-0.5">{s.id} · {s.email}</p>
-                      </div>
-                    </button>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border", 
-                      s.role === "Floor Supervisor" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20" :
-                      s.role === "QA Engineer" ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20" :
-                      s.role === "Dispatch Staff" ? "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20" :
-                      s.role === "Procurement" ? "bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20" :
-                      s.role === "Production Lead" ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20" :
-                      "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
-                    )}>{s.role}</span>
-                    <p className="text-xs text-muted-foreground font-semibold mt-1">{s.department}</p>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg border border-border/40 font-medium">
-                      {SHIFT_ICON[s.shift]}{s.shift}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
-                      s.status === "Active" ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20" :
-                      s.status === "Inactive" ? "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20" :
-                      "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"
-                    )}>{s.status}</span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() => toggleAccess(s.id)}
-                      className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer", 
-                        s.mobileAccess 
-                          ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20 hover:bg-cyan-500/20" 
-                          : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/20"
-                      )}
-                    >
-                      {s.mobileAccess ? <><ShieldCheck className="w-3.5 h-3.5" /> Enabled</> : <><ShieldOff className="w-3.5 h-3.5" /> Disabled</>}
-                    </button>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-muted-foreground font-semibold whitespace-nowrap">{s.lastActive}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg border border-border/80 hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-600 transition-all" title="Edit">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded-lg border border-border/80 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all" title="Remove">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+        try {
+            const token = localStorage.getItem("admin_token");
+            const isEdit = !!editingUser;
+            const url = isEdit ? `/api/admin/staff/${editingUser.id}` : "/api/admin/staff";
+            const method = isEdit ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name,
+                    username,
+                    email,
+                    password: password || undefined,
+                    role_id: roleId ? parseInt(roleId) : null,
+                    status
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success(isEdit ? "Staff user updated" : "Staff user created");
+                setIsCreateOpen(false);
+                resetForm();
+                fetchData();
+            } else {
+                toast.error(data.message || "Failed to save user");
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error saving user");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDeleteUser = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this staff member?")) return;
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/staff/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const data = await res.json();
+            if (res.ok && data.status) {
+                toast.success("Staff user deleted");
+                fetchData();
+            } else {
+                toast.error(data.message || "Failed to delete staff user");
+            }
+        } catch (err) {
+            toast.error("Error deleting staff user");
+        }
+    };
+
+    const openEdit = (user: StaffUser) => {
+        setEditingUser(user);
+        setName(user.name);
+        setUsername(user.username || "");
+        setEmail(user.email);
+        setPassword("");
+        setRoleId(user.role_id ? String(user.role_id) : "");
+        setStatus(user.status || "active");
+        setIsCreateOpen(true);
+    };
+
+    const filtered = staff.filter(s =>
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.username?.toLowerCase().includes(search.toLowerCase()) ||
+        s.email.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+        <DashboardLayout title="User Management" subtitle="Manage admin accounts, staff credentials & system access">
+            <div className="w-full space-y-6">
+                {/* Action Header */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                            type="search"
+                            placeholder="Search staff by Name, Username, or Email..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all"
+                        />
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length > 0 && (
-          <div className="px-5 py-3 border-t border-border/60 bg-muted/20 text-xs text-muted-foreground font-semibold">
-            Showing {filtered.length} of {totalStaff} staff members · Click a name to view activity history
-          </div>
-        )}
-      </div>
-
-      {/* ── DETAIL DRAWER ── */}
-      {drawerStaff && (
-        <>
-          {/* Backdrop (mobile) */}
-          <div className="fixed inset-0 z-40 bg-black/20 md:hidden" onClick={() => setDrawerStaff(null)} />
-
-          <div className="fixed right-0 top-0 h-full z-50 w-full max-w-[440px] flex flex-col bg-card border-l border-border shadow-2xl animate-in slide-in-from-right duration-300">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Activity className="w-4 h-4 text-primary" />
-                Staff Activity Log
-              </div>
-              <button onClick={() => setDrawerStaff(null)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Profile Card */}
-            <div className="px-5 py-5 border-b border-border shrink-0">
-              <div className="flex items-start gap-4">
-                <div className={cn("w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-md", avatarColor(drawerStaff.id))}>
-                  {drawerStaff.avatar}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-base font-bold text-foreground">{drawerStaff.name}</h2>
-                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-semibold", STATUS_COLORS[drawerStaff.status])}>{drawerStaff.status}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{drawerStaff.id} · {drawerStaff.department}</p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold", ROLE_COLORS[drawerStaff.role])}>{drawerStaff.role}</span>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
-                      {SHIFT_ICON[drawerStaff.shift]}{drawerStaff.shift} Shift
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact row */}
-              <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{drawerStaff.email}</span></div>
-                <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 shrink-0" />{drawerStaff.phone}</div>
-                <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 shrink-0" />Joined {drawerStaff.joinedDate}</div>
-                <div className="flex items-center gap-1.5">
-                  {drawerStaff.mobileAccess
-                    ? <><Wifi className="w-3.5 h-3.5 text-cyan-500" /><span className="text-cyan-600 font-medium">Mobile Enabled</span></>
-                    : <><WifiOff className="w-3.5 h-3.5" /><span>No Mobile Access</span></>
-                  }
-                </div>
-              </div>
-
-              {/* Quick stats */}
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[
-                  { label: "Total Actions", value: drawerActivity.length },
-                  { label: "Orders Touched", value: uniqueOrders },
-                  { label: "Last Active", value: drawerStaff.lastActive === "Never" ? "—" : drawerStaff.lastActive.split(" ")[0] },
-                ].map((st) => (
-                  <div key={st.label} className="bg-muted/40 rounded-xl p-3 text-center">
-                    <p className="text-base font-bold text-foreground">{st.value}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{st.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Activity Log */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="px-5 py-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-                  Activity Timeline
-                  {drawerActivity.length > 0 && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary normal-case font-semibold">{drawerActivity.length} events</span>}
-                </p>
-
-                {drawerActivity.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
-                      <Package className="w-6 h-6 text-muted-foreground opacity-50" />
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        <Link
+                            href="/staff/roles"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-card border border-border/80 rounded-xl hover:bg-muted text-foreground font-bold text-xs transition-all"
+                        >
+                            <Shield className="w-4 h-4 text-emerald-500" /> Manage Roles & Permissions
+                        </Link>
+                        <button
+                            onClick={() => { resetForm(); setIsCreateOpen(true); }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-md hover:bg-emerald-600 transition-all text-xs cursor-pointer whitespace-nowrap"
+                        >
+                            <UserPlus className="w-4 h-4" /> Add New Staff Member
+                        </button>
                     </div>
-                    <p className="text-sm font-medium text-muted-foreground">No activity recorded</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {drawerStaff.mobileAccess
-                        ? "This staff member hasn't used the mobile app yet."
-                        : "Enable mobile access for this staff member to start tracking activity."}
-                    </p>
-                    {!drawerStaff.mobileAccess && (
-                      <button
-                        onClick={() => toggleAccess(drawerStaff.id)}
-                        className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500 text-white text-xs font-semibold hover:bg-cyan-600 transition-colors"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5" /> Enable Mobile Access
-                      </button>
+                </div>
+
+                {/* Staff Table */}
+                <div className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-sm">
+                    {loading ? (
+                        <LoadingSpinner text="Loading staff members..." />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr className="bg-muted/80 border-b border-border/80 text-foreground uppercase tracking-wider font-extrabold text-[11px]">
+                                        <th className="py-4 px-6">Staff Member</th>
+                                        <th className="py-4 px-6">Login Username</th>
+                                        <th className="py-4 px-6">Email Address</th>
+                                        <th className="py-4 px-6">Assigned Role</th>
+                                        <th className="py-4 px-6">Status</th>
+                                        <th className="py-4 px-6">Last Active</th>
+                                        <th className="py-4 px-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {filtered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="px-6 py-16 text-center text-muted-foreground text-sm font-medium">
+                                                No staff members found matching your search.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filtered.map((user) => (
+                                            <tr key={user.id} className="hover:bg-muted/20 transition-colors">
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center justify-center text-sm border border-emerald-500/20">
+                                                            {user.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-extrabold text-foreground text-sm">{user.name}</p>
+                                                            <p className="text-[11px] text-muted-foreground">ID: #{user.id}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 font-mono font-bold text-foreground">
+                                                    @{user.username || strtok(user.email, '@')}
+                                                </td>
+                                                <td className="py-4 px-6 font-medium text-foreground">
+                                                    {user.email}
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                                                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                                        {user.role_name || "Super Admin"}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${user.status === 'active'
+                                                            ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                                            : 'bg-red-500/10 text-red-600 border-red-500/20'
+                                                        }`}>
+                                                        {user.status === 'active' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                                        {user.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-6 text-muted-foreground font-mono text-[11px]">
+                                                    {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : 'Never'}
+                                                </td>
+                                                <td className="py-4 px-6 text-right whitespace-nowrap">
+                                                    <div className="inline-flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openEdit(user)}
+                                                            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
+                                                        >
+                                                            <Edit className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        {user.id !== 1 && (
+                                                            <button
+                                                                onClick={() => handleDeleteUser(user.id)}
+                                                                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-all cursor-pointer"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
-                  </div>
-                ) : (
-                  <div className="relative">
-                    {/* Vertical line */}
-                    <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
+                </div>
+            </div>
 
-                    <div className="space-y-0">
-                      {drawerActivity.map((act, idx) => {
-                        const meta = ACTION_META[act.action];
-                        const isLast = idx === drawerActivity.length - 1;
-                        return (
-                          <div key={act.id} className={cn("relative pl-10 pb-5", isLast && "pb-2")}>
-                            {/* Dot */}
-                            <div className={cn("absolute left-2.5 top-1 w-2.5 h-2.5 rounded-full border-2 border-card", meta.dot)} />
+            {/* Modal: Create/Edit Staff User */}
+            <Dialog.Root open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-card border border-border/80 rounded-2xl p-6 shadow-2xl space-y-5">
+                        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                            <h3 className="text-base font-extrabold text-foreground">
+                                {editingUser ? "Edit Staff Credentials" : "Add New Staff Member"}
+                            </h3>
+                            <Dialog.Close className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground">
+                                ✕
+                            </Dialog.Close>
+                        </div>
 
-                            {/* Card */}
-                            <div className="bg-background rounded-xl border border-border p-3.5 hover:border-primary/30 transition-colors">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold", meta.color)}>
-                                    {meta.icon}{act.action}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">{act.timestamp}</span>
-                              </div>
-
-                              <p className="text-xs font-semibold text-foreground">{act.orderId} · {act.clientName}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">{act.detail}</p>
-
-                              {act.from && act.to && (
-                                <div className="flex items-center gap-1.5 mt-2 text-[11px]">
-                                  <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">{act.from}</span>
-                                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                                  <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">{act.to}</span>
-                                </div>
-                              )}
+                        <form onSubmit={handleSaveUser} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Full Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="e.g. Rahul Sharma"
+                                    className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Drawer footer actions */}
-            <div className="shrink-0 px-5 py-4 border-t border-border flex gap-2">
-              <button
-                onClick={() => { openEdit(drawerStaff); }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-              >
-                <Pencil className="w-4 h-4" /> Edit Profile
-              </button>
-              <button
-                onClick={() => toggleAccess(drawerStaff.id)}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors",
-                  drawerStaff.mobileAccess
-                    ? "bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"
-                    : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-200"
-                )}
-              >
-                {drawerStaff.mobileAccess
-                  ? <><ShieldOff className="w-4 h-4" /> Revoke Access</>
-                  : <><ShieldCheck className="w-4 h-4" /> Grant Access</>
-                }
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Username (for login)</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        placeholder="rahul_admin"
+                                        className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Email Address</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="rahul@megabyte.com"
+                                        className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
 
-      {/* Add / Edit Modal */}
-      {modal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl border border-border shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <UserCog className="w-5 h-5 text-primary" />
-                </div>
-                <h2 className="text-base font-bold text-foreground">
-                  {modal === "add" ? "Add New Staff Member" : "Edit Staff Member"}
-                </h2>
-              </div>
-              <button onClick={closeModal} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Full Name *</label>
-                <input className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="e.g. Rahul Mehta" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5"><Mail className="inline w-3 h-3 mr-1" />Email *</label>
-                  <input type="email" className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="name@pcbmfg.in" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5"><Phone className="inline w-3 h-3 mr-1" />Phone</label>
-                  <input className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="+91 98000 00000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Role</label>
-                  <select className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as StaffRole })}>
-                    {ROLES.map((r) => <option key={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5"><Building2 className="inline w-3 h-3 mr-1" />Department</label>
-                  <select className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-                    {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Shift</label>
-                  <select className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" value={form.shift} onChange={(e) => setForm({ ...form, shift: e.target.value as typeof form.shift })}>
-                    {SHIFTS.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Status</label>
-                  <select className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as StaffStatus })}>
-                    <option>Active</option><option>Inactive</option><option>On Leave</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", form.mobileAccess ? "bg-cyan-100" : "bg-gray-100")}>
-                    <Smartphone className={cn("w-4 h-4", form.mobileAccess ? "text-cyan-600" : "text-gray-400")} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Mobile App Access</p>
-                    <p className="text-xs text-muted-foreground">Allow this staff to log in to the mobile panel</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setForm({ ...form, mobileAccess: !form.mobileAccess })}
-                  className={cn("relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none", form.mobileAccess ? "bg-cyan-500" : "bg-gray-300")}
-                >
-                  <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200", form.mobileAccess ? "translate-x-5" : "translate-x-0")} />
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
-              <button onClick={closeModal} className="px-4 py-2 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Cancel</button>
-              <button onClick={handleSave} className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
-                <Check className="w-4 h-4" />{modal === "add" ? "Add Staff" : "Save Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">
+                                    Password {editingUser && "(Leave blank to keep current)"}
+                                </label>
+                                <input
+                                    type="password"
+                                    required={!editingUser}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
 
-      {/* Delete Confirm */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center"><Trash2 className="w-5 h-5 text-rose-600" /></div>
-              <div><h3 className="font-bold text-foreground">Remove Staff Member</h3><p className="text-xs text-muted-foreground">This action cannot be undone.</p></div>
-            </div>
-            <p className="text-sm text-muted-foreground mb-6">Are you sure you want to remove <span className="font-semibold text-foreground">{deleteTarget.name}</span>? Their mobile app access will also be revoked.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 transition-colors">Remove</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </DashboardLayout>
-  );
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Assign Role</label>
+                                    <select
+                                        value={roleId}
+                                        onChange={(e) => setRoleId(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                    >
+                                        <option value="">Default (Super Admin)</option>
+                                        {roles.map(r => (
+                                            <option key={r.id} value={r.id}>{r.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Account Status</label>
+                                    <select
+                                        value={status}
+                                        onChange={(e) => setStatus(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 text-sm bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="pt-3 flex justify-end gap-3 border-t border-border/60">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreateOpen(false)}
+                                    className="px-4 py-2.5 border border-border/80 rounded-xl text-xs font-bold hover:bg-muted"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-md hover:bg-emerald-600 disabled:opacity-50"
+                                >
+                                    {submitting ? "Saving..." : (editingUser ? "Update User" : "Create Account")}
+                                </button>
+                            </div>
+                        </form>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+        </DashboardLayout>
+    );
 }
