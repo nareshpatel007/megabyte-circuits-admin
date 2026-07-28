@@ -306,9 +306,26 @@ export default function OrderDetailPage() {
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Delivery Date</p>
                             {!editingDeliveryDate ? (
-                                <button onClick={() => setEditingDeliveryDate(true)} className="text-emerald-500 text-xs font-bold hover:underline">Edit</button>
+                                <button
+                                    onClick={() => {
+                                        const currentDate = order.delivery_date || getMetaValue('delivery_date', '');
+                                        if (currentDate && currentDate !== 'N/A') {
+                                            const d = new Date(currentDate);
+                                            if (!isNaN(d.getTime())) {
+                                                const formatted = d.toISOString().split('T')[0];
+                                                setDeliveryDate(formatted);
+                                            } else {
+                                                setDeliveryDate(currentDate);
+                                            }
+                                        }
+                                        setEditingDeliveryDate(true);
+                                    }}
+                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                >
+                                    Edit
+                                </button>
                             ) : (
-                                <button onClick={handleSaveDeliveryDate} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1"><Save className="w-3 h-3" /> Save</button>
+                                <button onClick={handleSaveDeliveryDate} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer"><Save className="w-3 h-3" /> Save</button>
                             )}
                         </div>
                         {!editingDeliveryDate ? (

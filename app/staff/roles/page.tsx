@@ -199,14 +199,16 @@ export default function RolesPage() {
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => openEdit(role)}
-                                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200"
+                                                className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 dark:text-emerald-400 hover:text-white transition-all cursor-pointer"
+                                                title="Edit Role"
                                             >
                                                 <Edit className="w-3.5 h-3.5" />
                                             </button>
                                             {role.id !== 1 && (
                                                 <button
                                                     onClick={() => handleDeleteRole(role.id)}
-                                                    className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white"
+                                                    className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-all cursor-pointer"
+                                                    title="Delete Role"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
