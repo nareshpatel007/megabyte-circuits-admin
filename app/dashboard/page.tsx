@@ -25,8 +25,10 @@ import {
     Cell,
     Legend,
 } from "recharts";
-import LoadingSpinner from "@/components/ui/loading-spinner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { DashboardSkeleton } from "@/components/ui/skeleton";
+import GerberBoardPreview from "@/components/GerberBoardPreview";
 
 interface StatusItem {
     id: number;
@@ -38,13 +40,18 @@ interface StatusItem {
 interface ApiOrder {
     id: number;
     order_number: string;
-    board_name: string;
-    customer_name: string | null;
-    user_email: string;
-    user_mobile: string;
+    board_name?: string;
+    gerber_name?: string;
+    gerber_preview_data?: string;
+    customer_name?: string | null;
+    user_email?: string;
+    user_mobile?: string;
     status: string;
+    unit_price?: string | number;
     order_value: string | number;
+    delivery_date?: string | null;
     created_at: string;
+    metas?: Array<{ meta_key: string; meta_value: string }>;
 }
 
 interface DashboardStats {
@@ -61,6 +68,7 @@ const DONUT_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#e
 const formatRevenue = (value: number) => `₹${(value / 1000).toFixed(0)}k`;
 
 export default function DashboardPage() {
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [recentOrders, setRecentOrders] = useState<ApiOrder[]>([]);
@@ -122,7 +130,7 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <DashboardLayout title="Dashboard" subtitle="PCB Manufacturing Overview">
-                <LoadingSpinner text="Computing real-time dashboard analytics..." />
+                <DashboardSkeleton />
             </DashboardLayout>
         );
     }
@@ -331,42 +339,93 @@ export default function DashboardPage() {
                                 <div className="p-8 text-center text-xs text-muted-foreground italic">No recent orders found.</div>
                             ) : (
                                 recentOrders.map((order) => {
-                                    const matchedStatus = statuses.find(s => s.name.toLowerCase() === order.status.toLowerCase());
+                                    const orderStatusStr = (order?.status || 'Pending').toString().toLowerCase();
+                                    const matchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === orderStatusStr);
                                     const statusColor = matchedStatus?.color || "#10b981";
+
+                                    const getMetaVal = (key: string, fallback = "") => {
+                                        if (!order.metas) return fallback;
+                                        const found = order.metas.find(m => m.meta_key.toLowerCase() === key.toLowerCase());
+                                        return found ? found.meta_value : fallback;
+                                    };
+
+                                    const boardTitle = order.board_name && order.board_name !== "." 
+                                        ? order.board_name 
+                                        : getMetaVal("board_name", getMetaVal("gerber_file_name", "PCB Order Project"));
+
+                                    const customerText = order.customer_name 
+                                        ? `${order.customer_name} · ${order.user_email || order.user_mobile || ""}` 
+                                        : (order.user_email || order.user_mobile || "Guest User");
+
+                                    const pcbColorVal = getMetaVal("pcb_color", getMetaVal("solder_mask", "Green"));
+
+                                    const getPcbColorCode = (col: string) => {
+                                        const lower = col.toLowerCase().trim();
+                                        if (lower.includes("red")) return "#ef4444";
+                                        if (lower.includes("blue")) return "#3b82f6";
+                                        if (lower.includes("black")) return "#3f3f46";
+                                        if (lower.includes("yellow")) return "#d97706";
+                                        if (lower.includes("white")) return "#0284c7";
+                                        if (lower.includes("purple")) return "#9333ea";
+                                        return "#10b981";
+                                    };
+
+                                    const orderNumColor = getPcbColorCode(pcbColorVal);
 
                                     return (
                                         <div
                                             key={order.id}
-                                            className="flex flex-wrap gap-2 items-center justify-between p-3.5 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-all duration-200"
+                                            onClick={() => router.push(`/orders/${order.id}`)}
+                                            className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 hover:bg-muted/50 border border-border/40 transition-all duration-200 cursor-pointer group shadow-sm"
                                         >
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">#{order.order_number}</span>
-                                                    <span
-                                                        className="text-[10px] px-2.5 py-0.5 rounded-full border font-extrabold"
-                                                        style={{
-                                                            backgroundColor: `${statusColor}15`,
-                                                            color: statusColor,
-                                                            borderColor: `${statusColor}30`
-                                                        }}
-                                                    >
-                                                        {order.status}
-                                                    </span>
+                                            <div className="flex items-center gap-3.5 min-w-0">
+                                                {/* Gerber Preview Vector Thumbnail */}
+                                                <div className="w-12 h-12 bg-[#0c3b19] rounded-xl border border-emerald-500/30 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                                    <GerberBoardPreview
+                                                        previewData={order.gerber_preview_data || getMetaVal("preview_data", "")}
+                                                        boardName={boardTitle}
+                                                        pcbColor={pcbColorVal}
+                                                    />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-1 font-semibold">
-                                                    {order.board_name} <span className="text-zinc-400">·</span> {order.customer_name || order.user_email}
-                                                </p>
+
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Order Number styled in selected PCB color */}
+                                                        <span
+                                                            className="text-xs font-mono font-black px-2 py-0.5 rounded-md border"
+                                                            style={{
+                                                                color: orderNumColor,
+                                                                backgroundColor: `${orderNumColor}15`,
+                                                                borderColor: `${orderNumColor}35`
+                                                            }}
+                                                        >
+                                                            #{order.order_number}
+                                                        </span>
+                                                        <span
+                                                            className="text-[10px] px-2.5 py-0.5 rounded-full border font-extrabold"
+                                                            style={{
+                                                                backgroundColor: `${statusColor}15`,
+                                                                color: statusColor,
+                                                                borderColor: `${statusColor}30`
+                                                            }}
+                                                        >
+                                                            {order.status}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mt-1 font-medium truncate max-w-[280px]">
+                                                        <span className="font-bold text-foreground">{boardTitle}</span>
+                                                        {customerText && <span className="text-muted-foreground"> ({customerText})</span>}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
+
+                                            <div className="flex items-center gap-4 shrink-0">
                                                 <span className="text-sm font-black text-foreground">
                                                     ₹{Number(order.order_value).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                                 </span>
-                                                <Link
-                                                    href={`/orders/${order.id}`}
-                                                    className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-colors"
-                                                >
+                                                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
                                                     <ExternalLink className="w-4 h-4" />
-                                                </Link>
+                                                </span>
                                             </div>
                                         </div>
                                     );

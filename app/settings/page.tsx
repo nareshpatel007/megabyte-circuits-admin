@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 interface StatusItem {
     id: number;
@@ -193,7 +194,7 @@ function OrderStatusManager() {
             )}
 
             {loading ? (
-                <LoadingSpinner text="Loading order statuses..." />
+                <TableSkeleton rows={5} />
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-border/60">
                     <table className="w-full text-left text-xs border-collapse">

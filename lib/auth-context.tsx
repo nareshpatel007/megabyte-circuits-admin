@@ -85,11 +85,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = () => {
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("user");
+        localStorage.removeItem("admin_token");
         
         setIsAuthenticated(false);
         setUser(null);
-        router.push("/login");
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+        }
     };
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const originalFetch = window.fetch;
+
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+
+            // Do not intercept login endpoint itself to prevent infinite loop or clearing before login attempt completes
+            const requestUrl = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url || "";
+            if (requestUrl.includes("/api/admin/login")) {
+                return response;
+            }
+
+            if (response.status === 401) {
+                localStorage.removeItem("isAuthenticated");
+                localStorage.removeItem("user");
+                localStorage.removeItem("admin_token");
+                setIsAuthenticated(false);
+                setUser(null);
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
+                }
+            } else {
+                try {
+                    const clone = response.clone();
+                    const data = await clone.json();
+                    if (
+                        data &&
+                        (data.message === "Invalid token" ||
+                            data.message === "Unauthenticated." ||
+                            (data.success === false && typeof data.message === "string" && data.message.toLowerCase().includes("token")))
+                    ) {
+                        localStorage.removeItem("isAuthenticated");
+                        localStorage.removeItem("user");
+                        localStorage.removeItem("admin_token");
+                        setIsAuthenticated(false);
+                        setUser(null);
+                        if (window.location.pathname !== "/login") {
+                            window.location.href = "/login";
+                        }
+                    }
+                } catch {
+                    // Ignore non-JSON responses
+                }
+            }
+
+            return response;
+        };
+
+        return () => {
+            window.fetch = originalFetch;
+        };
+    }, []);
 
     return (
         <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading }}>

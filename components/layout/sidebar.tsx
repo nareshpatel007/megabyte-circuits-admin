@@ -14,6 +14,7 @@ import {
     X,
     Smartphone,
     UserCog,
+    Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const navItems = [
     { href: "/inventory", label: "Inventory", icon: Package },
     { href: "/clients", label: "Clients", icon: Users },
     { href: "/staff", label: "Staff", icon: UserCog },
+    { href: "/roles", label: "Roles", icon: Shield },
     { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -111,10 +113,10 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 relative group",
                                     active
                                         ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/15"
-                                        : "text-sidebar-muted hover:text-white hover:bg-white/5 border border-transparent"
+                                        : "text-white/90 hover:text-white hover:bg-white/10 border border-transparent"
                                 )}
                             >
-                                <item.icon className={cn("w-4.5 h-4.5 shrink-0 transition-colors", active ? "text-emerald-400" : "text-sidebar-muted group-hover:text-white")} />
+                                <item.icon className={cn("w-4.5 h-4.5 shrink-0 transition-colors", active ? "text-emerald-400" : "text-white/80 group-hover:text-white")} />
                                 {!isCollapsed && <span className="truncate">{item.label}</span>}
                             </Link>
                         );

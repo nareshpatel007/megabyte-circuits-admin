@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, ArrowRight, Cpu, Eye, EyeOff } from "lucide-react";
+import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -68,9 +69,16 @@ export default function LoginPage() {
                 <div className="relative bg-zinc-900/70 backdrop-blur-2xl rounded-2xl border border-zinc-800/80 shadow-2xl p-8 sm:p-10 flex flex-col items-center">
 
                     {/* Premium Circuit Badge/Logo */}
-                    <div className="mb-6 flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-800/60 border border-zinc-700/60 shadow-inner relative group overflow-hidden">
+                    <div className="mb-6 flex items-center justify-center p-2 rounded-2xl bg-zinc-800/60 border border-zinc-700/60 shadow-inner relative group overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-green-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <Cpu className="w-7 h-7 text-emerald-400 animate-pulse" />
+                        <Image
+                            src="/images/logo.png"
+                            alt="Megabyte Circuits Logo"
+                            width={160}
+                            height={48}
+                            className="h-10 w-auto object-contain relative z-10"
+                            priority
+                        />
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" />
                     </div>
 
@@ -90,7 +98,7 @@ export default function LoginPage() {
                     <form onSubmit={handleLogin} className="space-y-6 w-full">
                         <div className="space-y-2">
                             <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest block">
-                                Username or Email Address
+                                Username / Email Address / Mobile
                             </label>
                             <div className="relative group">
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
@@ -98,7 +106,7 @@ export default function LoginPage() {
                                     type="text"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Username or admin@pcbmfg.in"
+                                    placeholder="username / email / mobile"
                                     className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-zinc-950/40 border border-zinc-800 text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/60 focus:bg-zinc-950/80 transition-all duration-200 text-sm"
                                     required
                                 />
@@ -157,18 +165,11 @@ export default function LoginPage() {
                                 </>
                             ) : (
                                 <>
-                                    Access Terminal
-                                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                                    Sign In
                                 </>
                             )}
                         </button>
                     </form>
-
-                    <div className="mt-8 text-center">
-                        <span className="text-xs text-zinc-500">
-                            Authorized access only. Logging active.
-                        </span>
-                    </div>
                 </div>
             </div>
         </div>

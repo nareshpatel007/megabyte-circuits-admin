@@ -6,15 +6,15 @@ export const revalidate = 0;
 
 export async function GET(req: NextRequest, context: any) {
     const params = await context.params;
-    return handleApiProxy(req, `/admin/staff/${params?.id}`, "GET");
+    return handleApiProxy(req, `/admin/users/${params?.id}`, "GET");
 }
 
 export async function PUT(req: NextRequest, context: any) {
     const params = await context.params;
-    return handleApiProxy(req, `/admin/staff/${params?.id}`, "PUT");
+    return handleApiProxy(req, `/admin/users/${params?.id}`, "PUT");
 }
 
 export async function DELETE(req: NextRequest, context: any) {
     const params = await context.params;
-    return handleApiProxy(req, `/admin/staff/${params?.id}`, "DELETE");
+    return handleApiProxy(req, `/admin/users/${params?.id}`, "DELETE");
 }

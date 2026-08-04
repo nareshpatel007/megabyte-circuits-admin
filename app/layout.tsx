@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "PCB Admin Panel",
-    description: "Admin dashboard for PCB manufacturing platform",
+    title: "MCS Admin Panel",
+    description: "Admin dashboard for Megabyte Circuit Systems",
     icons: {
         icon: "/images/favicon.png",
     },
@@ -27,8 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <html
             lang="en"
             className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+            suppressHydrationWarning
         >
-            <body className="min-h-full flex flex-col">
+            <body className="min-h-full flex flex-col" suppressHydrationWarning>
                 <AuthProvider>
                     <ThemeProvider>{children}</ThemeProvider>
                 </AuthProvider>

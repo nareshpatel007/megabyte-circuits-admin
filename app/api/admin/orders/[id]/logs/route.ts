@@ -6,10 +6,5 @@ export const revalidate = 0;
 
 export async function GET(req: NextRequest, context: any) {
     const params = await context.params;
-    return handleApiProxy(req, `/admin/orders/${params?.id}/notes`, "GET");
-}
-
-export async function POST(req: NextRequest, context: any) {
-    const params = await context.params;
-    return handleApiProxy(req, `/admin/orders/${params?.id}/notes`, "POST");
+    return handleApiProxy(req, `/admin/orders/${params?.id}/logs`, "GET");
 }

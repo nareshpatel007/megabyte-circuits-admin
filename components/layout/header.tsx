@@ -6,6 +6,7 @@ import { useTheme } from "@/lib/theme-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import GlobalSearch from "@/components/layout/global-search";
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -51,6 +52,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
             >
                 <Menu className="w-5 h-5" />
             </button>
+
+            {/* Left aligned Global Search Bar */}
+            <GlobalSearch />
 
             <div className="flex-1" />
 

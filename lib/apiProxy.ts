@@ -80,7 +80,7 @@ export async function handleApiProxy(
         }
 
         // Call backend API (Laravel backend endpoint)
-        let apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+        let apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost/megabyte-circuits-api/public";
         if (apiUrl.endsWith("/")) {
             apiUrl = apiUrl.slice(0, -1);
         }
