@@ -11,6 +11,7 @@ import {
     Users,
     UserCog,
     Shield,
+    CreditCard,
     X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const mainNavItems = [
 ];
 
 const secondaryNavItems = [
+    { href: "/payments", label: "Payments", icon: CreditCard },
     { href: "/clients", label: "Clients", icon: Users },
     { href: "/staff", label: "Staff", icon: UserCog },
     { href: "/roles", label: "Roles", icon: Shield },

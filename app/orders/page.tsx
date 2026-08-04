@@ -230,90 +230,88 @@ export default function OrdersPage() {
             ) : (
                 <div className="w-full space-y-5">
                     {/* Search & Filter Header Bar */}
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-                        <div className="relative flex-1 w-full">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="flex flex-row items-center gap-2 sm:gap-3 w-full overflow-x-auto pb-1">
+                        <div className="relative flex-1 min-w-[140px] sm:min-w-[200px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <input
                                 type="search"
-                                placeholder="Search by Order #, Board Name, Email, or Mobile..."
+                                placeholder="Search orders..."
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                                className="w-full h-11 pl-10 pr-4 text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all shadow-xs"
+                                className="w-full h-10 sm:h-11 pl-9 pr-3 text-xs sm:text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all shadow-xs"
                             />
                         </div>
-                        <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full md:w-auto">
-                            {/* Date Range Picker using Popover & Calendar */}
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <button className="h-11 flex items-center justify-between gap-2.5 px-3.5 bg-card border border-border/80 rounded-xl text-sm font-semibold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer">
-                                        <div className="flex items-center gap-2">
-                                            <CalendarIcon className="w-4 h-4 text-emerald-500 shrink-0" />
-                                            <span className="truncate max-w-[210px]">
-                                                {startDate ? format(parseISO(startDate), "dd MMM yyyy") : "Start Date"}
-                                                {" — "}
-                                                {endDate ? format(parseISO(endDate), "dd MMM yyyy") : "End Date"}
-                                            </span>
-                                        </div>
-                                        {(startDate || endDate) && (
-                                            <span
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setStartDate("");
-                                                    setEndDate("");
-                                                }}
-                                                className="p-1 rounded-md hover:bg-zinc-800 text-muted-foreground hover:text-red-400"
-                                                title="Clear dates"
-                                            >
-                                                <X className="w-3.5 h-3.5" />
-                                            </span>
-                                        )}
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4 bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-xl shadow-xl" align="end">
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <div>
-                                            <div className="text-xs font-semibold text-zinc-400 mb-2 px-1">Start Date</div>
-                                            <Calendar
-                                                mode="single"
-                                                selected={startDate ? parseISO(startDate) : undefined}
-                                                onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
-                                                className="rounded-lg border border-zinc-800/80 bg-zinc-950/50"
-                                            />
-                                        </div>
-                                        <div className="border-t sm:border-t-0 sm:border-l border-zinc-800 pt-4 sm:pt-0 sm:pl-4">
-                                            <div className="text-xs font-semibold text-zinc-400 mb-2 px-1">End Date</div>
-                                            <Calendar
-                                                mode="single"
-                                                selected={endDate ? parseISO(endDate) : undefined}
-                                                onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
-                                                className="rounded-lg border border-zinc-800/80 bg-zinc-950/50"
-                                            />
-                                        </div>
+
+                        {/* Date Range Picker using Popover & Calendar */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button className="h-10 sm:h-11 flex items-center justify-between gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 bg-card border border-border/80 rounded-xl text-xs sm:text-sm font-semibold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                                        <span className="truncate max-w-[120px] sm:max-w-[210px]">
+                                            {startDate ? format(parseISO(startDate), "dd MMM") : "Date"}
+                                            {endDate ? ` - ${format(parseISO(endDate), "dd MMM")}` : ""}
+                                        </span>
                                     </div>
                                     {(startDate || endDate) && (
-                                        <div className="flex justify-end mt-3 pt-2 border-t border-zinc-800">
-                                            <button
-                                                onClick={() => { setStartDate(""); setEndDate(""); }}
-                                                className="text-xs font-medium text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-950/30 transition-colors"
-                                            >
-                                                Reset Date Range
-                                            </button>
-                                        </div>
+                                        <span
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setStartDate("");
+                                                setEndDate("");
+                                            }}
+                                            className="p-0.5 rounded hover:bg-zinc-800 text-muted-foreground hover:text-red-400"
+                                            title="Clear dates"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </span>
                                     )}
-                                </PopoverContent>
-                            </Popover>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-4 bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-xl shadow-xl" align="end">
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <div>
+                                        <div className="text-xs font-semibold text-zinc-400 mb-2 px-1">Start Date</div>
+                                        <Calendar
+                                            mode="single"
+                                            selected={startDate ? parseISO(startDate) : undefined}
+                                            onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                                            className="rounded-lg border border-zinc-800/80 bg-zinc-950/50"
+                                        />
+                                    </div>
+                                    <div className="border-t sm:border-t-0 sm:border-l border-zinc-800 pt-4 sm:pt-0 sm:pl-4">
+                                        <div className="text-xs font-semibold text-zinc-400 mb-2 px-1">End Date</div>
+                                        <Calendar
+                                            mode="single"
+                                            selected={endDate ? parseISO(endDate) : undefined}
+                                            onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                                            className="rounded-lg border border-zinc-800/80 bg-zinc-950/50"
+                                        />
+                                    </div>
+                                </div>
+                                {(startDate || endDate) && (
+                                    <div className="flex justify-end mt-3 pt-2 border-t border-zinc-800">
+                                        <button
+                                            onClick={() => { setStartDate(""); setEndDate(""); }}
+                                            className="text-xs font-medium text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-950/30 transition-colors"
+                                        >
+                                            Reset Date Range
+                                        </button>
+                                    </div>
+                                )}
+                            </PopoverContent>
+                        </Popover>
 
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                                className="h-11 px-3.5 text-sm bg-card border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold transition-all cursor-pointer shadow-xs shrink-0"
-                            >
-                                <option value="All">All Pipeline Statuses</option>
-                                {statuses.map((s) => (
-                                    <option key={s.id} value={s.name}>{s.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                            className="h-10 sm:h-11 px-2.5 sm:px-3.5 text-xs sm:text-sm bg-card border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold transition-all cursor-pointer shadow-xs shrink-0 max-w-[130px] sm:max-w-none truncate"
+                        >
+                            <option value="All">All Statuses</option>
+                            {statuses.map((s) => (
+                                <option key={s.id} value={s.name}>{s.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Orders Data Table */}
@@ -383,11 +381,13 @@ export default function OrdersPage() {
                                                                 {order.status}
                                                             </span>
                                                         </td>
-
                                                         {/* 2. Order Number */}
                                                         <td className="py-4 px-5 whitespace-nowrap">
-                                                            <span
-                                                                className="font-mono text-sm font-black px-2.5 py-1 rounded-md border"
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openStatusModal(order)}
+                                                                title="Click to Change Status"
+                                                                className="font-mono text-sm font-black px-2.5 py-1 rounded-md border transition-all cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 shadow-2xs"
                                                                 style={{
                                                                     color: orderNumColor,
                                                                     backgroundColor: `${orderNumColor}15`,
@@ -395,7 +395,7 @@ export default function OrdersPage() {
                                                                 }}
                                                             >
                                                                 #{order.order_number}
-                                                            </span>
+                                                            </button>
                                                         </td>
 
                                                         {/* 3. Layers */}
@@ -525,7 +525,7 @@ export default function OrdersPage() {
                                                 Update Order Status
                                             </Dialog.Title>
                                             <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                                Order #{statusModalOrder.order_number} ({statusModalOrder.board_name})
+                                                Order #{statusModalOrder.order_number}
                                             </p>
                                         </div>
                                     </div>
