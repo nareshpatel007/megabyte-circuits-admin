@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -223,12 +223,79 @@ export default function OrdersPage() {
         }
     };
 
+    const newOrderButton = (
+        <Link
+            href="/orders/create"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+        >
+            <Plus className="w-4 h-4" />
+            New Order
+        </Link>
+    );
+
+    const activeOrdersCount = orders.filter((o) => !['completed', 'cancelled'].includes((o.status || '').toLowerCase())).length;
+    const completedOrdersCount = orders.filter((o) => (o.status || '').toLowerCase() === 'completed').length;
+    const totalOrderValue = orders.reduce((sum, o) => sum + (Number(o.order_value) || 0), 0);
+
     return (
-        <DashboardLayout title="Orders" subtitle={`${orders.length} total orders recorded (Sorted by Delivery Date desc)`}>
+        <DashboardLayout
+            title="Orders"
+            subtitle={`${orders.length} total orders recorded (Sorted by Delivery Date desc)`}
+            action={newOrderButton}
+        >
             {loading ? (
                 <OrdersSkeleton />
             ) : (
                 <div className="w-full space-y-5">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                <ShoppingBag className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
+                                <h3 className="text-2xl font-black text-foreground mt-0.5">{orders.length}</h3>
+                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">All time recorded</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                <Clock className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
+                                <h3 className="text-2xl font-black text-amber-500 mt-0.5">{activeOrdersCount}</h3>
+                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Active pipeline</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
+                                <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{completedOrdersCount}</h3>
+                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Delivered / Finished</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                                <Package className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
+                                <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                    ₹{totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                </h3>
+                                <p className="text-[11px] text-purple-500 font-bold mt-0.5">Combined order value</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Search & Filter Header Bar */}
                     <div className="flex flex-row items-center gap-2 sm:gap-3 w-full overflow-x-auto pb-1">
                         <div className="relative flex-1 min-w-[140px] sm:min-w-[200px]">
