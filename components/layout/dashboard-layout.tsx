@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Sidebar from "./sidebar";
 import Header from "./header";
+import MobileBottomNav from "./mobile-bottom-nav";
 import { Toaster } from "sonner";
 import { useTheme } from "@/lib/theme-context";
 
@@ -19,7 +20,7 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
     const { theme } = useTheme();
 
     return (
-        <div className="flex h-screen bg-background overflow-hidden">
+        <div className="flex h-screen bg-background overflow-hidden relative">
             <Sidebar
                 collapsed={collapsed}
                 onCollapse={setCollapsed}
@@ -48,10 +49,12 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
                     {action && <div className="shrink-0">{action}</div>}
                 </div>
 
-                <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
                     {children}
                 </main>
             </div>
+
+            <MobileBottomNav />
 
             <Toaster
                 richColors
