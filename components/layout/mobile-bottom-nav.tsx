@@ -12,6 +12,7 @@ import {
     UserCog,
     Shield,
     CreditCard,
+    FileArchive,
     X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ const mainNavItems = [
 
 const secondaryNavItems = [
     { href: "/payments", label: "Payments", icon: CreditCard },
+    { href: "/gerber-files", label: "Gerber Files", icon: FileArchive },
     { href: "/clients", label: "Clients", icon: Users },
     { href: "/staff", label: "Staff", icon: UserCog },
     { href: "/roles", label: "Roles", icon: Shield },
