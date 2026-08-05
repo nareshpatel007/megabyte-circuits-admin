@@ -343,11 +343,6 @@ export default function GerberFilesPage() {
                                                                 {file.original_name}
                                                             </p>
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                {file.board_name && (
-                                                                    <span className="text-[11px] text-muted-foreground font-semibold">
-                                                                        Board: <span className="font-mono text-foreground">{file.board_name}</span>
-                                                                    </span>
-                                                                )}
                                                                 {file.file_size && (
                                                                     <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-muted text-muted-foreground border border-border/60">
                                                                         {file.file_size}
@@ -364,15 +359,12 @@ export default function GerberFilesPage() {
                                                         <div className="space-y-0.5">
                                                             <div className="flex items-center gap-2">
                                                                 <Link
-                                                                    href={`/clients?search=${encodeURIComponent(file.client_email)}`}
+                                                                    href={`/clients/${file.user_id}`}
                                                                     className="font-bold text-foreground text-sm hover:text-emerald-500 transition-colors flex items-center gap-1 group"
                                                                 >
                                                                     <span>{file.client_name || `${file.client_first_name || ''} ${file.client_last_name || ''}`.trim() || 'Client'}</span>
                                                                     <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                 </Link>
-                                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                    Client
-                                                                </span>
                                                             </div>
                                                             <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 select-all">
                                                                 <Mail className="w-3 h-3 text-muted-foreground shrink-0" />

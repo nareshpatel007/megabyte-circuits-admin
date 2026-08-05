@@ -158,12 +158,24 @@ export default function OrdersPage() {
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-    // Helper to format date as "17 Dec 2026"
-    const formatDeliveryDate = (dateString?: string | null) => {
+    // Helper to format date as "05 Aug 2026, 11:41 am"
+    const formatDate = (dateString?: string | null) => {
         if (!dateString || dateString === 'N/A') return 'N/A';
-        const d = new Date(dateString);
-        if (isNaN(d.getTime())) return dateString;
-        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        try {
+            const d = new Date(dateString);
+            if (isNaN(d.getTime())) return dateString;
+            const formatted = d.toLocaleString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+            return formatted.replace(/\b(AM|PM)\b/gi, (m) => m.toLowerCase());
+        } catch {
+            return dateString || 'N/A';
+        }
     };
 
     // Helper to get meta key value
@@ -256,7 +268,6 @@ export default function OrdersPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">{orders.length}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">All time recorded</p>
                             </div>
                         </div>
 
@@ -267,7 +278,6 @@ export default function OrdersPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
                                 <h3 className="text-2xl font-black text-amber-500 mt-0.5">{activeOrdersCount}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Active pipeline</p>
                             </div>
                         </div>
 
@@ -278,7 +288,6 @@ export default function OrdersPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
                                 <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{completedOrdersCount}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Delivered / Finished</p>
                             </div>
                         </div>
 
@@ -291,7 +300,6 @@ export default function OrdersPage() {
                                 <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                                     ₹{totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                 </h3>
-                                <p className="text-[11px] text-purple-500 font-bold mt-0.5">Combined order value</p>
                             </div>
                         </div>
                     </div>
@@ -430,9 +438,7 @@ export default function OrdersPage() {
                                                 const completedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQty : 0);
                                                 const pendingQty = Math.max(0, totalQty - completedQty);
 
-                                                const createdDateFormatted = order.created_at
-                                                    ? new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                    : 'N/A';
+                                                const createdDateFormatted = formatDate(order.created_at);
 
                                                 return (
                                                     <tr key={order.id} className="hover:bg-muted/20 transition-colors">
@@ -497,7 +503,7 @@ export default function OrdersPage() {
 
                                                         {/* 6. Delivery Date */}
                                                         <td className="py-4 px-5 font-bold text-foreground font-mono whitespace-nowrap">
-                                                            {formatDeliveryDate(order.delivery_date)}
+                                                            {formatDate(order.delivery_date)}
                                                         </td>
 
                                                         {/* 7. Actions */}
@@ -700,7 +706,7 @@ export default function OrdersPage() {
                                     <div><span className="text-muted-foreground">Amount:</span> <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
                                     <div><span className="text-muted-foreground">Email:</span> <span className="font-bold text-foreground">{selectedOrder.user_email}</span></div>
                                     <div><span className="text-muted-foreground">Mobile:</span> <span className="font-bold text-foreground">{selectedOrder.user_mobile}</span></div>
-                                    <div><span className="text-muted-foreground">Delivery:</span> <span className="font-bold text-foreground">{formatDeliveryDate(selectedOrder.delivery_date)}</span></div>
+                                    <div><span className="text-muted-foreground">Delivery:</span> <span className="font-bold text-foreground">{formatDate(selectedOrder.delivery_date)}</span></div>
                                 </div>
 
                                 <div className="pt-2 flex justify-end gap-3">
@@ -783,7 +789,7 @@ export default function OrdersPage() {
                                                                     {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
                                                                 </td>
                                                                 <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
-                                                                    {new Date(log.created_at).toLocaleString()}
+                                                                    {formatDate(log.created_at)}
                                                                 </td>
                                                                 <td className="py-3 px-4 font-medium text-foreground">
                                                                     {log.description || "-"}

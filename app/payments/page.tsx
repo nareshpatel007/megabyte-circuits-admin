@@ -36,10 +36,31 @@ interface PaymentResponse {
         total: number;
         last_page: number;
         total_completed_amount: number;
+        total_completed_count?: number;
+        total_failed_count?: number;
     };
 }
 
 const PAGE_SIZE = 10;
+
+const formatDate = (dateString?: string | null) => {
+    if (!dateString || dateString === 'N/A') return 'N/A';
+    try {
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return dateString;
+        const formatted = d.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        return formatted.replace(/\b(AM|PM)\b/gi, (m) => m.toLowerCase());
+    } catch {
+        return dateString || 'N/A';
+    }
+};
 
 export default function PaymentsPage() {
     const [payments, setPayments] = useState<PaymentTransaction[]>([]);
@@ -53,6 +74,8 @@ export default function PaymentsPage() {
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [totalAmountSum, setTotalAmountSum] = useState(0);
+    const [totalCompletedCount, setTotalCompletedCount] = useState(0);
+    const [totalFailedCount, setTotalFailedCount] = useState(0);
     const [selectedPayment, setSelectedPayment] = useState<PaymentTransaction | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -82,6 +105,8 @@ export default function PaymentsPage() {
                     setTotalItems(data.meta?.total || 0);
                     setTotalPages(data.meta?.last_page || 1);
                     setTotalAmountSum(data.meta?.total_completed_amount || 0);
+                    setTotalCompletedCount(data.meta?.total_completed_count ?? (statusFilter === "success" ? data.meta?.total : 0));
+                    setTotalFailedCount(data.meta?.total_failed_count || 0);
                 } else {
                     toast.error("Failed to load payments");
                 }
@@ -140,8 +165,8 @@ export default function PaymentsPage() {
 
     return (
         <DashboardLayout
-            title="Completed Payments"
-            subtitle="View and manage all successfully processed transactions across the system"
+            title="Payments"
+            subtitle="View and manage all processed transactions across the system"
             action={
                 <div className="flex items-center gap-2">
                     <button
@@ -168,7 +193,17 @@ export default function PaymentsPage() {
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Completed Payments</p>
-                        <h3 className="text-2xl font-black text-foreground mt-0.5">{totalItems}</h3>
+                        <h3 className="text-2xl font-black text-foreground mt-0.5">{totalCompletedCount}</h3>
+                    </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-card border border-border/80 shadow-xs flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0">
+                        <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Failed Payments</p>
+                        <h3 className="text-2xl font-black text-red-500 mt-0.5">{totalFailedCount}</h3>
                     </div>
                 </div>
 
@@ -334,7 +369,7 @@ export default function PaymentsPage() {
                                             )}
                                         </td>
                                         <td className="py-3.5 px-4 text-muted-foreground text-[11px] font-medium">
-                                            {payment.created_at ? format(parseISO(payment.created_at), "MMM dd, yyyy • hh:mm a") : "-"}
+                                            {formatDate(payment.created_at)}
                                         </td>
                                         <td className="py-3.5 px-4 text-right">
                                             <button
@@ -465,7 +500,7 @@ export default function PaymentsPage() {
                                         <div className="flex items-center justify-between">
                                             <span className="text-muted-foreground">Transaction Date:</span>
                                             <span className="text-foreground font-medium">
-                                                {selectedPayment.created_at ? format(parseISO(selectedPayment.created_at), "MMMM dd, yyyy • hh:mm:ss a") : "-"}
+                                                {formatDate(selectedPayment.created_at)}
                                             </span>
                                         </div>
                                     </div>

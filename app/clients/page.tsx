@@ -44,6 +44,25 @@ const PAGE_SIZE = 10;
 
 const POSSIBLE_STATUSES = ["Active", "Inactive", "Pending", "Suspended", "On Hold"];
 
+const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return 'N/A';
+        const formatted = d.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        return formatted.replace(/\b(AM|PM)\b/gi, (m) => m.toLowerCase());
+    } catch {
+        return 'N/A';
+    }
+};
+
 export default function ClientsPage() {
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<ApiUser[]>([]);
@@ -194,7 +213,6 @@ export default function ClientsPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Clients</p>
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">{users.length}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Registered accounts</p>
                             </div>
                         </div>
 
@@ -207,7 +225,6 @@ export default function ClientsPage() {
                                 <h3 className="text-2xl font-black text-emerald-500 mt-0.5">
                                     {users.filter((u) => (u.status || 'active').toLowerCase() === "active").length}
                                 </h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Verified active</p>
                             </div>
                         </div>
 
@@ -220,7 +237,6 @@ export default function ClientsPage() {
                                 <h3 className="text-2xl font-black text-red-500 mt-0.5">
                                     {users.filter((u) => (u.status || 'active').toLowerCase() !== "active").length}
                                 </h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Suspended or dormant</p>
                             </div>
                         </div>
 
@@ -233,7 +249,6 @@ export default function ClientsPage() {
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">
                                     {users.reduce((s, u) => s + (Number(u.orders_count) || 0), 0)}
                                 </h3>
-                                <p className="text-[11px] text-purple-500 font-bold mt-0.5">Across all clients</p>
                             </div>
                         </div>
                     </div>
@@ -299,9 +314,7 @@ export default function ClientsPage() {
                                         paginated.map((user) => {
                                             const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || `Client #${user.id}`;
                                             const userStatus = user.status || "Active";
-                                            const joinedDateFormatted = user.created_at
-                                                ? new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                : 'N/A';
+                                            const joinedDateFormatted = formatDate(user.created_at);
 
                                             return (
                                                 <tr key={user.id} className="hover:bg-muted/20 transition-colors">
