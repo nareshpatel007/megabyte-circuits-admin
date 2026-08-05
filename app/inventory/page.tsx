@@ -262,7 +262,6 @@ export default function InventoryPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Components</p>
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">{totalItemsCount}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Unique SKUs active</p>
                             </div>
                         </div>
 
@@ -273,7 +272,6 @@ export default function InventoryPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Low Stock Warning</p>
                                 <h3 className="text-2xl font-black text-amber-500 mt-0.5">{lowStockCount}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Requires reordering</p>
                             </div>
                         </div>
 
@@ -284,7 +282,6 @@ export default function InventoryPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Out of Stock</p>
                                 <h3 className="text-2xl font-black text-red-500 mt-0.5">{outOfStockCount}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Zero quantity available</p>
                             </div>
                         </div>
 
@@ -297,7 +294,6 @@ export default function InventoryPage() {
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">
                                     ₹{totalInventoryValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                 </h3>
-                                <p className="text-[11px] text-emerald-500 font-bold mt-0.5">{inStockCount} items in stock</p>
                             </div>
                         </div>
                     </div>

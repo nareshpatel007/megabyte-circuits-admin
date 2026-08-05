@@ -208,7 +208,6 @@ export default function GerberFilesPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Gerber Files</p>
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">{stats.total_files}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Stored design packages</p>
                             </div>
                         </div>
 
@@ -219,7 +218,6 @@ export default function GerberFilesPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Client Uploads</p>
                                 <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{stats.client_files}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Registered accounts</p>
                             </div>
                         </div>
 
@@ -230,7 +228,6 @@ export default function GerberFilesPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Guest / Unattached</p>
                                 <h3 className="text-2xl font-black text-amber-500 mt-0.5">{stats.guest_files}</h3>
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Guest & cart uploads</p>
                             </div>
                         </div>
 
@@ -241,7 +238,6 @@ export default function GerberFilesPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Attached to Orders</p>
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">{stats.ordered_files}</h3>
-                                <p className="text-[11px] text-purple-500 font-bold mt-0.5">Active order files</p>
                             </div>
                         </div>
                     </div>
@@ -510,13 +506,19 @@ export default function GerberFilesPage() {
 
                                 {/* Board Visualizer Preview */}
                                 <div className="bg-muted/30 border border-border/80 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px]">
-                                    <div className="w-52 h-52">
-                                        <GerberBoardPreview
-                                            previewData={previewModalFile.preview_data}
-                                            boardName={previewModalFile.board_name}
-                                            originalName={previewModalFile.original_name}
-                                        />
-                                    </div>
+                                    {previewModalFile.preview_data ? (
+                                        <div className="w-52 h-52 flex items-center justify-center">
+                                            <GerberBoardPreview
+                                                previewData={previewModalFile.preview_data}
+                                                boardName={previewModalFile.board_name}
+                                                originalName={previewModalFile.original_name}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <span className="text-muted-foreground font-medium text-sm text-center">
+                                            No preview detected
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* File & Client Meta Grid */}
