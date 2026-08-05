@@ -439,10 +439,11 @@ export default function OrdersPage() {
                                                         {/* 1. Status */}
                                                         <td className="py-4 px-5 whitespace-nowrap">
                                                             <span
-                                                                className="inline-flex items-center px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider border shadow-2xs text-foreground"
+                                                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-2xs"
                                                                 style={{
-                                                                    backgroundColor: `${statusColor}22`,
-                                                                    borderColor: `${statusColor}60`
+                                                                    backgroundColor: `${statusColor}18`,
+                                                                    color: statusColor,
+                                                                    borderColor: `${statusColor}40`
                                                                 }}
                                                             >
                                                                 {order.status}

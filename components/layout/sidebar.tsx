@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,10 +18,20 @@ import {
     Shield,
     CreditCard,
     FileArchive,
+    ChevronDown,
+    ListFilter,
+    Sliders,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
+interface NavItem {
+    href?: string;
+    label: string;
+    icon: any;
+    children?: { href: string; label: string; icon?: any }[];
+}
+
+const navItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/orders", label: "Orders", icon: ShoppingCart },
     { href: "/payments", label: "Payments", icon: CreditCard },
@@ -30,7 +41,14 @@ const navItems = [
     { href: "/clients", label: "Clients", icon: Users },
     { href: "/staff", label: "Staff", icon: UserCog },
     { href: "/roles", label: "Roles", icon: Shield },
-    { href: "/settings", label: "Settings", icon: Settings },
+    {
+        label: "Settings",
+        icon: Settings,
+        children: [
+            { href: "/settings", label: "General Settings", icon: Sliders },
+            { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter },
+        ],
+    },
 ];
 
 interface SidebarProps {
@@ -42,6 +60,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
+    const [settingsOpen, setSettingsOpen] = useState(true);
 
     const renderContent = (mobile = false) => {
         const isCollapsed = !mobile && collapsed;
@@ -107,11 +126,65 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                 {/* Nav Links */}
                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin">
                     {navItems.map((item) => {
-                        const active = pathname ? (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))) : false;
+                        if (item.children) {
+                            const isChildActive = item.children.some((child) => pathname === child.href);
+                            return (
+                                <div key={item.label} className="space-y-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (isCollapsed) onCollapse(false);
+                                            setSettingsOpen(!settingsOpen);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 relative group cursor-pointer",
+                                            isChildActive
+                                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/15"
+                                                : "text-white/90 hover:text-white hover:bg-white/10 border border-transparent"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <item.icon className={cn("w-4.5 h-4.5 shrink-0 transition-colors", isChildActive ? "text-emerald-400" : "text-white/80 group-hover:text-white")} />
+                                            {!isCollapsed && <span className="truncate">{item.label}</span>}
+                                        </div>
+                                        {!isCollapsed && (
+                                            <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform duration-200 text-white/60", settingsOpen && "rotate-180")} />
+                                        )}
+                                    </button>
+
+                                    {settingsOpen && !isCollapsed && (
+                                        <div className="pl-4 space-y-1 pt-0.5">
+                                            {item.children.map((child) => {
+                                                const childActive = pathname === child.href;
+                                                const ChildIcon = child.icon;
+                                                return (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        onClick={() => mobile && onMobileClose()}
+                                                        className={cn(
+                                                            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 relative group",
+                                                            childActive
+                                                                ? "text-emerald-400 bg-emerald-500/15 font-bold"
+                                                                : "text-white/70 hover:text-white hover:bg-white/5"
+                                                        )}
+                                                    >
+                                                        {ChildIcon && <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", childActive ? "text-emerald-400" : "text-white/60 group-hover:text-white")} />}
+                                                        <span className="truncate">{child.label}</span>
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        const active = pathname ? (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href!))) : false;
                         return (
                             <Link
                                 key={item.href}
-                                href={item.href}
+                                href={item.href!}
                                 onClick={() => mobile && onMobileClose()}
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 relative group",

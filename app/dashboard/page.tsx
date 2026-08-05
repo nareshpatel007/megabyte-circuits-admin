@@ -2,29 +2,8 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import {
-    TrendingUp,
-    TrendingDown,
-    IndianRupee,
-    ShoppingCart,
-    Cpu,
-    UserPlus,
-    Eye,
-    ExternalLink,
-} from "lucide-react";
-import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    Legend,
-} from "recharts";
+import { IndianRupee, ShoppingCart, Cpu, UserPlus, ExternalLink, Layers, Calendar, CheckCircle2 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
@@ -67,12 +46,28 @@ const DONUT_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#e
 
 const formatRevenue = (value: number) => `₹${(value / 1000).toFixed(0)}k`;
 
+interface PaymentTransaction {
+    id: number;
+    transaction_number: string;
+    razorpay_payment_id: string | null;
+    amount: number | string;
+    currency: string;
+    status: string;
+    payment_method: string | null;
+    user_name: string | null;
+    user_email: string | null;
+    created_at: string;
+}
+
 export default function DashboardPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [recentOrders, setRecentOrders] = useState<ApiOrder[]>([]);
+    const [recentPayments, setRecentPayments] = useState<PaymentTransaction[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
+    const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
+    const [revenuePeriod, setRevenuePeriod] = useState<"day" | "month" | "year">("day");
     const [revenueTrend, setRevenueTrend] = useState<{ date: string; revenue: number }[]>([]);
 
     useEffect(() => {
@@ -81,15 +76,17 @@ export default function DashboardPage() {
                 const token = localStorage.getItem("admin_token");
                 const headers = { Authorization: `Bearer ${token}` };
 
-                const [statsRes, ordersRes, statusesRes] = await Promise.all([
+                const [statsRes, ordersRes, statusesRes, paymentsRes] = await Promise.all([
                     fetch("/api/admin/stats", { headers }),
                     fetch("/api/admin/orders", { headers }),
                     fetch("/api/admin/statuses", { headers }),
+                    fetch("/api/admin/payments?per_page=10", { headers }),
                 ]);
 
                 const statsData = await statsRes.json();
                 const ordersData = await ordersRes.json();
                 const statusesData = await statusesRes.json();
+                const paymentsData = await paymentsRes.json();
 
                 if (statsData.status || statsData.success) {
                     setStats(statsData.stats);
@@ -101,21 +98,12 @@ export default function DashboardPage() {
 
                 if (ordersData.status || ordersData.success) {
                     const fetchedOrders: ApiOrder[] = ordersData.data || [];
+                    setAllOrders(fetchedOrders);
                     setRecentOrders(fetchedOrders.slice(0, 5));
+                }
 
-                    // Build dynamic revenue trend grouped by creation date
-                    const trendMap: Record<string, number> = {};
-                    fetchedOrders.forEach(o => {
-                        const dateStr = new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                        const val = parseFloat(String(o.order_value)) || 0;
-                        trendMap[dateStr] = (trendMap[dateStr] || 0) + val;
-                    });
-
-                    const trendArray = Object.entries(trendMap)
-                        .map(([date, revenue]) => ({ date, revenue }))
-                        .reverse();
-
-                    setRevenueTrend(trendArray);
+                if (paymentsData.status || paymentsData.success) {
+                    setRecentPayments(paymentsData.data || []);
                 }
             } catch (err) {
                 console.error("Error loading dashboard metrics:", err);
@@ -127,6 +115,44 @@ export default function DashboardPage() {
         fetchDashboardData();
     }, []);
 
+    useEffect(() => {
+        if (!allOrders.length) return;
+
+        const trendMap: Record<string, { timeMs: number; revenue: number }> = {};
+
+        allOrders.forEach(o => {
+            const dateObj = new Date(o.created_at);
+            if (isNaN(dateObj.getTime())) return;
+
+            let label = "";
+            let timeKey = 0;
+
+            if (revenuePeriod === "day") {
+                label = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                timeKey = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
+            } else if (revenuePeriod === "month") {
+                label = dateObj.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+                timeKey = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1).getTime();
+            } else if (revenuePeriod === "year") {
+                label = String(dateObj.getFullYear());
+                timeKey = new Date(dateObj.getFullYear(), 0, 1).getTime();
+            }
+
+            const val = parseFloat(String(o.order_value)) || 0;
+            if (!trendMap[label]) {
+                trendMap[label] = { timeMs: timeKey, revenue: 0 };
+            }
+            trendMap[label].revenue += val;
+        });
+
+        const trendArray = Object.entries(trendMap)
+            .map(([date, item]) => ({ date, timeMs: item.timeMs, revenue: item.revenue }))
+            .sort((a, b) => a.timeMs - b.timeMs)
+            .map(({ date, revenue }) => ({ date, revenue }));
+
+        setRevenueTrend(trendArray);
+    }, [allOrders, revenuePeriod]);
+
     if (loading) {
         return (
             <DashboardLayout title="Dashboard" subtitle="PCB Manufacturing Overview">
@@ -135,7 +161,6 @@ export default function DashboardPage() {
         );
     }
 
-    // Dynamic Donut Data
     const donutData = stats?.status_counts
         ? Object.entries(stats.status_counts).map(([name, value]) => ({ name, value }))
         : [];
@@ -144,7 +169,6 @@ export default function DashboardPage() {
         {
             label: "Total Revenue",
             value: `₹${(stats?.total_revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-            change: "Live Revenue",
             up: true,
             icon: IndianRupee,
             color: "text-emerald-500",
@@ -153,7 +177,6 @@ export default function DashboardPage() {
         {
             label: "Total Orders",
             value: String(stats?.total_orders || 0),
-            change: `${stats?.pending_orders || 0} Pending`,
             up: true,
             icon: ShoppingCart,
             color: "text-amber-500",
@@ -162,7 +185,6 @@ export default function DashboardPage() {
         {
             label: "Active Mfg Runs",
             value: String(stats?.active_mfg_runs || 0),
-            change: "In Production",
             up: true,
             icon: Cpu,
             color: "text-blue-500",
@@ -171,7 +193,6 @@ export default function DashboardPage() {
         {
             label: "Total Customers",
             value: String(stats?.total_users || 0),
-            change: "Registered Users",
             up: true,
             icon: UserPlus,
             color: "text-purple-500",
@@ -182,7 +203,6 @@ export default function DashboardPage() {
     return (
         <DashboardLayout title="Dashboard" subtitle="PCB Manufacturing Overview">
             <div className="space-y-6">
-                {/* Metric Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                     {metrics.map((m) => {
                         const Icon = m.icon;
@@ -198,30 +218,33 @@ export default function DashboardPage() {
                                 <div className="min-w-0">
                                     <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{m.label}</p>
                                     <p className="text-2xl font-bold text-foreground mt-1 tracking-tight">{m.value}</p>
-                                    <div className="flex items-center gap-1 mt-1.5">
-                                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                                        <span className="text-xs font-semibold text-emerald-500">
-                                            {m.change}
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-
-                {/* Charts Row */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    {/* Revenue Chart */}
                     <div className="xl:col-span-2 bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300">
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                             <div>
                                 <h3 className="text-sm font-bold text-foreground tracking-tight">Revenue Trend</h3>
                                 <p className="text-xs text-muted-foreground mt-0.5">Real-time revenue computed from submitted PCB orders</p>
                             </div>
-                            <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full font-bold">
-                                Live Stream
-                            </span>
+                            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
+                                {(["day", "month", "year"] as const).map((period) => (
+                                    <button
+                                        key={period}
+                                        type="button"
+                                        onClick={() => setRevenuePeriod(period)}
+                                        className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
+                                            ? "bg-primary text-primary-foreground shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div className="h-56">
                             {revenueTrend.length === 0 ? (
@@ -349,15 +372,24 @@ export default function DashboardPage() {
                                         return found ? found.meta_value : fallback;
                                     };
 
-                                    const boardTitle = order.board_name && order.board_name !== "." 
-                                        ? order.board_name 
+                                    const boardTitle = order.board_name && order.board_name !== "."
+                                        ? order.board_name
                                         : getMetaVal("board_name", getMetaVal("gerber_file_name", "PCB Order Project"));
 
-                                    const customerText = order.customer_name 
-                                        ? `${order.customer_name} · ${order.user_email || order.user_mobile || ""}` 
+                                    const customerText = order.customer_name
+                                        ? `${order.customer_name} · ${order.user_email || order.user_mobile || ""}`
                                         : (order.user_email || order.user_mobile || "Guest User");
 
                                     const pcbColorVal = getMetaVal("pcb_color", getMetaVal("solder_mask", "Green"));
+                                    const layersVal = getMetaVal("layers", "2");
+                                    const dimensionsVal = getMetaVal("dimensions", "100x100mm");
+                                    const quantityVal = getMetaVal("quantity", "5");
+                                    const finishVal = getMetaVal("surface_finish", "HASL");
+                                    const orderDateStr = new Date(order.created_at).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric"
+                                    });
 
                                     const getPcbColorCode = (col: string) => {
                                         const lower = col.toLowerCase().trim();
@@ -376,11 +408,11 @@ export default function DashboardPage() {
                                         <div
                                             key={order.id}
                                             onClick={() => router.push(`/orders/${order.id}`)}
-                                            className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 hover:bg-muted/50 border border-border/40 transition-all duration-200 cursor-pointer group shadow-sm"
+                                            className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/50 border border-border/40 transition-all duration-200 cursor-pointer group shadow-sm gap-3"
                                         >
-                                            <div className="flex items-center gap-3.5 min-w-0">
+                                            <div className="flex items-start sm:items-center gap-3.5 min-w-0 w-full sm:w-auto">
                                                 {/* Gerber Preview Vector Thumbnail */}
-                                                <div className="w-12 h-12 bg-[#0c3b19] rounded-xl border border-emerald-500/30 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                                <div className="w-14 h-14 bg-[#0c3b19] rounded-xl border border-emerald-500/30 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                                                     <GerberBoardPreview
                                                         previewData={order.gerber_preview_data || getMetaVal("preview_data", "")}
                                                         boardName={boardTitle}
@@ -388,8 +420,8 @@ export default function DashboardPage() {
                                                     />
                                                 </div>
 
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
                                                         {/* Order Number styled in selected PCB color */}
                                                         <span
                                                             className="text-xs font-mono font-black px-2 py-0.5 rounded-md border"
@@ -412,17 +444,41 @@ export default function DashboardPage() {
                                                             {order.status}
                                                         </span>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-1 font-medium truncate max-w-[280px]">
-                                                        <span className="font-bold text-foreground">{boardTitle}</span>
-                                                        {customerText && <span className="text-muted-foreground"> ({customerText})</span>}
+
+                                                    <p className="text-xs font-bold text-foreground mt-1 truncate max-w-[340px]">
+                                                        {boardTitle}
+                                                        {customerText && <span className="text-muted-foreground font-normal"> ({customerText})</span>}
                                                     </p>
+
+                                                    {/* Specification details chips */}
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground font-semibold">
+                                                        <span className="px-2 py-0.5 rounded-md bg-background border border-border/60">
+                                                            {layersVal} Layer{Number(layersVal) > 1 ? "s" : ""}
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded-md bg-background border border-border/60">
+                                                            {dimensionsVal}
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded-md bg-background border border-border/60">
+                                                            Qty: {quantityVal}
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded-md bg-background border border-border/60">
+                                                            {finishVal}
+                                                        </span>
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border border-border/60 text-muted-foreground">
+                                                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                                                            {orderDateStr}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 shrink-0">
-                                                <span className="text-sm font-black text-foreground">
-                                                    ₹{Number(order.order_value).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                </span>
+                                            <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
+                                                <div className="text-left sm:text-right">
+                                                    <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Total Value</span>
+                                                    <span className="text-sm font-black text-foreground">
+                                                        ₹{Number(order.order_value).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
                                                 <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
                                                     <ExternalLink className="w-4 h-4" />
                                                 </span>
@@ -434,36 +490,71 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* System Services Health */}
-                    <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 shadow-sm">
-                        <h3 className="text-sm font-bold text-foreground mb-1">System Health & Services</h3>
-                        <p className="text-xs text-muted-foreground mb-4">Infrastructure & gateway connectivity</p>
-                        <div className="space-y-3">
-                            {[
-                                { name: "Laravel API Database", status: "Operational", ok: true, latency: "12ms" },
-                                { name: "PCB Quote Engine", status: "Operational", ok: true, latency: "45ms" },
-                                { name: "Order Storage Drive", status: "Operational", ok: true, latency: "18ms" },
-                                { name: "Email SMTP Gateway", status: "Operational", ok: true, latency: "120ms" },
-                            ].map((svc) => (
-                                <div
-                                    key={svc.name}
-                                    className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="relative flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                                        </span>
-                                        <div>
-                                            <p className="text-xs font-bold text-foreground">{svc.name}</p>
-                                            <p className="text-[10px] text-muted-foreground font-mono">{svc.latency}</p>
+                    {/* Recent Transactions List (Last 10) */}
+                    <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300 flex flex-col">
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                            <div>
+                                <h3 className="text-sm font-bold text-foreground tracking-tight">Recent Transactions</h3>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">Last 10 payment transactions</p>
+                            </div>
+                            <Link href="/payments" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
+                                View all →
+                            </Link>
+                        </div>
+
+                        <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                            {recentPayments.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-muted-foreground italic">No recent transactions found.</div>
+                            ) : (
+                                recentPayments.slice(0, 10).map((tx) => {
+                                    const isSuccess = tx.status.toLowerCase() === "success";
+                                    const displayTxId = tx.razorpay_payment_id || tx.transaction_number;
+                                    const customerDisplay = tx.user_name ? tx.user_name : "Customer";
+                                    const formattedTime = new Date(tx.created_at).toLocaleString("en-IN", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: true
+                                    });
+
+                                    return (
+                                        <div
+                                            key={tx.id}
+                                            onClick={() => router.push("/payments")}
+                                            className="p-3.5 rounded-xl bg-muted/20 hover:bg-muted/50 border border-border/40 transition-all cursor-pointer flex items-center justify-between gap-3 group shadow-sm"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-xs font-mono font-extrabold text-foreground truncate max-w-[170px]" title={displayTxId}>
+                                                        {displayTxId}
+                                                    </span>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold capitalize ${isSuccess ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/15 text-amber-600 border border-amber-500/30"
+                                                        }`}>
+                                                        {tx.status}
+                                                    </span>
+                                                </div>
+
+                                                <p className="text-xs font-bold text-foreground mt-1 truncate">
+                                                    {customerDisplay}
+                                                </p>
+
+                                                <span className="text-[10px] text-muted-foreground font-mono block mt-1">
+                                                    {formattedTime}
+                                                </span>
+                                            </div>
+
+                                            <div className="text-right shrink-0">
+                                                <span className="text-xs text-muted-foreground font-semibold block uppercase text-[9px]">Amount</span>
+                                                <span className="text-sm font-black text-foreground">
+                                                    ₹{Number(tx.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <span className="text-[10px] px-2.5 py-0.5 rounded-full border font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                                        {svc.status}
-                                    </span>
-                                </div>
-                            ))}
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 </div>

@@ -412,38 +412,38 @@ export default function PaymentsPage() {
                                             ₹{parseFloat(String(selectedPayment.amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </h3>
                                     </div>
-                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                         Completed
                                     </span>
                                 </div>
 
-                                <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-white/10 space-y-2">
-                                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Customer Details</p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-zinc-300">
+                                <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 space-y-2">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer Details</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-foreground font-medium">
                                         <div className="flex items-center gap-2">
-                                            <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                            <User className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                                             <span className="truncate">{selectedPayment.user_name || "Guest Customer"}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                            <Mail className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                                             <span className="truncate">{selectedPayment.user_email || "N/A"}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                            <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                                             <span>{selectedPayment.user_mobile || "N/A"}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-white/10 space-y-2.5">
-                                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Gateway Identifiers</p>
+                                <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 space-y-2.5">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gateway Identifiers</p>
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-zinc-400">Razorpay Payment ID:</span>
+                                            <span className="text-muted-foreground">Razorpay Payment ID:</span>
                                             <div className="flex items-center gap-1.5 font-mono text-foreground font-medium">
                                                 <span>{selectedPayment.razorpay_payment_id || "-"}</span>
                                                 {selectedPayment.razorpay_payment_id && (
-                                                    <button onClick={() => handleCopy(selectedPayment.razorpay_payment_id!, "Payment ID")} className="text-zinc-500 hover:text-emerald-400">
+                                                    <button onClick={() => handleCopy(selectedPayment.razorpay_payment_id!, "Payment ID")} className="text-muted-foreground hover:text-emerald-500 cursor-pointer">
                                                         <Copy className="w-3.5 h-3.5" />
                                                     </button>
                                                 )}
@@ -451,11 +451,11 @@ export default function PaymentsPage() {
                                         </div>
 
                                         <div className="flex items-center justify-between">
-                                            <span className="text-zinc-400">Razorpay Order ID:</span>
+                                            <span className="text-muted-foreground">Razorpay Order ID:</span>
                                             <div className="flex items-center gap-1.5 font-mono text-foreground font-medium">
                                                 <span>{selectedPayment.razorpay_order_id || "-"}</span>
                                                 {selectedPayment.razorpay_order_id && (
-                                                    <button onClick={() => handleCopy(selectedPayment.razorpay_order_id!, "Order ID")} className="text-zinc-500 hover:text-emerald-400">
+                                                    <button onClick={() => handleCopy(selectedPayment.razorpay_order_id!, "Order ID")} className="text-muted-foreground hover:text-emerald-500 cursor-pointer">
                                                         <Copy className="w-3.5 h-3.5" />
                                                     </button>
                                                 )}
@@ -463,13 +463,8 @@ export default function PaymentsPage() {
                                         </div>
 
                                         <div className="flex items-center justify-between">
-                                            <span className="text-zinc-400">Payment Method:</span>
-                                            <span className="font-semibold text-foreground">{selectedPayment.payment_method || "Razorpay"}</span>
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-zinc-400">Transaction Date:</span>
-                                            <span className="text-foreground">
+                                            <span className="text-muted-foreground">Transaction Date:</span>
+                                            <span className="text-foreground font-medium">
                                                 {selectedPayment.created_at ? format(parseISO(selectedPayment.created_at), "MMMM dd, yyyy • hh:mm:ss a") : "-"}
                                             </span>
                                         </div>
@@ -480,7 +475,7 @@ export default function PaymentsPage() {
                             <div className="pt-2 flex justify-end">
                                 <button
                                     onClick={() => setSelectedPayment(null)}
-                                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-foreground transition-all"
+                                    className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer border border-border/80"
                                 >
                                     Close
                                 </button>
