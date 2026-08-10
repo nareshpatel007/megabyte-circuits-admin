@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 interface StatusItem {
     id: number;
@@ -58,6 +59,9 @@ interface ApiOrder {
 const PAGE_SIZE = 10;
 
 export default function OrdersPage() {
+    const { user } = useAuth();
+    const hasPaymentPermission = user?.permissions ? user.permissions.includes("payments.view") : true;
+
     const [orders, setOrders] = useState<ApiOrder[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -298,7 +302,9 @@ export default function OrdersPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
                                 <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                    ₹{totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    {hasPaymentPermission
+                                        ? `₹${totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                                        : "XXXX"}
                                 </h3>
                             </div>
                         </div>

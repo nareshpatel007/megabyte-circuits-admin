@@ -31,14 +31,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         // Check authentication on mount
         const auth = localStorage.getItem("isAuthenticated");
+        const token = localStorage.getItem("admin_token");
         const userData = localStorage.getItem("user");
         
+        const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+        if (pathname !== "/login") {
+            if (auth !== "true" || !token) {
+                setIsAuthenticated(false);
+                setUser(null);
+                setIsLoading(false);
+                router.replace("/login");
+                return;
+            }
+        }
+
         if (auth === "true" && userData) {
             setIsAuthenticated(true);
-            setUser(JSON.parse(userData));
+            try {
+                setUser(JSON.parse(userData));
+            } catch (e) {
+                setUser(null);
+            }
         }
         setIsLoading(false);
-    }, []);
+    }, [router]);
 
     const login = async (usernameOrEmail: string, password: string) => {
         const response = await fetch("/api/admin/login", {
@@ -62,20 +78,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const adminInfo = data.data || data.admin || {};
         const token = adminInfo.access_token || data.token || "";
 
+        if (token) {
+            localStorage.setItem("admin_token", token);
+        }
+
+        // Fetch fresh role permissions list
+        let freshPermissions: string[] = adminInfo.permissions || [];
+        try {
+            const permRes = await fetch("/api/admin/my-permissions", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const permData = await permRes.json();
+            if (permRes.ok && permData.status && Array.isArray(permData.permissions)) {
+                freshPermissions = permData.permissions;
+            }
+        } catch (e) {
+            console.error("Failed to fetch fresh permissions after login", e);
+        }
+
         const userData: User = {
             id: adminInfo.id || adminInfo.admin_id || data.admin_id || 1,
             username: adminInfo.username || usernameOrEmail,
             email: adminInfo.email || usernameOrEmail,
             name: adminInfo.name || "Admin User",
             role: adminInfo.role || "Admin",
-            permissions: adminInfo.permissions || []
+            permissions: freshPermissions
         };
 
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("user", JSON.stringify(userData));
-        if (token) {
-            localStorage.setItem("admin_token", token);
-        }
 
         setUser(userData);
         setIsAuthenticated(true);

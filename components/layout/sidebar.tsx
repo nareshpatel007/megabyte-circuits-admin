@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -28,25 +28,25 @@ interface NavItem {
     href?: string;
     label: string;
     icon: any;
-    children?: { href: string; label: string; icon?: any }[];
+    permission?: string;
+    children?: { href: string; label: string; icon?: any; permission?: string }[];
 }
 
 const navItems: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/orders", label: "Orders", icon: ShoppingCart },
-    { href: "/payments", label: "Payments", icon: CreditCard },
-    { href: "/gerber-files", label: "Gerber Files", icon: FileArchive },
-    // { href: "/pricing", label: "Pricing Config", icon: Settings2 },
-    { href: "/inventory", label: "Inventory", icon: Package },
-    { href: "/clients", label: "Clients", icon: Users },
-    { href: "/staff", label: "Staff", icon: UserCog },
-    { href: "/roles", label: "Roles", icon: Shield },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+    { href: "/orders", label: "Orders", icon: ShoppingCart, permission: "orders.view" },
+    { href: "/payments", label: "Payments", icon: CreditCard, permission: "payments.view" },
+    { href: "/gerber-files", label: "Gerber Files", icon: FileArchive, permission: "gerber.view" },
+    { href: "/inventory", label: "Inventory", icon: Package, permission: "inventory.view" },
+    { href: "/clients", label: "Clients", icon: Users, permission: "clients.view" },
+    { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
+    { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
     {
         label: "Settings",
         icon: Settings,
         children: [
-            { href: "/settings", label: "General Settings", icon: Sliders },
-            { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter },
+            { href: "/settings", label: "General Settings", icon: Sliders, permission: "settings.general" },
+            { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter, permission: "settings.order_status" },
         ],
     },
 ];
@@ -60,7 +60,43 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
-    const [settingsOpen, setSettingsOpen] = useState(true);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [userPermissions, setUserPermissions] = useState<string[]>([]);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+    useEffect(() => {
+        const checkPermissions = () => {
+            const userDataStr = localStorage.getItem("user");
+            if (userDataStr) {
+                try {
+                    const u = JSON.parse(userDataStr);
+                    if (u.role && u.role.toLowerCase() === "super admin") {
+                        setIsSuperAdmin(true);
+                    }
+                    if (Array.isArray(u.permissions)) {
+                        setUserPermissions(u.permissions);
+                    }
+                } catch (e) {}
+            }
+        };
+
+        checkPermissions();
+        window.addEventListener("storage", checkPermissions);
+        return () => window.removeEventListener("storage", checkPermissions);
+    }, []);
+
+    const hasPermission = (perm?: string) => {
+        if (!perm || isSuperAdmin) return true;
+        return userPermissions.includes(perm);
+    };
+
+    const filteredNavItems = navItems.filter((item) => {
+        if (item.children) {
+            const validChildren = item.children.filter((c) => hasPermission(c.permission));
+            return validChildren.length > 0;
+        }
+        return hasPermission(item.permission);
+    });
 
     const renderContent = (mobile = false) => {
         const isCollapsed = !mobile && collapsed;
@@ -125,9 +161,10 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
 
                 {/* Nav Links */}
                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin">
-                    {navItems.map((item) => {
+                    {filteredNavItems.map((item) => {
                         if (item.children) {
-                            const isChildActive = item.children.some((child) => pathname === child.href);
+                            const validChildren = item.children.filter((c) => hasPermission(c.permission));
+                            const isChildActive = validChildren.some((child) => pathname === child.href);
                             return (
                                 <div key={item.label} className="space-y-1">
                                     <button
@@ -154,7 +191,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
 
                                     {settingsOpen && !isCollapsed && (
                                         <div className="pl-4 space-y-1 pt-0.5">
-                                            {item.children.map((child) => {
+                                            {validChildren.map((child) => {
                                                 const childActive = pathname === child.href;
                                                 const ChildIcon = child.icon;
                                                 return (

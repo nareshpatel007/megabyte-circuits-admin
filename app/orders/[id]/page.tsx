@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrderDetailSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
+import { useAuth } from "@/lib/auth-context";
 
 interface StatusItem {
     id: number;
@@ -104,6 +105,8 @@ export default function OrderDetailPage() {
     const params = useParams();
     const router = useRouter();
     const orderId = params?.id;
+    const { user } = useAuth();
+    const hasPaymentPermission = user?.permissions ? user.permissions.includes("payments.view") : true;
 
     const [order, setOrder] = useState<ApiOrder | null>(null);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
@@ -318,11 +321,19 @@ export default function OrderDetailPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Value</p>
-                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">₹{Number(order.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                            {hasPaymentPermission
+                                ? `₹${Number(order.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                : "XXXX"}
+                        </p>
                     </div>
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit Price</p>
-                        <p className="text-xl font-bold text-foreground mt-1">₹{Number(order.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xl font-bold text-foreground mt-1">
+                            {hasPaymentPermission
+                                ? `₹${Number(order.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                : "XXXX"}
+                        </p>
                     </div>
 
                     {/* Quantity Fulfillment Breakdown Card */}

@@ -16,14 +16,17 @@ import {
 import { toast } from "sonner";
 import { TableSkeleton } from "@/components/ui/skeleton";
 
-const DEFAULT_PERMISSIONS = [
-    { module: "Dashboard & Analytics", keys: ["dashboard.view", "analytics.view"] },
-    { module: "Order Management", keys: ["orders.view", "orders.create", "orders.edit", "orders.delete", "orders.status"] },
-    { module: "Client Management", keys: ["clients.view", "clients.create", "clients.edit", "clients.delete"] },
-    { module: "Inventory Management", keys: ["inventory.view", "inventory.create", "inventory.edit", "inventory.delete"] },
-    { module: "Staff & User Roles", keys: ["staff.view", "staff.create", "staff.edit", "staff.delete", "roles.manage"] },
-    { module: "System Settings", keys: ["settings.view", "settings.edit"] },
-];
+interface PermissionItem {
+    id: number;
+    name: string;
+    slug: string;
+    module: string;
+}
+
+interface PermissionGroup {
+    module: string;
+    items: PermissionItem[];
+}
 
 export default function EditRolePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -35,12 +38,36 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+    const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
 
     useEffect(() => {
-        const fetchRoleDetails = async () => {
+        const fetchPermissionsAndRole = async () => {
             setLoading(true);
             try {
                 const token = localStorage.getItem("admin_token");
+
+                // Fetch database permissions list
+                const permRes = await fetch("/api/admin/permissions", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const permData = await permRes.json();
+                if (permRes.ok && permData.status && Array.isArray(permData.data)) {
+                    const groupsMap: Record<string, PermissionItem[]> = {};
+                    permData.data.forEach((item: PermissionItem) => {
+                        const mod = item.module || "General";
+                        if (!groupsMap[mod]) groupsMap[mod] = [];
+                        groupsMap[mod].push(item);
+                    });
+
+                    const groupsArr: PermissionGroup[] = Object.keys(groupsMap).map((mod) => ({
+                        module: mod,
+                        items: groupsMap[mod]
+                    }));
+
+                    setPermissionGroups(groupsArr);
+                }
+
+                // Fetch specific role details
                 const res = await fetch(`/api/admin/roles/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -53,7 +80,7 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
 
                     const existingPerms: string[] = Array.isArray(r.permissions)
                         ? r.permissions.map((p: any) => (typeof p === "object" ? p.slug || p.name : p))
-                        : ["dashboard.view", "orders.view"];
+                        : [];
 
                     setSelectedPermissions(existingPerms);
                 } else {
@@ -68,7 +95,7 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
         };
 
         if (id) {
-            fetchRoleDetails();
+            fetchPermissionsAndRole();
         }
     }, [id]);
 
@@ -198,8 +225,14 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
                             </div>
 
                             <div className="space-y-4">
-                                {DEFAULT_PERMISSIONS.map((group) => {
-                                    const allInGroup = group.keys.every((k) => selectedPermissions.includes(k));
+                            {permissionGroups.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-muted-foreground">
+                                    No permissions found in system database.
+                                </div>
+                            ) : (
+                                permissionGroups.map((group) => {
+                                    const groupSlugs = group.items.map((i) => i.slug);
+                                    const allInGroup = groupSlugs.every((k) => selectedPermissions.includes(k));
 
                                     return (
                                         <div key={group.module} className="p-4 bg-muted/30 border border-border/60 rounded-xl space-y-3">
@@ -210,7 +243,7 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => selectAllGroup(group.keys)}
+                                                    onClick={() => selectAllGroup(groupSlugs)}
                                                     className="text-[11px] font-bold text-emerald-500 hover:underline cursor-pointer"
                                                 >
                                                     {allInGroup ? "Deselect All" : "Select All"}
@@ -218,11 +251,12 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
                                             </div>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                                                {group.keys.map((key) => {
+                                                {group.items.map((perm) => {
+                                                    const key = perm.slug;
                                                     const isChecked = selectedPermissions.includes(key);
                                                     return (
                                                         <label
-                                                            key={key}
+                                                            key={perm.id || perm.slug}
                                                             onClick={() => togglePermission(key)}
                                                             className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs font-mono cursor-pointer transition-all ${isChecked
                                                                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold shadow-2xs"
@@ -232,15 +266,19 @@ export default function EditRolePage({ params }: { params: Promise<{ id: string 
                                                             <div className={`w-4 h-4 rounded-md flex items-center justify-center border transition-colors ${isChecked ? "bg-emerald-500 border-emerald-500 text-black" : "border-border/80 bg-background"}`}>
                                                                 {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                                                             </div>
-                                                            <span className="truncate">{key}</span>
+                                                            <div className="truncate flex flex-col">
+                                                                <span className="font-sans font-bold text-foreground truncate">{perm.name}</span>
+                                                                <span className="text-[10px] text-muted-foreground font-mono truncate">{perm.slug}</span>
+                                                            </div>
                                                         </label>
                                                     );
                                                 })}
                                             </div>
                                         </div>
                                     );
-                                })}
-                            </div>
+                                })
+                            )}
+                        </div>
                         </div>
 
                         {/* Sticky Bottom Action Bar Section */}
