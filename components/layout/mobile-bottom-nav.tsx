@@ -18,25 +18,67 @@ import {
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 
-const mainNavItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/orders", label: "Orders", icon: ShoppingCart },
-    { href: "/inventory", label: "Inventory", icon: Package },
-    { href: "/settings", label: "Settings", icon: Settings },
+interface NavItem {
+    href: string;
+    label: string;
+    icon: any;
+    permission?: string | string[];
+}
+
+const mainNavItems: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+    { href: "/orders", label: "Orders", icon: ShoppingCart, permission: "orders.view" },
+    { href: "/inventory", label: "Inventory", icon: Package, permission: "inventory.view" },
+    { href: "/settings", label: "Settings", icon: Settings, permission: ["settings.general", "settings.order_status"] },
 ];
 
-const secondaryNavItems = [
-    { href: "/payments", label: "Payments", icon: CreditCard },
-    { href: "/gerber-files", label: "Gerber Files", icon: FileArchive },
-    { href: "/clients", label: "Clients", icon: Users },
-    { href: "/staff", label: "Staff", icon: UserCog },
-    { href: "/roles", label: "Roles", icon: Shield },
+const secondaryNavItems: NavItem[] = [
+    { href: "/payments", label: "Payments", icon: CreditCard, permission: "payments.view" },
+    { href: "/gerber-files", label: "Gerber Files", icon: FileArchive, permission: "gerber.view" },
+    { href: "/clients", label: "Clients", icon: Users, permission: "clients.view" },
+    { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
+    { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
 ];
 
 export default function MobileBottomNav() {
     const pathname = usePathname();
     const [moreOpen, setMoreOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    const [userPermissions, setUserPermissions] = useState<string[]>([]);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+    useEffect(() => {
+        const checkPermissions = () => {
+            const userDataStr = localStorage.getItem("user");
+            if (userDataStr) {
+                try {
+                    const u = JSON.parse(userDataStr);
+                    if (u.role && u.role.toLowerCase() === "super admin") {
+                        setIsSuperAdmin(true);
+                    }
+                    if (Array.isArray(u.permissions)) {
+                        setUserPermissions(u.permissions);
+                    }
+                } catch (e) {}
+            }
+        };
+
+        checkPermissions();
+        window.addEventListener("storage", checkPermissions);
+        return () => window.removeEventListener("storage", checkPermissions);
+    }, []);
+
+    const hasPermission = (perm?: string | string[]) => {
+        if (!perm || isSuperAdmin) return true;
+        if (Array.isArray(perm)) {
+            return perm.some((p) => userPermissions.includes(p));
+        }
+        return userPermissions.includes(perm);
+    };
+
+    const filteredMainNavItems = mainNavItems.filter((item) => hasPermission(item.permission));
+    const filteredSecondaryNavItems = secondaryNavItems.filter((item) => hasPermission(item.permission));
 
     // Close popover when clicking outside
     useEffect(() => {
@@ -49,14 +91,18 @@ export default function MobileBottomNav() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const isSecondaryActive = secondaryNavItems.some(
+    const isSecondaryActive = filteredSecondaryNavItems.some(
         (item) => pathname === item.href || (pathname && pathname.startsWith(item.href))
     );
+
+    if (filteredMainNavItems.length === 0 && filteredSecondaryNavItems.length === 0) {
+        return null;
+    }
 
     return (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
             {/* Popover for extra menu items */}
-            {moreOpen && (
+            {moreOpen && filteredSecondaryNavItems.length > 0 && (
                 <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setMoreOpen(false)}>
                     <div
                         ref={menuRef}
@@ -76,7 +122,7 @@ export default function MobileBottomNav() {
                             </button>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                            {secondaryNavItems.map((item) => {
+                            {filteredSecondaryNavItems.map((item) => {
                                 const active = pathname
                                     ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
                                     : false;
@@ -110,7 +156,7 @@ export default function MobileBottomNav() {
                     backdropFilter: "blur(16px)",
                 }}
             >
-                {mainNavItems.map((item) => {
+                {filteredMainNavItems.map((item) => {
                     const active = pathname
                         ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
                         : false;
@@ -135,22 +181,25 @@ export default function MobileBottomNav() {
                 })}
 
                 {/* More Menu Trigger */}
-                <button
-                    onClick={() => setMoreOpen(!moreOpen)}
-                    className={cn(
-                        "flex flex-col items-center justify-center flex-1 py-1.5 gap-1 rounded-xl text-[11px] font-medium transition-all relative",
-                        isSecondaryActive || moreOpen
-                            ? "text-emerald-400 font-semibold"
-                            : "text-zinc-400 hover:text-zinc-200"
-                    )}
-                >
-                    <MoreHorizontal className={cn("w-5 h-5 transition-transform duration-200", (isSecondaryActive || moreOpen) && "scale-110 text-emerald-400")} />
-                    <span>More</span>
-                    {isSecondaryActive && (
-                        <span className="absolute -top-1.5 w-8 h-1 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                    )}
-                </button>
+                {filteredSecondaryNavItems.length > 0 && (
+                    <button
+                        onClick={() => setMoreOpen(!moreOpen)}
+                        className={cn(
+                            "flex flex-col items-center justify-center flex-1 py-1.5 gap-1 rounded-xl text-[11px] font-medium transition-all relative",
+                            isSecondaryActive || moreOpen
+                                ? "text-emerald-400 font-semibold"
+                                : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                    >
+                        <MoreHorizontal className={cn("w-5 h-5 transition-transform duration-200", (isSecondaryActive || moreOpen) && "scale-110 text-emerald-400")} />
+                        <span>More</span>
+                        {isSecondaryActive && (
+                            <span className="absolute -top-1.5 w-8 h-1 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                        )}
+                    </button>
+                )}
             </nav>
         </div>
     );
 }
+
