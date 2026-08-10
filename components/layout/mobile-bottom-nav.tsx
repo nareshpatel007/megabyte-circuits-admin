@@ -95,7 +95,9 @@ export default function MobileBottomNav() {
         (item) => pathname === item.href || (pathname && pathname.startsWith(item.href))
     );
 
-    if (filteredMainNavItems.length === 0 && filteredSecondaryNavItems.length === 0) {
+    const totalPermittedMenuItems = filteredMainNavItems.length + filteredSecondaryNavItems.length;
+
+    if (totalPermittedMenuItems <= 1) {
         return null;
     }
 

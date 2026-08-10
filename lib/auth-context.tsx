@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { getDefaultRedirectRoute } from "@/lib/permissions-helper";
 
 interface User {
     id: number;
@@ -110,7 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(userData);
         setIsAuthenticated(true);
-        router.push("/dashboard");
+        const targetRoute = getDefaultRedirectRoute(freshPermissions, userData.role);
+        router.push(targetRoute);
     };
 
     const logout = () => {

@@ -60,7 +60,12 @@ const PAGE_SIZE = 10;
 
 export default function OrdersPage() {
     const { user } = useAuth();
-    const hasPaymentPermission = user?.permissions ? user.permissions.includes("payments.view") : true;
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
+    const hasPaymentPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("payments.view") : true);
+    const hasStatisticsPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.statistics") : false);
+    const hasCreateOrderPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.create") : false);
+    const hasChangeStatusPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.change_status") : false);
+    const hasViewLogsPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.view_logs") : false);
 
     const [orders, setOrders] = useState<ApiOrder[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
@@ -145,6 +150,14 @@ export default function OrdersPage() {
         fetchData();
     }, [startDate, endDate]);
 
+    const handleResetFilter = () => {
+        setSearch("");
+        setStatusFilter("All");
+        setStartDate("");
+        setEndDate("");
+        setPage(1);
+    };
+
     // Filter logic
     const filtered = orders.filter((o) => {
         const query = search.toLowerCase();
@@ -191,6 +204,7 @@ export default function OrdersPage() {
 
     // Open change status modal
     const openStatusModal = (order: ApiOrder) => {
+        if (!hasChangeStatusPermission) return;
         const isCompleted = ['completed', 'shipped', 'delivered'].includes((order.status || '').toLowerCase());
         const totalQtyVal = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
         const initialCompletedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQtyVal : 0);
@@ -239,7 +253,7 @@ export default function OrdersPage() {
         }
     };
 
-    const newOrderButton = (
+    const newOrderButton = hasCreateOrderPermission ? (
         <Link
             href="/orders/create"
             className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -247,7 +261,7 @@ export default function OrdersPage() {
             <Plus className="w-4 h-4" />
             New Order
         </Link>
-    );
+    ) : undefined;
 
     const activeOrdersCount = orders.filter((o) => !['completed', 'cancelled'].includes((o.status || '').toLowerCase())).length;
     const completedOrdersCount = orders.filter((o) => (o.status || '').toLowerCase() === 'completed').length;
@@ -264,51 +278,53 @@ export default function OrdersPage() {
             ) : (
                 <div className="w-full space-y-5">
                     {/* Stats Row */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                <ShoppingBag className="w-6 h-6" />
+                    {hasStatisticsPermission && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                    <ShoppingBag className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
+                                    <h3 className="text-2xl font-black text-foreground mt-0.5">{orders.length}</h3>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
-                                <h3 className="text-2xl font-black text-foreground mt-0.5">{orders.length}</h3>
-                            </div>
-                        </div>
 
-                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                                <Clock className="w-6 h-6" />
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
+                                    <h3 className="text-2xl font-black text-amber-500 mt-0.5">{activeOrdersCount}</h3>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
-                                <h3 className="text-2xl font-black text-amber-500 mt-0.5">{activeOrdersCount}</h3>
-                            </div>
-                        </div>
 
-                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                                <CheckCircle2 className="w-6 h-6" />
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
+                                    <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{completedOrdersCount}</h3>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
-                                <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{completedOrdersCount}</h3>
-                            </div>
-                        </div>
 
-                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-                                <Package className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
-                                <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                    {hasPaymentPermission
-                                        ? `₹${totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                                        : "XXXX"}
-                                </h3>
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                                    <Package className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
+                                    <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        {hasPaymentPermission
+                                            ? `₹${totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                                            : "XXXX"}
+                                    </h3>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Search & Filter Header Bar */}
                     <div className="flex flex-row items-center gap-2 sm:gap-3 w-full overflow-x-auto pb-1">
@@ -463,19 +479,32 @@ export default function OrdersPage() {
                                                         </td>
                                                         {/* 2. Order Number */}
                                                         <td className="py-4 px-5 whitespace-nowrap">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => openStatusModal(order)}
-                                                                title="Click to Change Status"
-                                                                className="font-mono text-sm font-black px-2.5 py-1 rounded-md border transition-all cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 shadow-2xs"
-                                                                style={{
-                                                                    color: orderNumColor,
-                                                                    backgroundColor: `${orderNumColor}15`,
-                                                                    borderColor: `${orderNumColor}35`
-                                                                }}
-                                                            >
-                                                                #{order.order_number}
-                                                            </button>
+                                                            {hasChangeStatusPermission ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openStatusModal(order)}
+                                                                    title="Click to Change Status"
+                                                                    className="font-mono text-sm font-black px-2.5 py-1 rounded-md border transition-all cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 shadow-2xs"
+                                                                    style={{
+                                                                        color: orderNumColor,
+                                                                        backgroundColor: `${orderNumColor}15`,
+                                                                        borderColor: `${orderNumColor}35`
+                                                                    }}
+                                                                >
+                                                                    #{order.order_number}
+                                                                </button>
+                                                            ) : (
+                                                                <span
+                                                                    className="font-mono text-sm font-black px-2.5 py-1 rounded-md border shadow-2xs"
+                                                                    style={{
+                                                                        color: orderNumColor,
+                                                                        backgroundColor: `${orderNumColor}15`,
+                                                                        borderColor: `${orderNumColor}35`
+                                                                    }}
+                                                                >
+                                                                    #{order.order_number}
+                                                                </span>
+                                                            )}
                                                         </td>
 
                                                         {/* 3. Layers */}
@@ -516,24 +545,28 @@ export default function OrdersPage() {
                                                         <td className="py-4 px-5 text-right whitespace-nowrap">
                                                             <div className="inline-flex items-center justify-end gap-1.5">
                                                                 {/* Change Status Icon Button */}
-                                                                <button
-                                                                    onClick={() => openStatusModal(order)}
-                                                                    title="Change Status"
-                                                                    aria-label="Change Status"
-                                                                    className="p-2 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl transition-all cursor-pointer shadow-2xs group relative"
-                                                                >
-                                                                    <RefreshCw className="w-4 h-4" />
-                                                                </button>
+                                                                {hasChangeStatusPermission && (
+                                                                    <button
+                                                                        onClick={() => openStatusModal(order)}
+                                                                        title="Change Status"
+                                                                        aria-label="Change Status"
+                                                                        className="p-2 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl transition-all cursor-pointer shadow-2xs group relative"
+                                                                    >
+                                                                        <RefreshCw className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
 
                                                                 {/* View Activity Logs Icon Button */}
-                                                                <button
-                                                                    onClick={() => openLogsModal(order)}
-                                                                    title="View Order Logs"
-                                                                    aria-label="View Order Logs"
-                                                                    className="p-2 bg-blue-500/10 hover:bg-blue-500 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl transition-all cursor-pointer shadow-2xs"
-                                                                >
-                                                                    <History className="w-4 h-4" />
-                                                                </button>
+                                                                {hasViewLogsPermission && (
+                                                                    <button
+                                                                        onClick={() => openLogsModal(order)}
+                                                                        title="View Order Logs"
+                                                                        aria-label="View Order Logs"
+                                                                        className="p-2 bg-blue-500/10 hover:bg-blue-500 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl transition-all cursor-pointer shadow-2xs"
+                                                                    >
+                                                                        <History className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
 
                                                                 {/* View Detail Page Icon Button */}
                                                                 <Link
