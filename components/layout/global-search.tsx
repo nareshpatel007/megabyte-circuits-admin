@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, X, Package, Users, ShoppingBag, Layers, ArrowRight, Loader2 } from "lucide-react";
+import { Search, X, Package, Users, ShoppingBag, Layers, ArrowRight, Loader2, CreditCard, FileArchive } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -9,22 +9,19 @@ interface SearchItem {
     id: string;
     title: string;
     subtitle: string;
-    category: "Orders" | "Clients" | "Inventory" | "Pages";
+    category: "Orders" | "Clients" | "Inventory" | "Pages" | "Gerber Files";
     url: string;
     icon: any;
 }
 
-const mockSearchData: SearchItem[] = [
-    { id: "o-1", title: "PCB-2025-021", subtitle: "Double Layer Rigid PCB - 50 Units", category: "Orders", url: "/orders", icon: ShoppingBag },
-    { id: "o-2", title: "PCB-2025-019", subtitle: "Multilayer PCB Assembly", category: "Orders", url: "/orders", icon: ShoppingBag },
-    { id: "o-3", title: "PCB-2025-015", subtitle: "Flex PCB - Prototype", category: "Orders", url: "/orders", icon: ShoppingBag },
-    { id: "c-1", title: "TechCorp India Ltd", subtitle: "Premium Client • 14 Active Orders", category: "Clients", url: "/clients", icon: Users },
-    { id: "c-2", title: "ElectroFab Solutions", subtitle: "Enterprise Client • Mumbai", category: "Clients", url: "/clients", icon: Users },
-    { id: "i-1", title: "100nF 0402 Ceramic Capacitor", subtitle: "Stock: 4,500 pcs • Bin A-12", category: "Inventory", url: "/inventory", icon: Package },
-    { id: "i-2", title: "FR4 Double Sided Substrate 1.6mm", subtitle: "Stock: 120 Sheets • Storage B", category: "Inventory", url: "/inventory", icon: Package },
-    { id: "p-1", title: "Dashboard Overview", subtitle: "System metrics & summary", category: "Pages", url: "/dashboard", icon: Layers },
-    { id: "p-2", title: "Pricing & Quotation Calculator", subtitle: "Configure layer & material rates", category: "Pages", url: "/pricing", icon: Layers },
-    { id: "p-3", title: "Staff & Role Management", subtitle: "Admin permissions & staff list", category: "Pages", url: "/staff", icon: Layers },
+const STATIC_PAGES: SearchItem[] = [
+    { id: "p-1", title: "Orders Management", subtitle: "View and manage PCB orders pipeline", category: "Pages", url: "/orders", icon: ShoppingBag },
+    { id: "p-2", title: "New PCB Order", subtitle: "Create custom order with Gerber file analysis", category: "Pages", url: "/orders/create", icon: ShoppingBag },
+    { id: "p-3", title: "Clients Directory", subtitle: "Manage registered client accounts", category: "Pages", url: "/clients", icon: Users },
+    { id: "p-4", title: "Inventory & Stock", subtitle: "Component stock & PCB substrates", category: "Pages", url: "/inventory", icon: Package },
+    { id: "p-5", title: "Dashboard Overview", subtitle: "System metrics & summary statistics", category: "Pages", url: "/dashboard", icon: Layers },
+    { id: "p-6", title: "Pricing & Calculator", subtitle: "Layer, material & surface finish rates", category: "Pages", url: "/pricing", icon: Layers },
+    { id: "p-7", title: "Staff & Permissions", subtitle: "Manage admin users & role access", category: "Pages", url: "/staff", icon: Users },
 ];
 
 export default function GlobalSearch() {
@@ -35,6 +32,13 @@ export default function GlobalSearch() {
     
     const containerRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+
+    // Helper function to extract meta values from order objects
+    const getMetaVal = (order: any, key: string) => {
+        if (!order || !order.metas || !Array.isArray(order.metas)) return "";
+        const found = order.metas.find((m: any) => m && m.meta_key && m.meta_key.toLowerCase() === key.toLowerCase());
+        return found ? (found.meta_value || "") : "";
+    };
 
     // Debounce search calculation when query changes
     useEffect(() => {
@@ -50,16 +54,194 @@ export default function GlobalSearch() {
 
         setIsSearching(true);
 
-        const timer = setTimeout(() => {
-            const results = mockSearchData.filter((item) =>
-                item.title.toLowerCase().includes(trimmed.toLowerCase()) ||
-                item.subtitle.toLowerCase().includes(trimmed.toLowerCase()) ||
-                item.category.toLowerCase().includes(trimmed.toLowerCase())
-            );
+        const timer = setTimeout(async () => {
+            try {
+                const token = localStorage.getItem("admin_token");
+                const headers = { Authorization: `Bearer ${token}` };
+                const q = encodeURIComponent(trimmed);
+                const queryLower = trimmed.toLowerCase();
 
-            setFilteredResults(results);
-            setIsSearching(false);
-            setIsOpen(true);
+                // Fetch matching orders, clients, inventory, and gerber files in parallel
+                const [ordersRes, usersRes, invRes, gerberRes] = await Promise.all([
+                    fetch(`/api/admin/orders?search=${q}&q=${q}`, { headers }).catch(() => null),
+                    fetch(`/api/admin/users?search=${q}&q=${q}`, { headers }).catch(() => null),
+                    fetch(`/api/admin/inventory?search=${q}&q=${q}`, { headers }).catch(() => null),
+                    fetch(`/api/admin/gerber-files?search=${q}&q=${q}`, { headers }).catch(() => null),
+                ]);
+
+                const results: SearchItem[] = [];
+
+                // 1. Process Orders (with strict client-side field matching)
+                if (ordersRes && ordersRes.ok) {
+                    const ordersData = await ordersRes.json();
+                    const rawOrders = ordersData.data || ordersData.orders || [];
+                    rawOrders.forEach((o: any) => {
+                        const orderNum = (o.order_number || o.id || "").toString();
+                        const boardName = (o.board_name || "").toString();
+                        const email = (o.user_email || "").toString();
+                        const mobile = (o.user_mobile || "").toString();
+                        const customer = (o.customer_name || "").toString();
+
+                        const gerberName = getMetaVal(o, 'gerber_file_name') || getMetaVal(o, 'gerber_name') || getMetaVal(o, 'file_name') || getMetaVal(o, 'gerber_file');
+                        const gerberUrl = getMetaVal(o, 'gerber_file_url') || getMetaVal(o, 'gerber_url') || getMetaVal(o, 'gerber_path');
+                        const paymentId = getMetaVal(o, 'payment_id') || getMetaVal(o, 'razorpay_payment_id') || getMetaVal(o, 'transaction_id') || (o.payment_id || "");
+                        const paymentStatus = getMetaVal(o, 'payment_status') || (o.payment_status || "");
+                        const paymentMode = getMetaVal(o, 'payment_mode') || getMetaVal(o, 'payment_method') || (o.payment_mode || "");
+                        const status = (o.status || "").toString();
+
+                        // Strict matching check across exact fields
+                        const matchesField =
+                            orderNum.toLowerCase().includes(queryLower) ||
+                            boardName.toLowerCase().includes(queryLower) ||
+                            email.toLowerCase().includes(queryLower) ||
+                            mobile.toLowerCase().includes(queryLower) ||
+                            customer.toLowerCase().includes(queryLower) ||
+                            gerberName.toLowerCase().includes(queryLower) ||
+                            gerberUrl.toLowerCase().includes(queryLower) ||
+                            paymentId.toLowerCase().includes(queryLower) ||
+                            paymentStatus.toLowerCase().includes(queryLower) ||
+                            paymentMode.toLowerCase().includes(queryLower) ||
+                            status.toLowerCase().includes(queryLower);
+
+                        if (matchesField) {
+                            let subtitleParts = [`Status: ${status || 'Pending'}`];
+                            if (customer || email) subtitleParts.push(customer || email);
+                            if (mobile) subtitleParts.push(mobile);
+                            if (gerberName) subtitleParts.push(`Gerber: ${gerberName}`);
+                            if (paymentId) subtitleParts.push(`Pay ID: ${paymentId}`);
+
+                            results.push({
+                                id: `order-${o.id}`,
+                                title: `#${orderNum} · ${boardName || 'PCB Order'}`,
+                                subtitle: subtitleParts.join(" • "),
+                                category: "Orders",
+                                url: `/orders/${orderNum}`,
+                                icon: paymentId ? CreditCard : gerberName ? FileArchive : ShoppingBag
+                            });
+                        }
+                    });
+                }
+
+                // 2. Process Gerber Files (specifically standalone / unattached files not linked to orders)
+                if (gerberRes && gerberRes.ok) {
+                    const gerberData = await gerberRes.json();
+                    const rawGerbers = gerberData.data || gerberData.files || [];
+                    rawGerbers.forEach((g: any) => {
+                        const originalName = (g.original_name || g.file_name || "").toString();
+                        const fileName = (g.file_name || "").toString();
+                        const clientName = (g.client_name || g.client_email || "").toString();
+
+                        const matchesField =
+                            originalName.toLowerCase().includes(queryLower) ||
+                            fileName.toLowerCase().includes(queryLower);
+
+                        // If file matches search & is not attached to an order (or as standalone item)
+                        if (matchesField && !g.order_id && !g.order_number) {
+                            let subtitleParts = ["Standalone Gerber File"];
+                            if (clientName) subtitleParts.push(`Uploaded by: ${clientName}`);
+                            if (g.file_size) subtitleParts.push(g.file_size);
+
+                            results.push({
+                                id: `gerber-${g.id}`,
+                                title: originalName || fileName || "Gerber Archive",
+                                subtitle: subtitleParts.join(" • "),
+                                category: "Gerber Files",
+                                url: `/gerber-files?search=${encodeURIComponent(originalName || fileName)}`,
+                                icon: FileArchive
+                            });
+                        }
+                    });
+                }
+
+                // 3. Process Clients (with strict field matching)
+                if (usersRes && usersRes.ok) {
+                    const usersData = await usersRes.json();
+                    const rawUsers = usersData.data || usersData.users || [];
+                    rawUsers.forEach((c: any) => {
+                        const fullName = (c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || "").toString();
+                        const email = (c.email || "").toString();
+                        const phone = (c.phone_number || "").toString();
+                        const company = (c.company_name || "").toString();
+
+                        const matchesField =
+                            fullName.toLowerCase().includes(queryLower) ||
+                            email.toLowerCase().includes(queryLower) ||
+                            phone.toLowerCase().includes(queryLower) ||
+                            company.toLowerCase().includes(queryLower);
+
+                        if (matchesField) {
+                            let subtitleParts = [email || "No email"];
+                            if (phone) subtitleParts.push(phone);
+                            if (company) subtitleParts.push(company);
+
+                            results.push({
+                                id: `client-${c.id}`,
+                                title: fullName || "Client Account",
+                                subtitle: subtitleParts.join(" • "),
+                                category: "Clients",
+                                url: `/clients/${c.id}`,
+                                icon: Users
+                            });
+                        }
+                    });
+                }
+
+                // 4. Process Inventory (with strict field matching)
+                if (invRes && invRes.ok) {
+                    const invData = await invRes.json();
+                    const rawInv = invData.data || invData.items || [];
+                    rawInv.forEach((item: any) => {
+                        const itemName = (item.name || item.item_name || "").toString();
+                        const category = (item.category || "").toString();
+                        const sku = (item.sku || item.part_number || "").toString();
+                        const location = (item.storage_location || item.bin || "").toString();
+
+                        const matchesField =
+                            itemName.toLowerCase().includes(queryLower) ||
+                            category.toLowerCase().includes(queryLower) ||
+                            sku.toLowerCase().includes(queryLower) ||
+                            location.toLowerCase().includes(queryLower);
+
+                        if (matchesField) {
+                            const quantity = item.quantity ?? item.stock ?? "N/A";
+                            results.push({
+                                id: `inventory-${item.id}`,
+                                title: itemName || "Inventory Item",
+                                subtitle: `Stock: ${quantity} pcs • Category: ${category}`,
+                                category: "Inventory",
+                                url: `/inventory`,
+                                icon: Package
+                            });
+                        }
+                    });
+                }
+
+                // 5. Process Static Pages match
+                STATIC_PAGES.forEach((page) => {
+                    if (
+                        page.title.toLowerCase().includes(queryLower) ||
+                        page.subtitle.toLowerCase().includes(queryLower)
+                    ) {
+                        results.push(page);
+                    }
+                });
+
+                // Deduplicate results based on category + title + url
+                const seenKeys = new Set<string>();
+                const uniqueResults = results.filter((item) => {
+                    const key = `${item.category}:${item.title.toLowerCase()}:${item.url}`;
+                    if (seenKeys.has(key)) return false;
+                    seenKeys.add(key);
+                    return true;
+                });
+
+                setFilteredResults(uniqueResults);
+                setIsOpen(true);
+            } catch (err) {
+                console.error("Global search error:", err);
+            } finally {
+                setIsSearching(false);
+            }
         }, 300); // 300ms debounce delay after typing
 
         return () => clearTimeout(timer);
@@ -108,7 +290,7 @@ export default function GlobalSearch() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => { if (query.trim() && filteredResults.length > 0) setIsOpen(true); }}
-                    placeholder="Search orders, clients, parts..."
+                    placeholder="Search order #, client name/email/phone, gerber, inventory..."
                     className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm bg-transparent text-white placeholder:text-zinc-500 focus:outline-none"
                 />
 
@@ -116,7 +298,7 @@ export default function GlobalSearch() {
                     <Loader2 className="absolute right-3 w-4 h-4 text-emerald-400 animate-spin" />
                 ) : query ? (
                     <button
-                        onClick={() => setQuery("")}
+                        onClick={() => { setQuery(""); setIsOpen(false); }}
                         className="absolute right-3 p-0.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
                         title="Clear search"
                     >
@@ -131,7 +313,7 @@ export default function GlobalSearch() {
                     "absolute left-0 top-full mt-2 z-50 w-full rounded-2xl border border-white/10 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150",
                     "bg-zinc-900/95 backdrop-blur-xl"
                 )}>
-                    <div className="max-h-[360px] overflow-y-auto p-1.5 space-y-1">
+                    <div className="max-h-[380px] overflow-y-auto p-1.5 space-y-1">
                         {filteredResults.length === 0 ? (
                             <div className="py-8 text-center text-zinc-500 text-xs">
                                 No matching results found for &quot;<span className="text-zinc-300">{query}</span>&quot;
@@ -150,10 +332,10 @@ export default function GlobalSearch() {
                                                 <Icon className="w-3.5 h-3.5" />
                                             </div>
                                             <div className="truncate">
-                                                <p className="text-xs font-500 text-zinc-200 group-hover:text-white truncate">
+                                                <p className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate">
                                                     {item.title}
                                                 </p>
-                                                <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 truncate">
+                                                <p className="text-[11px] text-zinc-400 group-hover:text-zinc-300 truncate">
                                                     {item.subtitle}
                                                 </p>
                                             </div>

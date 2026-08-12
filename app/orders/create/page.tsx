@@ -22,12 +22,20 @@ import {
     Check,
     FileText,
     RotateCcw,
-    ShieldCheck
+    ShieldCheck,
+    Search,
+    ChevronsUpDown
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import JSZip from "jszip";
 import PCBPreviewCanvas from "@/components/PCBPreviewCanvas";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface ClientUser {
     id: number;
@@ -120,12 +128,29 @@ export default function CreateOrderPage() {
     const [paymentCompleted, setPaymentCompleted] = useState<boolean>(false);
     const [paymentMethod, setPaymentMethod] = useState<string>("Cash / Admin Manual");
 
+    // Client Search & Combobox State
+    const [clientComboboxOpen, setClientComboboxOpen] = useState(false);
+    const [clientSearch, setClientSearch] = useState("");
+    const [debouncedClientSearch, setDebouncedClientSearch] = useState("");
+
+    // Debounce search effect (400ms)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedClientSearch(clientSearch);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [clientSearch]);
+
     // Fetch clients for dropdown
-    const fetchClientsList = async (autoSelectId?: number) => {
+    const fetchClientsList = async (autoSelectId?: number, queryStr: string = debouncedClientSearch) => {
         setLoadingClients(true);
         try {
             const token = localStorage.getItem("admin_token");
-            const res = await fetch("/api/admin/users", {
+            let url = "/api/admin/users";
+            if (queryStr.trim()) {
+                url += `?search=${encodeURIComponent(queryStr.trim())}&q=${encodeURIComponent(queryStr.trim())}`;
+            }
+            const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -153,8 +178,10 @@ export default function CreateOrderPage() {
     };
 
     useEffect(() => {
-        fetchClientsList();
+        fetchClientsList(undefined, debouncedClientSearch);
+    }, [debouncedClientSearch]);
 
+    useEffect(() => {
         const d = new Date();
         d.setDate(d.getDate() + 7);
         setDeliveryDate(d.toISOString().split("T")[0]);
@@ -554,72 +581,102 @@ export default function CreateOrderPage() {
                             </button>
                         </div>
 
-                        {/* Client Dropdown */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">
-                                    Select Client <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={selectedClientId}
-                                    onChange={(e) => handleClientSelect(e.target.value)}
-                                    required
-                                    className="w-full px-3.5 py-2.5 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
-                                >
-                                    <option value="">-- Select Client Account --</option>
-                                    {clients.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim()} ({c.email}) {c.company_name ? `- ${c.company_name}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                        {/* Client Searchable Dropdown (shadcn/ui Combobox) */}
+                        <div className="w-full max-w-xl">
+                            <label className="text-xs font-bold text-muted-foreground block mb-1.5">
+                                Select Client Account <span className="text-red-500">*</span>
+                            </label>
+                            <input type="hidden" name="selectedClientId" value={selectedClientId} required />
+
+                            <Popover open={clientComboboxOpen} onOpenChange={setClientComboboxOpen}>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        type="button"
+                                        role="combobox"
+                                        aria-expanded={clientComboboxOpen}
+                                        className="w-full h-11 px-3.5 flex items-center justify-between rounded-xl bg-card border border-border/80 text-xs font-semibold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-xs transition-all"
+                                    >
+                                        <div className="flex items-center gap-2 truncate">
+                                            <User className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            <span className="truncate">
+                                                {selectedClientId ? (() => {
+                                                    const selected = clients.find(c => c.id.toString() === selectedClientId);
+                                                    if (!selected) return "Select Client Account...";
+                                                    const name = selected.name || `${selected.first_name || ''} ${selected.last_name || ''}`.trim();
+                                                    return `${name} (${selected.email})${selected.company_name ? ` - ${selected.company_name}` : ''}`;
+                                                })() : "Search or select client account..."}
+                                            </span>
+                                        </div>
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground" />
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-2xl border-border/80 shadow-xl overflow-hidden bg-card text-foreground" align="start">
+                                    <Command shouldFilter={false}>
+                                        <CommandInput
+                                            placeholder="Search client by name, email, phone..."
+                                            value={clientSearch}
+                                            onValueChange={(val) => setClientSearch(val)}
+                                            className="h-10 text-xs font-semibold"
+                                        />
+                                        <CommandList className="max-h-64 overflow-y-auto">
+                                            {loadingClients ? (
+                                                <div className="flex items-center justify-center p-4 text-xs font-bold text-muted-foreground gap-2">
+                                                    <RefreshCw className="w-4 h-4 text-emerald-500 animate-spin" />
+                                                    Searching clients...
+                                                </div>
+                                            ) : clients.length === 0 ? (
+                                                <CommandEmpty className="py-4 text-center text-xs font-medium text-muted-foreground">
+                                                    No clients found.
+                                                </CommandEmpty>
+                                            ) : (
+                                                <CommandGroup>
+                                                    {(() => {
+                                                        let displayList = clients;
+                                                        if (!debouncedClientSearch.trim()) {
+                                                            displayList = clients.slice(0, 10);
+                                                            if (selectedClientId && !displayList.some(c => c.id.toString() === selectedClientId)) {
+                                                                const selectedObj = clients.find(c => c.id.toString() === selectedClientId);
+                                                                if (selectedObj) displayList = [selectedObj, ...displayList];
+                                                            }
+                                                        }
+                                                        return displayList.map((c) => {
+                                                            const isSelected = selectedClientId === c.id.toString();
+                                                            const clientName = c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim();
+                                                            return (
+                                                                <CommandItem
+                                                                    key={c.id}
+                                                                    value={c.id.toString()}
+                                                                    onSelect={() => {
+                                                                        handleClientSelect(c.id.toString());
+                                                                        setClientComboboxOpen(false);
+                                                                    }}
+                                                                    className="flex items-center justify-between px-3 py-2.5 text-xs font-medium cursor-pointer hover:bg-accent/60 transition-colors"
+                                                                >
+                                                                    <div className="flex flex-col gap-0.5 truncate pr-2">
+                                                                        <span className="font-bold text-foreground truncate">
+                                                                            {clientName} {c.company_name ? `(${c.company_name})` : ''}
+                                                                        </span>
+                                                                        <span className="text-[11px] text-muted-foreground truncate">
+                                                                            {c.email} {c.phone_number ? `· ${c.phone_number}` : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                    {isSelected && <Check className="h-4 w-4 text-emerald-500 shrink-0 ml-2" />}
+                                                                </CommandItem>
+                                                            );
+                                                        });
+                                                    })()}
+                                                </CommandGroup>
+                                            )}
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <p className="text-[11px] text-muted-foreground font-medium mt-1.5">
+                                {debouncedClientSearch.trim()
+                                    ? `Showing search results for "${debouncedClientSearch}" (${clients.length} found)`
+                                    : `Showing first ${Math.min(10, clients.length)} of ${clients.length} clients. Type inside dropdown search to filter dynamically.`}
+                            </p>
                         </div>
-
-                        {/* Selected Client Contact Details (Auto-filled) */}
-                        {selectedClientId && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-border/40 bg-muted/10 p-4 rounded-xl">
-                                <div>
-                                    <label className="text-[11px] font-bold text-muted-foreground block mb-1">Customer Name</label>
-                                    <input
-                                        type="text"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-lg bg-card border border-border/80 text-xs font-semibold text-foreground focus:outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[11px] font-bold text-muted-foreground block mb-1">Email Address</label>
-                                    <input
-                                        type="email"
-                                        value={userEmail}
-                                        onChange={(e) => setUserEmail(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-lg bg-card border border-border/80 text-xs font-semibold text-foreground focus:outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[11px] font-bold text-muted-foreground block mb-1">Phone Number</label>
-                                    <input
-                                        type="text"
-                                        value={userMobile}
-                                        onChange={(e) => setUserMobile(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-lg bg-card border border-border/80 text-xs font-semibold text-foreground focus:outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[11px] font-bold text-muted-foreground block mb-1">Company Name</label>
-                                    <input
-                                        type="text"
-                                        value={companyName}
-                                        onChange={(e) => setCompanyName(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-lg bg-card border border-border/80 text-xs font-semibold text-foreground focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Section 2: PCB Specifications */}
@@ -648,37 +705,38 @@ export default function CreateOrderPage() {
                             {/* Layers */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Layer Count</label>
-                                <select
-                                    value={layerCount}
-                                    onChange={(e) => setLayerCount(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="1">1 Layer</option>
-                                    <option value="2">2 Layers</option>
-                                    <option value="4">4 Layers</option>
-                                    <option value="6">6 Layers</option>
-                                    <option value="8">8 Layers</option>
-                                </select>
+                                <Select value={layerCount} onValueChange={setLayerCount}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Layers" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">1 Layer</SelectItem>
+                                        <SelectItem value="2">2 Layers</SelectItem>
+                                        <SelectItem value="4">4 Layers</SelectItem>
+                                        <SelectItem value="6">6 Layers</SelectItem>
+                                        <SelectItem value="8">8 Layers</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Dimensions */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Dimensions (L x W mm)</label>
                                 <div className="flex items-center gap-2">
-                                    <input
+                                    <Input
                                         type="number"
                                         placeholder="Length"
                                         value={boardLength}
                                         onChange={(e) => setBoardLength(e.target.value)}
-                                        className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
+                                        className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
                                     <span className="text-xs text-muted-foreground font-bold">x</span>
-                                    <input
+                                    <Input
                                         type="number"
                                         placeholder="Width"
                                         value={boardWidth}
                                         onChange={(e) => setBoardWidth(e.target.value)}
-                                        className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
+                                        className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
                                 </div>
                             </div>
@@ -686,103 +744,109 @@ export default function CreateOrderPage() {
                             {/* Quantity */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Quantity (Pcs)</label>
-                                <input
+                                <Input
                                     type="number"
                                     min="1"
                                     value={quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
+                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                 />
                             </div>
 
                             {/* Material */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Material</label>
-                                <select
-                                    value={material}
-                                    onChange={(e) => setMaterial(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="FR4">FR4 Standard</option>
-                                    <option value="Aluminum">Aluminum Core</option>
-                                    <option value="High TG FR4">High TG FR-4</option>
-                                    <option value="Rogers">Rogers Ceramic</option>
-                                </select>
+                                <Select value={material} onValueChange={setMaterial}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Material" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="FR4">FR4 Standard</SelectItem>
+                                        <SelectItem value="Aluminum">Aluminum Core</SelectItem>
+                                        <SelectItem value="High TG FR4">High TG FR-4</SelectItem>
+                                        <SelectItem value="Rogers">Rogers Ceramic</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Thickness */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Board Thickness</label>
-                                <select
-                                    value={thickness}
-                                    onChange={(e) => setThickness(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="0.6">0.6 mm</option>
-                                    <option value="0.8">0.8 mm</option>
-                                    <option value="1.0">1.0 mm</option>
-                                    <option value="1.2">1.2 mm</option>
-                                    <option value="1.6">1.6 mm</option>
-                                    <option value="2.0">2.0 mm</option>
-                                </select>
+                                <Select value={thickness} onValueChange={setThickness}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Thickness" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="0.6">0.6 mm</SelectItem>
+                                        <SelectItem value="0.8">0.8 mm</SelectItem>
+                                        <SelectItem value="1.0">1.0 mm</SelectItem>
+                                        <SelectItem value="1.2">1.2 mm</SelectItem>
+                                        <SelectItem value="1.6">1.6 mm</SelectItem>
+                                        <SelectItem value="2.0">2.0 mm</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Surface Finish */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Surface Finish</label>
-                                <select
-                                    value={surfaceFinish}
-                                    onChange={(e) => setSurfaceFinish(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="HASL with lead">HASL with lead</option>
-                                    <option value="Lead-free HASL">Lead-free HASL</option>
-                                    <option value="ENIG / Immersion Gold">ENIG (Immersion Gold)</option>
-                                </select>
+                                <Select value={surfaceFinish} onValueChange={setSurfaceFinish}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Surface Finish" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="HASL with lead">HASL with lead</SelectItem>
+                                        <SelectItem value="Lead-free HASL">Lead-free HASL</SelectItem>
+                                        <SelectItem value="ENIG / Immersion Gold">ENIG (Immersion Gold)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Solder Mask Color */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Solder Mask Color</label>
-                                <select
-                                    value={solderMask}
-                                    onChange={(e) => setSolderMask(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="Green">Green</option>
-                                    <option value="Red">Red</option>
-                                    <option value="Blue">Blue</option>
-                                    <option value="Black">Black</option>
-                                    <option value="White">White</option>
-                                    <option value="Yellow">Yellow</option>
-                                </select>
+                                <Select value={solderMask} onValueChange={setSolderMask}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Solder Mask Color" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Green">Green</SelectItem>
+                                        <SelectItem value="Red">Red</SelectItem>
+                                        <SelectItem value="Blue">Blue</SelectItem>
+                                        <SelectItem value="Black">Black</SelectItem>
+                                        <SelectItem value="White">White</SelectItem>
+                                        <SelectItem value="Yellow">Yellow</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Silkscreen Color */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Silkscreen Color</label>
-                                <select
-                                    value={silkscreen}
-                                    onChange={(e) => setSilkscreen(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="White">White</option>
-                                    <option value="Black">Black</option>
-                                    <option value="None">None</option>
-                                </select>
+                                <Select value={silkscreen} onValueChange={setSilkscreen}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Silkscreen Color" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="White">White</SelectItem>
+                                        <SelectItem value="Black">Black</SelectItem>
+                                        <SelectItem value="None">None</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Copper Weight */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Outer Copper Weight</label>
-                                <select
-                                    value={copperWeight}
-                                    onChange={(e) => setCopperWeight(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                >
-                                    <option value="1 oz">1 oz</option>
-                                    <option value="2 oz">2 oz</option>
-                                </select>
+                                <Select value={copperWeight} onValueChange={setCopperWeight}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Copper Weight" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1 oz">1 oz</SelectItem>
+                                        <SelectItem value="2 oz">2 oz</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>
@@ -953,35 +1017,35 @@ export default function CreateOrderPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Unit Price (₹)</label>
-                                <input
+                                <Input
                                     type="number"
                                     min="0"
                                     step="0.01"
                                     value={unitPrice}
                                     onChange={(e) => setUnitPrice(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-bold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
+                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-bold text-foreground"
                                 />
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Total Order Value (₹)</label>
-                                <input
+                                <Input
                                     type="number"
                                     min="0"
                                     step="0.01"
                                     value={orderValue}
                                     onChange={(e) => setOrderValue(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-black text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 shadow-xs"
+                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-black text-emerald-600 dark:text-emerald-400"
                                 />
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Expected Delivery Date</label>
-                                <input
+                                <Input
                                     type="date"
                                     value={deliveryDate}
                                     onChange={(e) => setDeliveryDate(e.target.value)}
-                                    className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
+                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                 />
                             </div>
                         </div>
@@ -1002,17 +1066,18 @@ export default function CreateOrderPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/20 border border-border/80 p-4 rounded-xl">
                                     <div>
                                         <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Method</label>
-                                        <select
-                                            value={paymentMethod}
-                                            onChange={(e) => setPaymentMethod(e.target.value)}
-                                            className="w-full px-3.5 py-2 rounded-xl bg-card border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 shadow-xs"
-                                        >
-                                            <option value="Bank Transfer / NEFT">Bank Transfer / NEFT / RTGS</option>
-                                            <option value="Cash / Admin Manual">Cash / Admin Manual</option>
-                                            <option value="UPI / QR">UPI / QR Code</option>
-                                            <option value="Razorpay Online">Razorpay Online</option>
-                                            <option value="Credit / Debit Card">Credit / Debit Card</option>
-                                        </select>
+                                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                            <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground">
+                                                <SelectValue placeholder="Select Payment Method" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Bank Transfer / NEFT">Bank Transfer / NEFT / RTGS</SelectItem>
+                                                <SelectItem value="Cash / Admin Manual">Cash / Admin Manual</SelectItem>
+                                                <SelectItem value="UPI / QR">UPI / QR Code</SelectItem>
+                                                <SelectItem value="Razorpay Online">Razorpay Online</SelectItem>
+                                                <SelectItem value="Credit / Debit Card">Credit / Debit Card</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="flex flex-col justify-end text-xs text-emerald-600 dark:text-emerald-400 font-bold">
                                         ✓ A transaction record for ₹{orderValue} will be automatically generated and linked with this order.
@@ -1079,13 +1144,13 @@ export default function CreateOrderPage() {
                                         <label className="text-xs font-bold text-muted-foreground block mb-1">
                                             First Name <span className="text-red-500">*</span>
                                         </label>
-                                        <input
+                                        <Input
                                             type="text"
                                             placeholder="First Name"
                                             value={newClientFirstName}
                                             onChange={(e) => setNewClientFirstName(e.target.value)}
                                             required
-                                            className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500"
+                                            className="h-9 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                         />
                                     </div>
 
@@ -1093,12 +1158,12 @@ export default function CreateOrderPage() {
                                         <label className="text-xs font-bold text-muted-foreground block mb-1">
                                             Last Name
                                         </label>
-                                        <input
+                                        <Input
                                             type="text"
                                             placeholder="Last Name"
                                             value={newClientLastName}
                                             onChange={(e) => setNewClientLastName(e.target.value)}
-                                            className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500"
+                                            className="h-9 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                         />
                                     </div>
                                 </div>
@@ -1107,13 +1172,13 @@ export default function CreateOrderPage() {
                                     <label className="text-xs font-bold text-muted-foreground block mb-1">
                                         Email Address <span className="text-red-500">*</span>
                                     </label>
-                                    <input
+                                    <Input
                                         type="email"
                                         placeholder="client@example.com"
                                         value={newClientEmail}
                                         onChange={(e) => setNewClientEmail(e.target.value)}
                                         required
-                                        className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500"
+                                        className="h-9 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
                                 </div>
 
@@ -1122,12 +1187,12 @@ export default function CreateOrderPage() {
                                         <label className="text-xs font-bold text-muted-foreground block mb-1">
                                             Phone Number
                                         </label>
-                                        <input
+                                        <Input
                                             type="text"
                                             placeholder="+91 9876543210"
                                             value={newClientPhone}
                                             onChange={(e) => setNewClientPhone(e.target.value)}
-                                            className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500"
+                                            className="h-9 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                         />
                                     </div>
 
@@ -1135,12 +1200,12 @@ export default function CreateOrderPage() {
                                         <label className="text-xs font-bold text-muted-foreground block mb-1">
                                             Company Name
                                         </label>
-                                        <input
+                                        <Input
                                             type="text"
                                             placeholder="Company (Optional)"
                                             value={newClientCompany}
                                             onChange={(e) => setNewClientCompany(e.target.value)}
-                                            className="w-full px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500"
+                                            className="h-9 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                         />
                                     </div>
                                 </div>

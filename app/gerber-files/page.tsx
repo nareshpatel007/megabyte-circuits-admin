@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import {
@@ -62,6 +63,9 @@ interface Stats {
 const PAGE_SIZE = 10;
 
 export default function GerberFilesPage() {
+    const searchParams = useSearchParams();
+    const initialSearch = searchParams?.get("search") || "";
+
     const [loading, setLoading] = useState(true);
     const [files, setFiles] = useState<ApiGerberFile[]>([]);
     const [stats, setStats] = useState<Stats>({
@@ -71,7 +75,7 @@ export default function GerberFilesPage() {
         ordered_files: 0
     });
 
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState(initialSearch);
     const [typeFilter, setTypeFilter] = useState("all"); // all | client | guest
     const [attachmentFilter, setAttachmentFilter] = useState("all"); // all | attached | unattached
     const [page, setPage] = useState(1);
@@ -81,11 +85,24 @@ export default function GerberFilesPage() {
     const [deleteModalFile, setDeleteModalFile] = useState<ApiGerberFile | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    const fetchGerberFiles = async () => {
+    // Sync search state when URL searchParam changes
+    useEffect(() => {
+        const queryParam = searchParams?.get("search");
+        if (queryParam !== undefined && queryParam !== null) {
+            setSearch(queryParam);
+        }
+    }, [searchParams]);
+
+    const fetchGerberFiles = async (queryStr: string = search) => {
         setLoading(true);
         try {
             const token = localStorage.getItem("admin_token");
-            const res = await fetch("/api/admin/gerber-files", {
+            let url = "/api/admin/gerber-files";
+            if (queryStr.trim()) {
+                const q = encodeURIComponent(queryStr.trim());
+                url += `?search=${q}&q=${q}`;
+            }
+            const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -106,8 +123,8 @@ export default function GerberFilesPage() {
     };
 
     useEffect(() => {
-        fetchGerberFiles();
-    }, []);
+        fetchGerberFiles(search);
+    }, [search]);
 
     // Delete handler
     const handleDeleteFile = async () => {
@@ -181,7 +198,7 @@ export default function GerberFilesPage() {
 
     const refreshButton = (
         <button
-            onClick={fetchGerberFiles}
+            onClick={() => fetchGerberFiles()}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
         >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -243,43 +260,41 @@ export default function GerberFilesPage() {
                     </div>
 
                     {/* Filter & Search Bar */}
-                    <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="relative w-full md:w-96">
-                            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
+                    <div className="bg-card border border-border/80 rounded-xl p-3 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+                        <div className="relative flex-1 w-full">
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-2.5" />
                             <input
                                 type="text"
-                                placeholder="Search by file, board, client name, email..."
+                                placeholder="Search Gerber files by name, board, email..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-muted/30 dark:bg-muted/20 border border-border/80 rounded-xl text-xs text-foreground focus:outline-none focus:border-emerald-500 font-medium"
+                                className="w-full pl-9 pr-8 py-2 bg-muted/30 dark:bg-muted/20 border border-border/80 rounded-xl text-xs text-foreground focus:outline-none focus:border-emerald-500 font-medium"
                             />
                             {search && (
                                 <button
                                     onClick={() => setSearch("")}
                                     className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground text-xs font-semibold"
                                 >
-                                    Clear
+                                    <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <select
-                                    value={typeFilter}
-                                    onChange={(e) => setTypeFilter(e.target.value)}
-                                    className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
-                                >
-                                    <option value="all">All Uploaders</option>
-                                    <option value="client">Registered Clients Only</option>
-                                    <option value="guest">Guest / Unassigned</option>
-                                </select>
-                            </div>
+                        <div className="flex items-center gap-2.5 shrink-0 w-full md:w-auto justify-end">
+                            <select
+                                value={typeFilter}
+                                onChange={(e) => setTypeFilter(e.target.value)}
+                                className="px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
+                            >
+                                <option value="all">All Uploaders</option>
+                                <option value="client">Registered Clients</option>
+                                <option value="guest">Guest / Unassigned</option>
+                            </select>
 
                             <select
                                 value={attachmentFilter}
                                 onChange={(e) => setAttachmentFilter(e.target.value)}
-                                className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
+                                className="px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="all">All Statuses</option>
                                 <option value="attached">Attached to Order</option>
@@ -293,125 +308,125 @@ export default function GerberFilesPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-xs text-left">
                                 <thead>
-                                    <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
-                                        <th className="py-3.5 px-5">Gerber File & Board</th>
-                                        <th className="py-3.5 px-5">Client / Uploader</th>
-                                        <th className="py-3.5 px-5">Order Link</th>
-                                        <th className="py-3.5 px-5">Uploaded Date</th>
-                                        <th className="py-3.5 px-5 text-right">Actions</th>
+                                    <tr className="bg-muted/80 border-b border-border/80 text-foreground uppercase tracking-wider font-extrabold text-[11px]">
+                                        <th className="py-2.5 px-4">Gerber File & Board</th>
+                                        <th className="py-2.5 px-4">Client / Uploader</th>
+                                        <th className="py-2.5 px-4">Order Link</th>
+                                        <th className="py-2.5 px-4">Uploaded Date</th>
+                                        <th className="py-2.5 px-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border/40">
-                                    {paginatedFiles.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="text-center py-12 text-muted-foreground font-medium">
-                                                <FileCode className="w-10 h-10 mx-auto mb-2 opacity-40 text-muted-foreground" />
-                                                <p className="font-bold text-foreground text-sm">No Gerber files found</p>
-                                                <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {search || typeFilter !== "all" || attachmentFilter !== "all"
-                                                        ? "Try adjusting your search filters"
-                                                        : "No Gerber files have been uploaded yet."}
-                                                </p>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        paginatedFiles.map((file) => (
-                                            <tr key={file.id} className="hover:bg-muted/20 transition-colors">
-                                                {/* File Details */}
-                                                <td className="py-4 px-5">
-                                                    <div className="flex items-center gap-3">
-                                                        {file.preview_data ? (
-                                                            <div className="w-11 h-11 rounded-xl overflow-hidden border border-emerald-500/30 bg-slate-900 shrink-0 p-1 flex items-center justify-center shadow-xs">
-                                                                <GerberBoardPreview
-                                                                    previewData={file.preview_data}
-                                                                    boardName={file.board_name}
-                                                                    originalName={file.original_name}
-                                                                    className="w-full h-full"
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                                                <FileArchive className="w-5 h-5" />
-                                                            </div>
-                                                        )}
-                                                        <div className="min-w-0">
-                                                            <p className="font-bold text-foreground text-sm truncate max-w-[220px]" title={file.original_name}>
-                                                                {file.original_name}
-                                                            </p>
-                                                            <div className="flex items-center gap-2 mt-0.5">
+                                    <tbody className="divide-y divide-border/40">
+                                        {paginatedFiles.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="text-center py-12 text-muted-foreground font-medium">
+                                                    <FileCode className="w-10 h-10 mx-auto mb-2 opacity-40 text-muted-foreground" />
+                                                    <p className="font-bold text-foreground text-sm">No Gerber files found</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                        {search || typeFilter !== "all" || attachmentFilter !== "all"
+                                                            ? "Try adjusting your search filters"
+                                                            : "No Gerber files have been uploaded yet."}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            paginatedFiles.map((file) => (
+                                                <tr key={file.id} className="hover:bg-muted/20 transition-colors">
+                                                    {/* File Details */}
+                                                    <td className="py-2 px-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2.5">
+                                                            {file.preview_data ? (
+                                                                <div className="w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/30 bg-slate-900 shrink-0 p-1 flex items-center justify-center shadow-2xs">
+                                                                    <GerberBoardPreview
+                                                                        previewData={file.preview_data}
+                                                                        boardName={file.board_name}
+                                                                        originalName={file.original_name}
+                                                                        className="w-full h-full"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                                                    <FileArchive className="w-4 h-4" />
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <p className="font-bold text-foreground text-xs truncate max-w-[220px]" title={file.original_name}>
+                                                                    {file.original_name}
+                                                                </p>
                                                                 {file.file_size && (
-                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-muted text-muted-foreground border border-border/60">
+                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-muted/80 text-muted-foreground border border-border/60 shrink-0">
                                                                         {file.file_size}
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </td>
+                                                    </td>
 
-                                                {/* Client / Uploader */}
-                                                <td className="py-4 px-5 whitespace-nowrap">
-                                                    {file.user_id && file.client_email ? (
-                                                        <div className="space-y-0.5">
-                                                            <div className="flex items-center gap-2">
+                                                    {/* Client / Uploader */}
+                                                    <td className="py-2 px-4 whitespace-nowrap">
+                                                        {file.user_id && file.client_email ? (
+                                                            <div className="flex items-center gap-2 text-xs">
                                                                 <Link
                                                                     href={`/clients/${file.user_id}`}
-                                                                    className="font-bold text-foreground text-sm hover:text-emerald-500 transition-colors flex items-center gap-1 group"
+                                                                    className="font-bold text-foreground hover:text-emerald-500 transition-colors flex items-center gap-1 group shrink-0"
                                                                 >
                                                                     <span>{file.client_name || `${file.client_first_name || ''} ${file.client_last_name || ''}`.trim() || 'Client'}</span>
                                                                     <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                 </Link>
-                                                            </div>
-                                                            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 select-all">
-                                                                <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
-                                                                <span>{file.client_email}</span>
-                                                            </p>
-                                                            {file.client_company && (
-                                                                <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1">
-                                                                    <Building className="w-3 h-3 text-muted-foreground shrink-0" />
-                                                                    <span>{file.client_company}</span>
+                                                                <span className="text-muted-foreground/40 font-normal">|</span>
+                                                                <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 select-all shrink-0">
+                                                                    <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                                                                    <span>{file.client_email}</span>
                                                                 </p>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
-                                                            <UserX className="w-3.5 h-3.5" />
-                                                            Guest / Unattached
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                                {file.client_company && (
+                                                                    <>
+                                                                        <span className="text-muted-foreground/40 font-normal">|</span>
+                                                                        <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1 shrink-0">
+                                                                            <Building className="w-3 h-3 text-muted-foreground shrink-0" />
+                                                                            <span>{file.client_company}</span>
+                                                                        </p>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+                                                                <UserX className="w-3 h-3" />
+                                                                Guest / Unattached
+                                                            </span>
+                                                        )}
+                                                    </td>
 
-                                                {/* Order Link */}
-                                                <td className="py-4 px-5 whitespace-nowrap">
-                                                    {file.order_id && file.order_number ? (
-                                                        <Link
-                                                            href={`/orders/${file.order_id}`}
-                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors group"
-                                                        >
-                                                            <ShoppingBag className="w-3.5 h-3.5" />
-                                                            <span>{file.order_number}</span>
-                                                            <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100" />
-                                                        </Link>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-muted-foreground bg-muted/50 border border-border/60">
-                                                            Not Ordered
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                    {/* Order Link */}
+                                                    <td className="py-2 px-4 whitespace-nowrap">
+                                                        {file.order_id && file.order_number ? (
+                                                            <Link
+                                                                href={`/orders/${file.order_id}`}
+                                                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors group"
+                                                            >
+                                                                <ShoppingBag className="w-3 h-3" />
+                                                                <span>{file.order_number}</span>
+                                                                <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100" />
+                                                            </Link>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-muted-foreground bg-muted/50 border border-border/60">
+                                                                Not Ordered
+                                                            </span>
+                                                        )}
+                                                    </td>
 
-                                                {/* Date */}
-                                                <td className="py-4 px-5 text-xs text-muted-foreground font-bold font-mono whitespace-nowrap">
-                                                    {new Date(file.created_at).toLocaleDateString("en-IN", {
-                                                        day: "2-digit",
-                                                        month: "short",
-                                                        year: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit"
-                                                    })}
-                                                </td>
+                                                    {/* Date */}
+                                                    <td className="py-2 px-4 text-xs text-muted-foreground font-bold font-mono whitespace-nowrap">
+                                                        {new Date(file.created_at).toLocaleDateString("en-IN", {
+                                                            day: "2-digit",
+                                                            month: "short",
+                                                            year: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit"
+                                                        })}
+                                                    </td>
 
-                                                {/* Actions */}
-                                                <td className="py-4 px-5 text-right whitespace-nowrap">
+                                                    {/* Actions */}
+                                                    <td className="py-2 px-4 text-right whitespace-nowrap">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         {file.file_url && (
                                                             <a
