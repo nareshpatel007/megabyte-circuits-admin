@@ -58,6 +58,21 @@ interface ApiOrder {
 
 const PAGE_SIZE = 10;
 
+const getPcbColorCode = (col: string) => {
+    const lower = (col || "").toLowerCase().trim();
+    if (lower.includes("red")) return "#ef4444";
+    if (lower.includes("blue")) return "#3b82f6";
+    if (lower.includes("black")) return "#3f3f46";
+    if (lower.includes("yellow")) return "#d97706";
+    if (lower.includes("white")) return "#0284c7";
+    if (lower.includes("purple")) return "#9333ea";
+    return "#10b981";
+};
+
+const getPcbLightBg = (colorHex: string) => {
+    return `color-mix(in srgb, ${colorHex} 7%, #ffffff 93%)`;
+};
+
 export default function OrdersPage() {
     const { user } = useAuth();
     const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
@@ -442,16 +457,6 @@ export default function OrdersPage() {
                                                 const matchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === orderStatusStr);
                                                 const statusColor = matchedStatus?.color || "#10b981";
                                                 const pcbColorVal = getMetaValue(order, 'pcb_color', getMetaValue(order, 'solder_mask', 'Green'));
-                                                const getPcbColorCode = (col: string) => {
-                                                    const lower = col.toLowerCase().trim();
-                                                    if (lower.includes("red")) return "#ef4444";
-                                                    if (lower.includes("blue")) return "#3b82f6";
-                                                    if (lower.includes("black")) return "#3f3f46";
-                                                    if (lower.includes("yellow")) return "#d97706";
-                                                    if (lower.includes("white")) return "#0284c7";
-                                                    if (lower.includes("purple")) return "#9333ea";
-                                                    return "#10b981";
-                                                };
                                                 const orderNumColor = getPcbColorCode(pcbColorVal);
                                                 const layerCount = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
 
@@ -467,11 +472,11 @@ export default function OrdersPage() {
                                                         {/* 1. Status */}
                                                         <td className="py-4 px-5 whitespace-nowrap">
                                                             <span
-                                                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-2xs"
+                                                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-2xs text-black"
                                                                 style={{
-                                                                    backgroundColor: `${statusColor}18`,
-                                                                    color: statusColor,
-                                                                    borderColor: `${statusColor}40`
+                                                                    backgroundColor: statusColor,
+                                                                    color: "#000000",
+                                                                    borderColor: `${statusColor}80`
                                                                 }}
                                                             >
                                                                 {order.status}
@@ -625,95 +630,117 @@ export default function OrdersPage() {
             <Dialog.Root open={!!statusModalOrder} onOpenChange={(open) => !open && setStatusModalOrder(null)}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-card border border-border/80 rounded-2xl p-6 md:p-7 shadow-2xl space-y-5">
-                        {statusModalOrder && (
-                            <>
-                                <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
-                                            <RefreshCw className="w-5 h-5" />
+                    {statusModalOrder && (() => {
+                        const modalPcbColorVal = getMetaValue(statusModalOrder, 'pcb_color', getMetaValue(statusModalOrder, 'solder_mask', 'Green'));
+                        const modalPcbColor = getPcbColorCode(modalPcbColorVal);
+                        return (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                                <Dialog.Content
+                                    className="pointer-events-auto w-full max-w-lg border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden relative"
+                                    style={{
+                                        backgroundColor: getPcbLightBg(modalPcbColor),
+                                        borderColor: `${modalPcbColor}60`
+                                    }}
+                                >
+                                    <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: modalPcbColor }} />
+
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                                        <div className="flex items-center gap-2.5">
+                                            <div
+                                                className="p-2 rounded-xl border shadow-xs"
+                                                style={{ backgroundColor: `${modalPcbColor}20`, color: modalPcbColor, borderColor: `${modalPcbColor}40` }}
+                                            >
+                                                <RefreshCw className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <Dialog.Title className="text-base font-black text-slate-900">
+                                                    Update Order Status
+                                                </Dialog.Title>
+                                                <p className="text-xs text-slate-600 font-semibold mt-0.5">
+                                                    Order #{statusModalOrder.order_number}
+                                                </p>
+                                            </div>
                                         </div>
+                                        <Dialog.Close className="p-2 rounded-xl hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 transition-all cursor-pointer">
+                                            <X className="w-5 h-5" />
+                                        </Dialog.Close>
+                                    </div>
+
+                                    <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
                                         <div>
-                                            <Dialog.Title className="text-base font-extrabold text-foreground">
-                                                Update Order Status
-                                            </Dialog.Title>
-                                            <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                                Order #{statusModalOrder.order_number}
-                                            </p>
+                                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                                Select New Pipeline Status
+                                            </label>
+                                            <select
+                                                value={modalNewStatus}
+                                                onChange={(e) => setModalNewStatus(e.target.value)}
+                                                className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none transition-all cursor-pointer shadow-xs"
+                                                onFocus={(e) => { e.target.style.borderColor = modalPcbColor; e.target.style.boxShadow = `0 0 0 3px ${modalPcbColor}35`; }}
+                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
+                                            >
+                                                {statuses.map((s) => (
+                                                    <option key={s.id} value={s.name}>
+                                                        {s.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
-                                    </div>
-                                    <Dialog.Close className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer">
-                                        <X className="w-5 h-5" />
-                                    </Dialog.Close>
-                                </div>
 
-                                <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-muted-foreground block mb-1.5">
-                                            Select New Pipeline Status
-                                        </label>
-                                        <select
-                                            value={modalNewStatus}
-                                            onChange={(e) => setModalNewStatus(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 text-xs font-bold bg-background border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                                        >
-                                            {statuses.map((s) => (
-                                                <option key={s.id} value={s.name}>
-                                                    {s.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                                Completed Quantity (Pcs)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
+                                                value={modalCompletedQty}
+                                                onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Enter completed Pcs..."
+                                                className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none transition-all shadow-xs"
+                                                onFocus={(e) => { e.target.style.borderColor = modalPcbColor; e.target.style.boxShadow = `0 0 0 3px ${modalPcbColor}35`; }}
+                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
+                                            />
+                                        </div>
 
-                                    <div>
-                                        <label className="text-xs font-bold text-muted-foreground block mb-1.5">
-                                            Completed Quantity (Pcs)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
-                                            value={modalCompletedQty}
-                                            onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Enter completed Pcs..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                        />
-                                    </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                                Add Audit Note / Remark (Optional)
+                                            </label>
+                                            <textarea
+                                                rows={3}
+                                                value={modalRemark}
+                                                onChange={(e) => setModalRemark(e.target.value)}
+                                                placeholder="Enter reason or details for this status change..."
+                                                className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none font-medium transition-all shadow-xs"
+                                                onFocus={(e) => { e.target.style.borderColor = modalPcbColor; e.target.style.boxShadow = `0 0 0 3px ${modalPcbColor}35`; }}
+                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
+                                            />
+                                        </div>
 
-                                    <div>
-                                        <label className="text-xs font-bold text-muted-foreground block mb-1.5">
-                                            Add Audit Note / Remark (Optional)
-                                        </label>
-                                        <textarea
-                                            rows={3}
-                                            value={modalRemark}
-                                            onChange={(e) => setModalRemark(e.target.value)}
-                                            placeholder="Enter reason or details for this status change..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none font-medium"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
-                                        <button
-                                            type="button"
-                                            onClick={() => setStatusModalOrder(null)}
-                                            className="px-4 py-2.5 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl transition-all cursor-pointer"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={updatingStatus}
-                                            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
-                                        >
-                                            <RefreshCw className={`w-3.5 h-3.5 ${updatingStatus ? 'animate-spin' : ''}`} />
-                                            {updatingStatus ? "Saving..." : "Update Status"}
-                                        </button>
-                                    </div>
-                                </form>
-                            </>
-                        )}
-                    </Dialog.Content>
+                                        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200/80">
+                                            <button
+                                                type="button"
+                                                onClick={() => setStatusModalOrder(null)}
+                                                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-300/80"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={updatingStatus}
+                                                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 hover:opacity-90 active:scale-95"
+                                                style={{ backgroundColor: modalPcbColor }}
+                                            >
+                                                <RefreshCw className={`w-3.5 h-3.5 ${updatingStatus ? 'animate-spin' : ''}`} />
+                                                {updatingStatus ? "Saving..." : "Update Status"}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </Dialog.Content>
+                            </div>
+                        );
+                    })()}
                 </Dialog.Portal>
             </Dialog.Root>
 
@@ -721,139 +748,178 @@ export default function OrdersPage() {
             <Dialog.Root open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border/80 rounded-2xl p-6 md:p-8 shadow-2xl space-y-5">
-                        {selectedOrder && (
-                            <>
-                                <div className="flex items-start justify-between pb-4 border-b border-border/60">
-                                    <div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xl font-black text-foreground font-mono">#{selectedOrder.order_number}</span>
-                                            <span className="px-3 py-0.5 rounded-full text-xs font-extrabold border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                                                {selectedOrder.status}
-                                            </span>
+                    {selectedOrder && (() => {
+                        const previewPcbColorVal = getMetaValue(selectedOrder, 'pcb_color', getMetaValue(selectedOrder, 'solder_mask', 'Green'));
+                        const previewPcbColor = getPcbColorCode(previewPcbColorVal);
+                        return (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                                <Dialog.Content
+                                    className="pointer-events-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto border rounded-2xl p-6 md:p-8 shadow-2xl space-y-5 text-slate-900 overflow-hidden relative"
+                                    style={{
+                                        backgroundColor: getPcbLightBg(previewPcbColor),
+                                        borderColor: `${previewPcbColor}60`
+                                    }}
+                                >
+                                    <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: previewPcbColor }} />
+                                    <div className="flex items-start justify-between pb-4 border-b border-slate-200/80">
+                                        <div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xl font-black text-slate-900 font-mono">#{selectedOrder.order_number}</span>
+                                                {(() => {
+                                                    const selStatusStr = (selectedOrder?.status || 'Pending').toString().toLowerCase();
+                                                    const selMatchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === selStatusStr);
+                                                    const selStatusColor = selMatchedStatus?.color || "#10b981";
+                                                    return (
+                                                        <span
+                                                            className="px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border text-black shadow-2xs"
+                                                            style={{
+                                                                backgroundColor: selStatusColor,
+                                                                color: "#000000",
+                                                                borderColor: `${selStatusColor}80`
+                                                            }}
+                                                        >
+                                                            {selectedOrder.status}
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <p className="text-xs text-slate-600 mt-1 font-medium">
+                                                Board: <span className="font-bold text-slate-900">{selectedOrder.board_name}</span>
+                                            </p>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1 font-medium">
-                                            Board: <span className="font-bold text-foreground">{selectedOrder.board_name}</span>
-                                        </p>
+                                        <Dialog.Close className="p-2 rounded-xl hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 transition-all cursor-pointer">
+                                            <X className="w-5 h-5" />
+                                        </Dialog.Close>
                                     </div>
-                                    <Dialog.Close className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer">
-                                        <X className="w-5 h-5" />
-                                    </Dialog.Close>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-3 bg-muted/30 p-4 rounded-xl text-xs">
-                                    <div><span className="text-muted-foreground">Amount:</span> <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
-                                    <div><span className="text-muted-foreground">Email:</span> <span className="font-bold text-foreground">{selectedOrder.user_email}</span></div>
-                                    <div><span className="text-muted-foreground">Mobile:</span> <span className="font-bold text-foreground">{selectedOrder.user_mobile}</span></div>
-                                    <div><span className="text-muted-foreground">Delivery:</span> <span className="font-bold text-foreground">{formatDate(selectedOrder.delivery_date)}</span></div>
-                                </div>
+                                    <div className="grid grid-cols-2 gap-3 bg-white/90 p-4 rounded-xl text-xs border border-slate-200 shadow-xs">
+                                        <div><span className="text-slate-500 font-semibold">Amount:</span> <span className="font-black text-emerald-700">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
+                                        <div><span className="text-slate-500 font-semibold">Email:</span> <span className="font-bold text-slate-900">{selectedOrder.user_email}</span></div>
+                                        <div><span className="text-slate-500 font-semibold">Mobile:</span> <span className="font-bold text-slate-900">{selectedOrder.user_mobile}</span></div>
+                                        <div><span className="text-slate-500 font-semibold">Delivery:</span> <span className="font-bold text-slate-900">{formatDate(selectedOrder.delivery_date)}</span></div>
+                                    </div>
 
-                                <div className="pt-2 flex justify-end gap-3">
-                                    <Link
-                                        href={`/orders/${selectedOrder.id}`}
-                                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-md hover:bg-emerald-600 transition-all text-xs"
-                                    >
-                                        <ExternalLink className="w-4 h-4" /> Go to Full Order Detail Page
-                                    </Link>
-                                </div>
-                            </>
-                        )}
-                    </Dialog.Content>
+                                    <div className="pt-2 flex justify-end gap-3">
+                                        <Link
+                                            href={`/orders/${selectedOrder.id}`}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl shadow-md hover:opacity-90 transition-all text-xs active:scale-95"
+                                            style={{ backgroundColor: previewPcbColor }}
+                                        >
+                                            <ExternalLink className="w-4 h-4" /> Go to Full Order Detail Page
+                                        </Link>
+                                    </div>
+                                </Dialog.Content>
+                            </div>
+                        );
+                    })()}
                 </Dialog.Portal>
             </Dialog.Root>
             {/* View Order Activity Logs Modal */}
             <Dialog.Root open={!!logsModalOrder} onOpenChange={(open) => !open && setLogsModalOrder(null)}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-3xl max-h-[85vh] overflow-y-auto bg-card border border-border/80 rounded-2xl p-6 md:p-7 shadow-2xl space-y-5">
-                        {logsModalOrder && (
-                            <>
-                                <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
-                                            <History className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <Dialog.Title className="text-base font-extrabold text-foreground flex items-center gap-2">
-                                                Order Activity Logs
-                                                <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground border">
-                                                    #{logsModalOrder.order_number}
-                                                </span>
-                                            </Dialog.Title>
-                                            <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                                Audit trail & pipeline status history for {logsModalOrder.board_name}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Dialog.Close className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer">
-                                        <X className="w-5 h-5" />
-                                    </Dialog.Close>
-                                </div>
-
-                                <div className="border border-border/60 rounded-xl overflow-hidden">
-                                    <div className="overflow-x-auto">
-                                        {loadingLogs ? (
-                                            <div className="p-6 space-y-4">
-                                                <div className="h-6 bg-muted/60 rounded-md animate-pulse w-full" />
-                                                <div className="h-6 bg-muted/40 rounded-md animate-pulse w-full" />
-                                                <div className="h-6 bg-muted/40 rounded-md animate-pulse w-full" />
-                                                <div className="h-6 bg-muted/30 rounded-md animate-pulse w-full" />
+                    {logsModalOrder && (() => {
+                        const logsPcbColorVal = getMetaValue(logsModalOrder, 'pcb_color', getMetaValue(logsModalOrder, 'solder_mask', 'Green'));
+                        const logsPcbColor = getPcbColorCode(logsPcbColorVal);
+                        return (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                                <Dialog.Content
+                                    className="pointer-events-auto w-full max-w-3xl max-h-[85vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden relative"
+                                    style={{
+                                        backgroundColor: getPcbLightBg(logsPcbColor),
+                                        borderColor: `${logsPcbColor}60`
+                                    }}
+                                >
+                                    <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: logsPcbColor }} />
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                                        <div className="flex items-center gap-2.5">
+                                            <div
+                                                className="p-2 rounded-xl border shadow-xs"
+                                                style={{ backgroundColor: `${logsPcbColor}20`, color: logsPcbColor, borderColor: `${logsPcbColor}40` }}
+                                            >
+                                                <History className="w-5 h-5" />
                                             </div>
-                                        ) : (
-                                            <table className="w-full text-left text-xs">
-                                                <thead>
-                                                    <tr className="bg-muted/60 border-b border-border/60 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
-                                                        <th className="py-3 px-4">Action</th>
-                                                        <th className="py-3 px-4">User / Admin</th>
-                                                        <th className="py-3 px-4">Timestamp</th>
-                                                        <th className="py-3 px-4">Details / Description</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-border/40 font-sans">
-                                                    {logsData.length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan={4} className="py-8 text-center text-muted-foreground italic">
-                                                                No activity logs recorded for this order yet.
-                                                            </td>
+                                            <div>
+                                                <Dialog.Title className="text-base font-black text-slate-900 flex items-center gap-2">
+                                                    Order Activity Logs
+                                                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-300">
+                                                        #{logsModalOrder.order_number}
+                                                    </span>
+                                                </Dialog.Title>
+                                                <p className="text-xs text-slate-600 font-semibold mt-0.5">
+                                                    Audit trail & pipeline status history for {logsModalOrder.board_name}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Dialog.Close className="p-2 rounded-xl hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 transition-all cursor-pointer">
+                                            <X className="w-5 h-5" />
+                                        </Dialog.Close>
+                                    </div>
+
+                                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
+                                        <div className="overflow-x-auto">
+                                            {loadingLogs ? (
+                                                <div className="p-6 space-y-4">
+                                                    <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
+                                                    <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
+                                                    <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
+                                                </div>
+                                            ) : (
+                                                <table className="w-full text-left text-xs">
+                                                    <thead>
+                                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-extrabold uppercase tracking-wider text-[10px]">
+                                                            <th className="py-3 px-4">Action</th>
+                                                            <th className="py-3 px-4">User / Admin</th>
+                                                            <th className="py-3 px-4">Timestamp</th>
+                                                            <th className="py-3 px-4">Details / Description</th>
                                                         </tr>
-                                                    ) : (
-                                                        logsData.map((log: any) => (
-                                                            <tr key={log.id} className="hover:bg-muted/20">
-                                                                <td className="py-3 px-4 whitespace-nowrap">
-                                                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                                                                        {log.action || "Order Action"}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="py-3 px-4 font-bold text-foreground whitespace-nowrap">
-                                                                    {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
-                                                                </td>
-                                                                <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
-                                                                    {formatDate(log.created_at)}
-                                                                </td>
-                                                                <td className="py-3 px-4 font-medium text-foreground">
-                                                                    {log.description || "-"}
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 font-sans">
+                                                        {logsData.length === 0 ? (
+                                                            <tr>
+                                                                <td colSpan={4} className="py-8 text-center text-slate-500 italic">
+                                                                    No activity logs recorded for this order yet.
                                                                 </td>
                                                             </tr>
-                                                        ))
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        )}
+                                                        ) : (
+                                                            logsData.map((log: any) => (
+                                                                <tr key={log.id} className="hover:bg-slate-50">
+                                                                    <td className="py-3 px-4 whitespace-nowrap">
+                                                                        <span className="font-extrabold text-emerald-700">
+                                                                            {log.action || "Order Action"}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
+                                                                        {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
+                                                                    </td>
+                                                                    <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
+                                                                        {formatDate(log.created_at)}
+                                                                    </td>
+                                                                    <td className="py-3 px-4 font-medium text-foreground">
+                                                                        {log.description || "-"}
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="flex justify-end pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setLogsModalOrder(null)}
-                                        className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl transition-all cursor-pointer"
-                                    >
-                                        Close
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </Dialog.Content>
+                                    <div className="flex justify-end pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setLogsModalOrder(null)}
+                                            className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl transition-all cursor-pointer"
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </Dialog.Content>
+                            </div>
+                        );
+                    })()}
                 </Dialog.Portal>
             </Dialog.Root>
         </DashboardLayout>
