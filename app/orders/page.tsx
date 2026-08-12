@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
+import * as Popover from "@radix-ui/react-popover";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrdersSkeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO } from "date-fns";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
@@ -131,6 +129,82 @@ export default function OrdersPage() {
 
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isSearching, setIsSearching] = useState(false);
+    const [activePreset, setActivePreset] = useState<string | null>(null);
+
+    const PRESET_OPTIONS = [
+        { label: "Today", value: "today" },
+        { label: "Yesterday", value: "yesterday" },
+        { label: "Last 7 Days", value: "7days" },
+        { label: "Last 30 Days", value: "30days" },
+        { label: "This Month", value: "this_month" },
+        { label: "Last Month", value: "last_month" },
+        { label: "This Year", value: "this_year" },
+        { label: "Last Year", value: "last_year" },
+    ];
+
+    const applyPreset = (presetKey: string) => {
+        setActivePreset(presetKey);
+        const now = new Date();
+        const formatDateStr = (d: Date) => {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
+        let start = new Date();
+        let end = new Date();
+
+        if (presetKey === 'today') {
+            start = new Date();
+            end = new Date();
+        } else if (presetKey === 'yesterday') {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            start = y;
+            end = y;
+        } else if (presetKey === '7days') {
+            const d = new Date();
+            d.setDate(d.getDate() - 6);
+            start = d;
+            end = new Date();
+        } else if (presetKey === '30days') {
+            const d = new Date();
+            d.setDate(d.getDate() - 29);
+            start = d;
+            end = new Date();
+        } else if (presetKey === 'this_month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date();
+        } else if (presetKey === 'last_month') {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            end = new Date(now.getFullYear(), now.getMonth(), 0);
+        } else if (presetKey === 'this_year') {
+            start = new Date(now.getFullYear(), 0, 1);
+            end = new Date();
+        } else if (presetKey === 'last_year') {
+            start = new Date(now.getFullYear() - 1, 0, 1);
+            end = new Date(now.getFullYear() - 1, 11, 31);
+        }
+
+        setStartDate(formatDateStr(start));
+        setEndDate(formatDateStr(end));
+        setPage(1);
+    };
+
+    const formatDateShort = (dStr: string) => {
+        if (!dStr) return "";
+        try {
+            const parts = dStr.split('-');
+            if (parts.length === 3) {
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            }
+            return dStr;
+        } catch {
+            return dStr;
+        }
+    };
 
     // Debounce search effect (400ms delay)
     useEffect(() => {
@@ -194,6 +268,7 @@ export default function OrdersPage() {
         setStatusFilter("All");
         setStartDate("");
         setEndDate("");
+        setActivePreset(null);
         setPage(1);
     };
 
@@ -241,8 +316,9 @@ export default function OrdersPage() {
         return matchSearch && matchStatus;
     });
 
-    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const [pageSize, setPageSize] = useState<number>(10);
+    const totalPages = Math.ceil(filtered.length / pageSize);
+    const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
     // Helper to format date as "05 Aug 2026, 11:41 am"
     const formatDate = (dateString?: string | null) => {
@@ -404,16 +480,20 @@ export default function OrdersPage() {
                                 className="w-full h-10 sm:h-11 pl-9 pr-3 text-xs sm:text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all shadow-xs"
                             />
                         </div>
-
-                        {/* Date Range Picker using Popover & Calendar */}
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <button className="h-10 sm:h-11 flex items-center justify-between gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 bg-card border border-border/80 rounded-xl text-xs sm:text-sm font-semibold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
-                                    <div className="flex items-center gap-1.5 sm:gap-2">
-                                        <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
-                                        <span className="truncate max-w-[120px] sm:max-w-[210px]">
-                                            {startDate ? format(parseISO(startDate), "dd MMM") : "Date"}
-                                            {endDate ? ` - ${format(parseISO(endDate), "dd MMM")}` : ""}
+                        {/* Popover Date Range & Presets Selector */}
+                        <Popover.Root>
+                            <Popover.Trigger asChild>
+                                <button className="h-10 sm:h-11 flex items-center justify-between gap-2 px-3.5 bg-card border border-border/80 rounded-xl text-xs sm:text-sm font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                        <CalendarIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        <span>
+                                            {activePreset
+                                                ? PRESET_OPTIONS.find(p => p.value === activePreset)?.label
+                                                : startDate && endDate
+                                                ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
+                                                : startDate
+                                                ? `From ${formatDateShort(startDate)}`
+                                                : "Date Filter"}
                                         </span>
                                     </div>
                                     {(startDate || endDate) && (
@@ -422,48 +502,96 @@ export default function OrdersPage() {
                                                 e.stopPropagation();
                                                 setStartDate("");
                                                 setEndDate("");
+                                                setActivePreset(null);
+                                                setPage(1);
                                             }}
-                                            className="p-0.5 rounded hover:bg-zinc-800 text-muted-foreground hover:text-red-400"
-                                            title="Clear dates"
+                                            className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                                            title="Clear date filter"
                                         >
-                                            <X className="w-3 h-3" />
+                                            <X className="w-3.5 h-3.5" />
                                         </span>
                                     )}
                                 </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-4 bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-xl shadow-xl" align="end">
-                                <div className="flex flex-col sm:flex-row gap-4">
+                            </Popover.Trigger>
+                            <Popover.Portal>
+                                <Popover.Content
+                                    className="z-50 w-80 sm:w-[380px] p-4 bg-card border border-border/80 rounded-2xl shadow-xl space-y-4 text-foreground animate-in fade-in-50 zoom-in-95 duration-150"
+                                    align="end"
+                                    sideOffset={8}
+                                >
+                                    <div className="flex items-center justify-between pb-2.5 border-b border-border/60">
+                                        <span className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                            <CalendarIcon className="w-4 h-4 text-emerald-500" /> Select Date Range
+                                        </span>
+                                        {(startDate || endDate) && (
+                                            <button
+                                                onClick={() => { setStartDate(""); setEndDate(""); setActivePreset(null); setPage(1); }}
+                                                className="text-[11px] font-extrabold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                                            >
+                                                Reset
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Quick Presets */}
                                     <div>
-                                        <div className="text-xs font-semibold text-zinc-400 mb-2 px-1">Start Date</div>
-                                        <Calendar
-                                            mode="single"
-                                            selected={startDate ? parseISO(startDate) : undefined}
-                                            onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
-                                            className="rounded-lg border border-zinc-800/80 bg-zinc-950/50"
-                                        />
+                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-2">Quick Presets</span>
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            {PRESET_OPTIONS.map((preset) => {
+                                                const isActive = activePreset === preset.value;
+                                                return (
+                                                    <button
+                                                        key={preset.value}
+                                                        type="button"
+                                                        onClick={() => applyPreset(preset.value)}
+                                                        className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all text-left cursor-pointer border ${
+                                                            isActive
+                                                                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                                                                : "bg-muted/40 hover:bg-muted text-foreground border-border/60"
+                                                        }`}
+                                                    >
+                                                        {preset.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                    <div className="border-t sm:border-t-0 sm:border-l border-zinc-800 pt-4 sm:pt-0 sm:pl-4">
-                                        <div className="text-xs font-semibold text-zinc-400 mb-2 px-1">End Date</div>
-                                        <Calendar
-                                            mode="single"
-                                            selected={endDate ? parseISO(endDate) : undefined}
-                                            onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
-                                            className="rounded-lg border border-zinc-800/80 bg-zinc-950/50"
-                                        />
+
+                                    {/* Custom Dates Input */}
+                                    <div className="pt-2 border-t border-border/60 space-y-2">
+                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block">Custom Dates</span>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={startDate}
+                                                    onChange={(e) => {
+                                                        setStartDate(e.target.value);
+                                                        setActivePreset(null);
+                                                        setPage(1);
+                                                    }}
+                                                    className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">End Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={endDate}
+                                                    onChange={(e) => {
+                                                        setEndDate(e.target.value);
+                                                        setActivePreset(null);
+                                                        setPage(1);
+                                                    }}
+                                                    className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                {(startDate || endDate) && (
-                                    <div className="flex justify-end mt-3 pt-2 border-t border-zinc-800">
-                                        <button
-                                            onClick={() => { setStartDate(""); setEndDate(""); }}
-                                            className="text-xs font-medium text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-950/30 transition-colors"
-                                        >
-                                            Reset Date Range
-                                        </button>
-                                    </div>
-                                )}
-                            </PopoverContent>
-                        </Popover>
+                                </Popover.Content>
+                            </Popover.Portal>
+                        </Popover.Root>
 
                         <select
                             value={statusFilter}
@@ -502,13 +630,13 @@ export default function OrdersPage() {
                                 <table className="w-full text-left text-xs border-collapse">
                                     <thead>
                                         <tr className="bg-muted/80 border-b border-border/80 text-foreground uppercase tracking-wider font-extrabold text-[11px]">
-                                            <th className="py-3.5 px-5">Status</th>
-                                            <th className="py-3.5 px-5">Order Number</th>
-                                            <th className="py-3.5 px-5">Layers</th>
-                                            <th className="py-3.5 px-5">Qty (Total / Completed / Pending)</th>
-                                            <th className="py-3.5 px-5">Order Date</th>
-                                            <th className="py-3.5 px-5">Delivery Date</th>
-                                            <th className="py-3.5 px-5 text-right">Actions</th>
+                                            <th className="py-2 px-3.5">Status</th>
+                                            <th className="py-2 px-3.5">Order Number</th>
+                                            <th className="py-2 px-3.5">Layers</th>
+                                            <th className="py-2 px-3.5">Qty (Total / Completed / Pending)</th>
+                                            <th className="py-2 px-3.5">Order Date</th>
+                                            <th className="py-2 px-3.5">Delivery Date</th>
+                                            <th className="py-2 px-3.5 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
@@ -537,9 +665,9 @@ export default function OrdersPage() {
                                                 return (
                                                     <tr key={order.id} className="hover:bg-muted/20 transition-colors">
                                                         {/* 1. Status */}
-                                                        <td className="py-4 px-5 whitespace-nowrap">
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <span
-                                                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-2xs text-black"
+                                                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs text-black"
                                                                 style={{
                                                                     backgroundColor: statusColor,
                                                                     color: "#000000",
@@ -550,13 +678,13 @@ export default function OrdersPage() {
                                                             </span>
                                                         </td>
                                                         {/* 2. Order Number */}
-                                                        <td className="py-4 px-5 whitespace-nowrap">
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             {hasChangeStatusPermission ? (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => openStatusModal(order)}
                                                                     title="Click to Change Status"
-                                                                    className="font-mono text-sm font-black px-2.5 py-1 rounded-md border transition-all cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 shadow-2xs"
+                                                                    className="font-mono text-xs font-black px-2 py-0.5 rounded-md border transition-all cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 shadow-2xs"
                                                                     style={{
                                                                         color: orderNumColor,
                                                                         backgroundColor: `${orderNumColor}15`,
@@ -567,7 +695,7 @@ export default function OrdersPage() {
                                                                 </button>
                                                             ) : (
                                                                 <span
-                                                                    className="font-mono text-sm font-black px-2.5 py-1 rounded-md border shadow-2xs"
+                                                                    className="font-mono text-xs font-black px-2 py-0.5 rounded-md border shadow-2xs"
                                                                     style={{
                                                                         color: orderNumColor,
                                                                         backgroundColor: `${orderNumColor}15`,
@@ -580,14 +708,14 @@ export default function OrdersPage() {
                                                         </td>
 
                                                         {/* 3. Layers */}
-                                                        <td className="py-4 px-5 whitespace-nowrap">
-                                                            <span className="px-2.5 py-1 rounded-lg text-foreground font-extrabold text-xs">
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                                            <span className="px-2 py-0.5 rounded-lg text-foreground font-extrabold text-xs">
                                                                 {layerCount}
                                                             </span>
                                                         </td>
 
                                                         {/* 4. Qty (Total / Completed / Pending) */}
-                                                        <td className="py-4 px-5 whitespace-nowrap">
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <div className="flex items-center gap-1.5 font-bold text-xs">
                                                                 <span className="text-foreground font-extrabold" title="Total Order Quantity">
                                                                     {totalQty} Pcs
@@ -604,27 +732,27 @@ export default function OrdersPage() {
                                                         </td>
 
                                                         {/* 5. Order Date */}
-                                                        <td className="py-4 px-5 font-bold text-foreground font-mono whitespace-nowrap">
+                                                        <td className="py-1.5 px-3.5 font-bold text-foreground font-mono text-xs whitespace-nowrap">
                                                             {createdDateFormatted}
                                                         </td>
 
                                                         {/* 6. Delivery Date */}
-                                                        <td className="py-4 px-5 font-bold text-foreground font-mono whitespace-nowrap">
+                                                        <td className="py-1.5 px-3.5 font-bold text-foreground font-mono text-xs whitespace-nowrap">
                                                             {formatDate(order.delivery_date)}
                                                         </td>
 
                                                         {/* 7. Actions */}
-                                                        <td className="py-4 px-5 text-right whitespace-nowrap">
-                                                            <div className="inline-flex items-center justify-end gap-1.5">
+                                                        <td className="py-1.5 px-3.5 text-right whitespace-nowrap">
+                                                            <div className="inline-flex items-center justify-end gap-1">
                                                                 {/* Change Status Icon Button */}
                                                                 {hasChangeStatusPermission && (
                                                                     <button
                                                                         onClick={() => openStatusModal(order)}
                                                                         title="Change Status"
                                                                         aria-label="Change Status"
-                                                                        className="p-2 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl transition-all cursor-pointer shadow-2xs group relative"
+                                                                        className="p-1.5 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg transition-all cursor-pointer shadow-2xs group relative"
                                                                     >
-                                                                        <RefreshCw className="w-4 h-4" />
+                                                                        <RefreshCw className="w-3.5 h-3.5" />
                                                                     </button>
                                                                 )}
 
@@ -634,9 +762,9 @@ export default function OrdersPage() {
                                                                         onClick={() => openLogsModal(order)}
                                                                         title="View Order Logs"
                                                                         aria-label="View Order Logs"
-                                                                        className="p-2 bg-blue-500/10 hover:bg-blue-500 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl transition-all cursor-pointer shadow-2xs"
+                                                                        className="p-1.5 bg-blue-500/10 hover:bg-blue-500 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
                                                                     >
-                                                                        <History className="w-4 h-4" />
+                                                                        <History className="w-3.5 h-3.5" />
                                                                     </button>
                                                                 )}
 
@@ -645,9 +773,9 @@ export default function OrdersPage() {
                                                                     href={`/orders/${order.order_number}`}
                                                                     title="View Order Details"
                                                                     aria-label="View Order Details"
-                                                                    className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                                    className="p-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500 hover:text-white transition-all cursor-pointer shadow-2xs"
                                                                 >
-                                                                    <ExternalLink className="w-4 h-4" />
+                                                                    <ExternalLink className="w-3.5 h-3.5" />
                                                                 </Link>
                                                             </div>
                                                         </td>
@@ -661,12 +789,30 @@ export default function OrdersPage() {
                         )}
 
                         {/* Pagination Footer */}
-                        <div className="p-4 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-medium bg-card">
-                            <span>
-                                Showing <strong className="text-foreground">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}</strong> to{" "}
-                                <strong className="text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</strong> of{" "}
-                                <strong className="text-foreground">{filtered.length}</strong> orders
-                            </span>
+                        <div className="p-3 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-medium bg-card">
+                            <div className="flex items-center gap-3">
+                                <span>
+                                    Showing <strong className="text-foreground">{filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}</strong> to{" "}
+                                    <strong className="text-foreground">{Math.min(page * pageSize, filtered.length)}</strong> of{" "}
+                                    <strong className="text-foreground">{filtered.length}</strong> orders
+                                </span>
+                                <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-border/60">
+                                    <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">Rows per page:</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={(e) => {
+                                            setPageSize(Number(e.target.value));
+                                            setPage(1);
+                                        }}
+                                        className="px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={20}>20</option>
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <button
                                     disabled={page === 1}
