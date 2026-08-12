@@ -129,8 +129,20 @@ export default function OrdersPage() {
         }
     };
 
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [isSearching, setIsSearching] = useState(false);
+
+    // Debounce search effect (400ms delay)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     // Fetch live orders and pipeline statuses
-    const fetchData = async () => {
+    const fetchData = async (searchQuery: string = debouncedSearch) => {
+        setIsSearching(true);
         try {
             const token = localStorage.getItem("admin_token");
             const headers = { Authorization: `Bearer ${token}` };
@@ -138,32 +150,44 @@ export default function OrdersPage() {
             let url = "/api/admin/orders?sort_by=delivery_date&sort_order=desc";
             if (startDate) url += `&start_date=${startDate}`;
             if (endDate) url += `&end_date=${endDate}`;
+            if (searchQuery.trim()) {
+                const q = encodeURIComponent(searchQuery.trim());
+                url += `&search=${q}&q=${q}`;
+            }
+            if (statusFilter && statusFilter !== "All") {
+                url += `&status=${encodeURIComponent(statusFilter)}`;
+            }
 
             const [ordersRes, statusesRes] = await Promise.all([
                 fetch(url, { headers }),
-                fetch("/api/admin/statuses", { headers })
+                statuses.length === 0 ? fetch("/api/admin/statuses", { headers }) : Promise.resolve(null)
             ]);
 
             const ordersData = await ordersRes.json();
-            const statusesData = await statusesRes.json();
+            if (statusesRes) {
+                const statusesData = await statusesRes.json();
+                if (statusesData.status || statusesData.success) {
+                    setStatuses(statusesData.data || []);
+                }
+            }
 
             if (ordersData.status || ordersData.success) {
                 setOrders(ordersData.data || []);
-            }
-            if (statusesData.status || statusesData.success) {
-                setStatuses(statusesData.data || []);
+            } else {
+                setOrders([]);
             }
         } catch (err) {
             console.error("Failed to load orders data:", err);
             toast.error("Failed to load orders");
         } finally {
             setLoading(false);
+            setIsSearching(false);
         }
     };
 
     useEffect(() => {
-        fetchData();
-    }, [startDate, endDate]);
+        fetchData(debouncedSearch);
+    }, [debouncedSearch, startDate, endDate, statusFilter]);
 
     const handleResetFilter = () => {
         setSearch("");
@@ -173,17 +197,47 @@ export default function OrdersPage() {
         setPage(1);
     };
 
+    // Helper to get meta key value
+    const getMetaValue = (order: ApiOrder, key: string, fallback = "N/A") => {
+        if (!order || !order.metas) return fallback;
+        const found = order.metas.find(m => m && m.meta_key && m.meta_key.toLowerCase() === key.toLowerCase());
+        return found ? found.meta_value : fallback;
+    };
+
     // Filter logic
     const filtered = orders.filter((o) => {
+        if (!o) return false;
         const query = search.toLowerCase();
-        const matchSearch =
-            o.order_number.toLowerCase().includes(query) ||
-            o.board_name.toLowerCase().includes(query) ||
-            o.user_email.toLowerCase().includes(query) ||
-            o.user_mobile.toLowerCase().includes(query) ||
-            (o.customer_name && o.customer_name.toLowerCase().includes(query));
+        const orderNum = (o.order_number || "").toString().toLowerCase();
+        const boardName = (o.board_name || "").toString().toLowerCase();
+        const userEmail = (o.user_email || "").toString().toLowerCase();
+        const userMobile = (o.user_mobile || "").toString().toLowerCase();
+        const customerName = (o.customer_name || "").toString().toLowerCase();
 
-        const matchStatus = statusFilter === "All" || o.status.toLowerCase() === statusFilter.toLowerCase();
+        // Gerber file name & URL search
+        const gerberFileName = getMetaValue(o, 'gerber_file_name', getMetaValue(o, 'gerber_name', getMetaValue(o, 'file_name', getMetaValue(o, 'gerber_file', '')))).toLowerCase();
+        const gerberUrl = getMetaValue(o, 'gerber_file_url', getMetaValue(o, 'gerber_url', getMetaValue(o, 'gerber_path', ''))).toLowerCase();
+
+        // Payment details search
+        const paymentId = (getMetaValue(o, 'payment_id', getMetaValue(o, 'razorpay_payment_id', getMetaValue(o, 'transaction_id', (o as any).payment_id || ''))) || "").toString().toLowerCase();
+        const paymentStatus = (getMetaValue(o, 'payment_status', (o as any).payment_status || "")).toString().toLowerCase();
+        const paymentMode = (getMetaValue(o, 'payment_mode', getMetaValue(o, 'payment_method', (o as any).payment_mode || ""))).toString().toLowerCase();
+        const orderValue = (o.order_value || "").toString().toLowerCase();
+
+        const matchSearch =
+            orderNum.includes(query) ||
+            boardName.includes(query) ||
+            userEmail.includes(query) ||
+            userMobile.includes(query) ||
+            customerName.includes(query) ||
+            gerberFileName.includes(query) ||
+            gerberUrl.includes(query) ||
+            paymentId.includes(query) ||
+            paymentStatus.includes(query) ||
+            paymentMode.includes(query) ||
+            orderValue.includes(query);
+
+        const matchStatus = statusFilter === "All" || (o.status || "").toString().toLowerCase() === statusFilter.toLowerCase();
         return matchSearch && matchStatus;
     });
 
@@ -208,13 +262,6 @@ export default function OrdersPage() {
         } catch {
             return dateString || 'N/A';
         }
-    };
-
-    // Helper to get meta key value
-    const getMetaValue = (order: ApiOrder, key: string, fallback = "N/A") => {
-        if (!order.metas) return fallback;
-        const found = order.metas.find(m => m.meta_key.toLowerCase() === key.toLowerCase());
-        return found ? found.meta_value : fallback;
     };
 
     // Open change status modal
@@ -344,10 +391,14 @@ export default function OrdersPage() {
                     {/* Search & Filter Header Bar */}
                     <div className="flex flex-row items-center gap-2 sm:gap-3 w-full overflow-x-auto pb-1">
                         <div className="relative flex-1 min-w-[140px] sm:min-w-[200px]">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            {isSearching ? (
+                                <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
+                            ) : (
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            )}
                             <input
                                 type="search"
-                                placeholder="Search orders..."
+                                placeholder="Search orders by number, board, email, mobile..."
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                                 className="w-full h-10 sm:h-11 pl-9 pr-3 text-xs sm:text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all shadow-xs"
@@ -428,8 +479,24 @@ export default function OrdersPage() {
 
                     {/* Orders Data Table */}
                     <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-sm">
-                        {loading ? (
-                            <LoadingSpinner text="Loading order history..." />
+                        {loading || isSearching ? (
+                            <div className="p-5 space-y-4">
+                                <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                                    <div className="h-4 bg-muted/60 rounded-md animate-pulse w-36" />
+                                    <div className="h-4 bg-muted/60 rounded-md animate-pulse w-24" />
+                                </div>
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <div key={i} className="flex items-center justify-between py-3 px-2 border-b border-border/20 gap-4">
+                                        <div className="h-7 bg-muted/60 rounded-full animate-pulse w-24 shrink-0" />
+                                        <div className="h-7 bg-muted/60 rounded-lg animate-pulse w-28 shrink-0" />
+                                        <div className="h-5 bg-muted/40 rounded-md animate-pulse w-12 shrink-0" />
+                                        <div className="h-5 bg-muted/40 rounded-md animate-pulse w-44 shrink-0" />
+                                        <div className="h-5 bg-muted/40 rounded-md animate-pulse w-32 shrink-0" />
+                                        <div className="h-5 bg-muted/40 rounded-md animate-pulse w-32 shrink-0" />
+                                        <div className="h-8 bg-muted/60 rounded-xl animate-pulse w-24 shrink-0" />
+                                    </div>
+                                ))}
+                            </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-xs border-collapse">
