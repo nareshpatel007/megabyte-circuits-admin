@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -58,9 +58,9 @@ const formatDate = (dateString?: string | null) => {
     try {
         const d = new Date(dateString);
         if (isNaN(d.getTime())) return dateString;
-        const formatted = d.toLocaleString('en-GB', {
-            day: '2-digit',
+        const formatted = d.toLocaleDateString('en-US', {
             month: 'short',
+            day: 'numeric',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
@@ -72,7 +72,7 @@ const formatDate = (dateString?: string | null) => {
     }
 };
 
-export default function PaymentsPage() {
+function PaymentsContent() {
     const searchParams = useSearchParams();
     const [payments, setPayments] = useState<PaymentTransaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -665,5 +665,13 @@ export default function PaymentsPage() {
                 </Dialog.Root>
             )}
         </DashboardLayout>
+    );
+}
+
+export default function PaymentsPage() {
+    return (
+        <Suspense fallback={<div className="p-6"><Skeleton className="h-64 w-full" /></div>}>
+            <PaymentsContent />
+        </Suspense>
     );
 }

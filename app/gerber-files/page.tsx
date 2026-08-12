@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -62,7 +62,7 @@ interface Stats {
 
 const PAGE_SIZE = 10;
 
-export default function GerberFilesPage() {
+function GerberFilesContent() {
     const searchParams = useSearchParams();
     const initialSearch = searchParams?.get("search") || "";
 
@@ -642,5 +642,13 @@ export default function GerberFilesPage() {
                 </div>
             )}
         </DashboardLayout>
+    );
+}
+
+export default function GerberFilesPage() {
+    return (
+        <Suspense fallback={<TableSkeleton />}>
+            <GerberFilesContent />
+        </Suspense>
     );
 }

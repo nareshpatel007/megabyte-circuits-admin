@@ -21,6 +21,7 @@ import {
     ChevronDown,
     ListFilter,
     Sliders,
+    Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
         icon: Settings,
         children: [
             { href: "/settings", label: "General Settings", icon: Sliders, permission: "settings.general" },
+            { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
             { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter, permission: "settings.order_status" },
         ],
     },
@@ -60,9 +62,16 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
-    const [settingsOpen, setSettingsOpen] = useState(false);
+    const isSettingsActive = pathname ? pathname.startsWith("/settings") : false;
+    const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
     const [userPermissions, setUserPermissions] = useState<string[]>([]);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+    useEffect(() => {
+        if (isSettingsActive) {
+            setSettingsOpen(true);
+        }
+    }, [pathname, isSettingsActive]);
 
     useEffect(() => {
         const checkPermissions = () => {

@@ -2,21 +2,9 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2, RefreshCw, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { TableSkeleton } from "@/components/ui/skeleton";
-
-interface StatusItem {
-    id: number;
-    name: string;
-    slug: string;
-    sort_order: number;
-    color: string;
-    is_active: boolean;
-}
-
-
 
 function MaskedInput({
     label,
@@ -102,20 +90,23 @@ function SettingsSection({
     title,
     children,
     onSave,
+    isSaving = false,
 }: {
     title: string;
     children: React.ReactNode;
     onSave: () => void;
+    isSaving?: boolean;
 }) {
     return (
         <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
                 <h3 className="text-sm font-bold text-foreground tracking-tight">{title}</h3>
                 <button
+                    disabled={isSaving}
                     onClick={onSave}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-lg hover:bg-emerald-500 hover:text-white transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs disabled:opacity-50"
                 >
-                    <Save className="w-3.5 h-3.5" />
+                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     Save Changes
                 </button>
             </div>
@@ -125,15 +116,85 @@ function SettingsSection({
 }
 
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<"integrations" | "notifications">("integrations");
+    const [activeTab, setActiveTab] = useState<"pricing" | "integrations" | "notifications">("pricing");
+    const [loadingPricing, setLoadingPricing] = useState(true);
+    const [savingPricing, setSavingPricing] = useState(false);
+    const [fixedCosts, setFixedCosts] = useState<Record<string, Record<string, number>>>({});
+    const [priceTiersJson, setPriceTiersJson] = useState<string>("");
 
     const tabs = [
+        { id: "pricing", label: "PCB Calculation & Pricing" },
         { id: "integrations", label: "Payment & API Integrations" },
         { id: "notifications", label: "Notifications" },
     ];
 
+    const fetchPricing = async () => {
+        setLoadingPricing(true);
+        try {
+            const res = await fetch("/api/admin/pcb-pricing");
+            const data = await res.json();
+            if (data.success && data.data) {
+                setFixedCosts(data.data.fixedCosts || {});
+                setPriceTiersJson(JSON.stringify(data.data.priceTiers || {}, null, 2));
+            }
+        } catch (err) {
+            toast.error("Failed to load PCB pricing settings.");
+        } finally {
+            setLoadingPricing(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === "pricing") {
+            fetchPricing();
+        }
+    }, [activeTab]);
+
+    const handleFixedCostChange = (layer: string, day: string, value: string) => {
+        const num = parseFloat(value) || 0;
+        setFixedCosts(prev => ({
+            ...prev,
+            [layer]: {
+                ...(prev[layer] || {}),
+                [day]: num
+            }
+        }));
+    };
+
+    const handleSavePricing = async () => {
+        let parsedPriceTiers = null;
+        try {
+            parsedPriceTiers = JSON.parse(priceTiersJson);
+        } catch (e) {
+            toast.error("Invalid JSON format in Price Tier Matrix!");
+            return;
+        }
+
+        setSavingPricing(true);
+        try {
+            const res = await fetch("/api/admin/pcb-pricing", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fixedCosts,
+                    priceTiers: parsedPriceTiers
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("PCB Pricing Calculations updated successfully!");
+            } else {
+                toast.error(data.message || "Failed to update PCB pricing settings.");
+            }
+        } catch (err) {
+            toast.error("Error saving pricing settings.");
+        } finally {
+            setSavingPricing(false);
+        }
+    };
+
     return (
-        <DashboardLayout title="General Settings" subtitle="Configure integrations, payment credentials, and notification rules">
+        <DashboardLayout title="General Settings" subtitle="Configure PCB price calculations, integrations, payment credentials, and notification rules">
             <div className="w-full space-y-6">
                 {/* Navigation Tabs */}
                 <div className="flex border-b border-border/80 gap-2 overflow-x-auto pb-px">
@@ -150,6 +211,104 @@ export default function SettingsPage() {
                         </button>
                     ))}
                 </div>
+
+                {/* Tab 1: PCB Calculation & Pricing */}
+                {activeTab === "pricing" && (
+                    <div className="space-y-6 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl px-5 py-4 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <Calculator className="w-5 h-5 shrink-0 text-emerald-500" />
+                                <div>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider">Dynamic Calculation Engine</h4>
+                                    <p className="text-xs font-medium opacity-90 mt-0.5">
+                                        All PCB calculations edited here are updated live on the Quote page upon save.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={fetchPricing}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-background border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                            >
+                                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                            </button>
+                        </div>
+
+                        {loadingPricing ? (
+                            <div className="py-12 text-center">
+                                <LoadingSpinner />
+                                <p className="text-xs font-medium text-muted-foreground mt-3">Loading pricing matrices...</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Section 1: Lead Time Fixed Costs */}
+                                <SettingsSection
+                                    title="Layer & Lead Time Base Fixed Costs (₹)"
+                                    onSave={handleSavePricing}
+                                    isSaving={savingPricing}
+                                >
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse min-w-[600px]">
+                                            <thead>
+                                                <tr className="border-b border-border/60 bg-muted/30 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                    <th className="py-3 px-4">Layer Count</th>
+                                                    <th className="py-3 px-4">1 Day</th>
+                                                    <th className="py-3 px-4">3 Days</th>
+                                                    <th className="py-3 px-4">5 Days</th>
+                                                    <th className="py-3 px-4">7 Days</th>
+                                                    <th className="py-3 px-4">10 Days</th>
+                                                    <th className="py-3 px-4">20 Days</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/40 text-xs">
+                                                {["1", "2", "4", "6", "8", "10"].map((layer) => (
+                                                    <tr key={layer} className="hover:bg-muted/20 transition-colors">
+                                                        <td className="py-3 px-4 font-bold text-foreground">
+                                                            {layer} {layer === "1" ? "Layer" : "Layers"}
+                                                        </td>
+                                                        {[1, 3, 5, 7, 10, 20].map((day) => {
+                                                            const val = fixedCosts[layer]?.[day.toString()];
+                                                            return (
+                                                                <td key={day} className="py-2 px-3">
+                                                                    <input
+                                                                        type="number"
+                                                                        value={val !== undefined ? val : ""}
+                                                                        placeholder="N/A"
+                                                                        onChange={(e) => handleFixedCostChange(layer, day.toString(), e.target.value)}
+                                                                        className="w-24 px-2.5 py-1.5 text-xs font-semibold bg-background border border-border/80 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                                    />
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </SettingsSection>
+
+                                {/* Section 2: Variable Tier Pricing Matrices */}
+                                <SettingsSection
+                                    title="Area & Material Variable Price Tier Matrix (JSON Configuration)"
+                                    onSave={handleSavePricing}
+                                    isSaving={savingPricing}
+                                >
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-muted-foreground font-medium">
+                                            Configure area-based cost factors per cm² across Solder Mask (Green / Other), Copper Weight (1oz / 2oz), Thickness (1.6mm / Other), and Layer counts.
+                                        </p>
+                                        <textarea
+                                            value={priceTiersJson}
+                                            onChange={(e) => setPriceTiersJson(e.target.value)}
+                                            rows={18}
+                                            className="w-full font-mono text-xs p-4 bg-slate-950 text-emerald-400 border border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed shadow-inner"
+                                            placeholder="Paste or edit Price Tiers JSON matrix structure..."
+                                        />
+                                    </div>
+                                </SettingsSection>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Tab 2: Payment & API Integrations */}
                 {activeTab === "integrations" && (

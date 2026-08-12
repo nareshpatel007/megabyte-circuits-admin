@@ -13,6 +13,8 @@ export const ALL_MENU_ROUTES: MenuRoute[] = [
     { href: "/staff", permission: "staff.view" },
     { href: "/roles", permission: "role.view" },
     { href: "/settings", permission: ["settings.general", "settings.order_status"] },
+    { href: "/settings/pcb-pricing", permission: ["settings.general"] },
+    { href: "/settings/statuses", permission: ["settings.order_status"] },
 ];
 
 export function getPermittedRoutes(permissions: string[] = [], role?: string): string[] {
