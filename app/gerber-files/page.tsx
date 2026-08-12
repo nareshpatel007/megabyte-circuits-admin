@@ -371,7 +371,7 @@ export default function GerberFilesPage() {
                                                                     className="font-bold text-foreground hover:text-emerald-500 transition-colors flex items-center gap-1 group shrink-0"
                                                                 >
                                                                     <span>{file.client_name || `${file.client_first_name || ''} ${file.client_last_name || ''}`.trim() || 'Client'}</span>
-                                                                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                        <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                 </Link>
                                                                 <span className="text-muted-foreground/40 font-normal">|</span>
                                                                 <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 select-all shrink-0">

@@ -9,7 +9,7 @@ interface SearchItem {
     id: string;
     title: string;
     subtitle: string;
-    category: "Orders" | "Clients" | "Inventory" | "Pages" | "Gerber Files";
+    category: "Orders" | "Payments" | "Clients" | "Inventory" | "Pages" | "Gerber Files";
     url: string;
     icon: any;
 }
@@ -61,12 +61,13 @@ export default function GlobalSearch() {
                 const q = encodeURIComponent(trimmed);
                 const queryLower = trimmed.toLowerCase();
 
-                // Fetch matching orders, clients, inventory, and gerber files in parallel
-                const [ordersRes, usersRes, invRes, gerberRes] = await Promise.all([
+                // Fetch matching orders, clients, inventory, gerber files, and payments in parallel
+                const [ordersRes, usersRes, invRes, gerberRes, paymentsRes] = await Promise.all([
                     fetch(`/api/admin/orders?search=${q}&q=${q}`, { headers }).catch(() => null),
                     fetch(`/api/admin/users?search=${q}&q=${q}`, { headers }).catch(() => null),
                     fetch(`/api/admin/inventory?search=${q}&q=${q}`, { headers }).catch(() => null),
                     fetch(`/api/admin/gerber-files?search=${q}&q=${q}`, { headers }).catch(() => null),
+                    fetch(`/api/admin/payments?search=${q}&q=${q}&status=all`, { headers }).catch(() => null),
                 ]);
 
                 const results: SearchItem[] = [];
@@ -216,7 +217,48 @@ export default function GlobalSearch() {
                     });
                 }
 
-                // 5. Process Static Pages match
+                // 5. Process Payment Transactions
+                if (paymentsRes && paymentsRes.ok) {
+                    const paymentsData = await paymentsRes.json();
+                    const rawPayments = paymentsData.data || [];
+                    rawPayments.forEach((p: any) => {
+                        const razorpayId = (p.razorpay_payment_id || "").toString();
+                        const txnNum = (p.transaction_number || "").toString();
+                        const razorpayOrder = (p.razorpay_order_id || "").toString();
+                        const customerName = (p.user_name || "").toString();
+                        const customerEmail = (p.user_email || "").toString();
+                        const orderNum = (p.order_number || p.order_id || "").toString();
+                        const amount = parseFloat(String(p.amount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+                        const status = (p.status || "").toString();
+
+                        const matchesField =
+                            razorpayId.toLowerCase().includes(queryLower) ||
+                            txnNum.toLowerCase().includes(queryLower) ||
+                            razorpayOrder.toLowerCase().includes(queryLower) ||
+                            customerName.toLowerCase().includes(queryLower) ||
+                            customerEmail.toLowerCase().includes(queryLower) ||
+                            orderNum.toLowerCase().includes(queryLower);
+
+                        if (matchesField) {
+                            let subtitleParts = [`₹${amount}`, `Status: ${status}`];
+                            if (customerName || customerEmail) subtitleParts.push(customerName || customerEmail);
+                            if (orderNum) subtitleParts.push(`Order #${orderNum}`);
+
+                            const displayId = razorpayId || txnNum || `#${p.id}`;
+
+                            results.push({
+                                id: `payment-${p.id}`,
+                                title: `Payment: ${displayId}`,
+                                subtitle: subtitleParts.join(" • "),
+                                category: "Payments",
+                                url: `/payments?search=${encodeURIComponent(displayId)}`,
+                                icon: CreditCard
+                            });
+                        }
+                    });
+                }
+
+                // 6. Process Static Pages match
                 STATIC_PAGES.forEach((page) => {
                     if (
                         page.title.toLowerCase().includes(queryLower) ||

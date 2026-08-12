@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, CreditCard, ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, RefreshCw, CheckCircle2, Clock, AlertCircle, User, Mail, Phone, Copy, Check } from "lucide-react";
+import { Search, Download, CreditCard, ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, RefreshCw, CheckCircle2, Clock, AlertCircle, User, Mail, Phone, Copy, Check, Eye, ExternalLink } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
@@ -25,6 +27,14 @@ interface PaymentTransaction {
     user_mobile: string | null;
     payload: string | null;
     created_at: string;
+    order_id?: number | null;
+    order_number?: string | null;
+    order_board_name?: string | null;
+    order_status?: string | null;
+    order_value?: number | string | null;
+    order_delivery_date?: string | null;
+    order_created_at?: string | null;
+    gerber_file_name?: string | null;
 }
 
 interface PaymentResponse {
@@ -63,6 +73,7 @@ const formatDate = (dateString?: string | null) => {
 };
 
 export default function PaymentsPage() {
+    const searchParams = useSearchParams();
     const [payments, setPayments] = useState<PaymentTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -78,6 +89,15 @@ export default function PaymentsPage() {
     const [totalFailedCount, setTotalFailedCount] = useState(0);
     const [selectedPayment, setSelectedPayment] = useState<PaymentTransaction | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+
+    // Sync search parameter from URL on load
+    useEffect(() => {
+        const urlQuery = searchParams?.get("search");
+        if (urlQuery) {
+            setSearch(urlQuery);
+            setStatusFilter("all");
+        }
+    }, [searchParams]);
 
     const fetchPayments = useCallback(async () => {
         setLoading(true);
@@ -101,12 +121,29 @@ export default function PaymentsPage() {
             if (res.ok) {
                 const data: PaymentResponse = await res.json();
                 if (data.status) {
-                    setPayments(data.data || []);
+                    const fetchedPayments = data.data || [];
+                    setPayments(fetchedPayments);
                     setTotalItems(data.meta?.total || 0);
                     setTotalPages(data.meta?.last_page || 1);
                     setTotalAmountSum(data.meta?.total_completed_amount || 0);
                     setTotalCompletedCount(data.meta?.total_completed_count ?? (statusFilter === "success" ? data.meta?.total : 0));
                     setTotalFailedCount(data.meta?.total_failed_count || 0);
+
+                    // Auto-open transaction detail view if navigated from global search
+                    const urlSearch = searchParams?.get("search");
+                    if (urlSearch && fetchedPayments.length > 0) {
+                        const qLower = urlSearch.trim().toLowerCase();
+                        const match = fetchedPayments.find((p) =>
+                            (p.razorpay_payment_id && p.razorpay_payment_id.toLowerCase() === qLower) ||
+                            (p.transaction_number && p.transaction_number.toLowerCase() === qLower) ||
+                            (p.razorpay_order_id && p.razorpay_order_id.toLowerCase() === qLower)
+                        );
+                        if (match) {
+                            setSelectedPayment(match);
+                        } else if (fetchedPayments.length === 1) {
+                            setSelectedPayment(fetchedPayments[0]);
+                        }
+                    }
                 } else {
                     toast.error("Failed to load payments");
                 }
@@ -119,7 +156,7 @@ export default function PaymentsPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, statusFilter, paymentMethodFilter, search, startDate, endDate]);
+    }, [page, statusFilter, paymentMethodFilter, search, startDate, endDate, searchParams]);
 
     useEffect(() => {
         fetchPayments();
@@ -291,9 +328,24 @@ export default function PaymentsPage() {
 
             <div className="rounded-xl bg-card border border-border/80 shadow-xs overflow-hidden">
                 {loading ? (
-                    <div className="py-20 flex flex-col items-center justify-center gap-3">
-                        <LoadingSpinner className="w-8 h-8 text-emerald-500" />
-                        <p className="text-xs text-muted-foreground">Loading completed payments...</p>
+                    <div className="p-4 space-y-4 animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                            <Skeleton className="h-4 w-36" />
+                            <Skeleton className="h-4 w-24" />
+                        </div>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                            <div key={i} className="flex items-center justify-between py-2.5 px-2 border-b border-border/20 gap-4">
+                                <div className="flex items-center gap-2 w-1/3 shrink-0">
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-3 w-36" />
+                                </div>
+                                <Skeleton className="h-4 w-36 shrink-0" />
+                                <Skeleton className="h-4 w-20 shrink-0" />
+                                <Skeleton className="h-6 w-24 rounded-full shrink-0" />
+                                <Skeleton className="h-4 w-28 shrink-0" />
+                                <Skeleton className="h-6 w-14 rounded-lg shrink-0" />
+                            </div>
+                        ))}
                     </div>
                 ) : payments.length === 0 ? (
                     <div className="py-20 text-center space-y-3">
@@ -310,30 +362,49 @@ export default function PaymentsPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-border/80 bg-muted/80 text-[11px] font-extrabold text-foreground uppercase tracking-wider">
-                                    <th className="py-3.5 px-4">Customer</th>
-                                    <th className="py-3.5 px-4">Razorpay Payment ID</th>
-                                    <th className="py-3.5 px-4">Amount</th>
-                                    <th className="py-3.5 px-4">Status</th>
-                                    <th className="py-3.5 px-4">Date & Time</th>
-                                    <th className="py-3.5 px-4 text-right">Details</th>
+                                    <th className="py-2 px-3.5">Customer</th>
+                                    <th className="py-2 px-3.5">Razorpay Payment ID</th>
+                                    <th className="py-2 px-3.5">Order #</th>
+                                    <th className="py-2 px-3.5">Amount</th>
+                                    <th className="py-2 px-3.5">Status</th>
+                                    <th className="py-2 px-3.5">Date & Time</th>
+                                    <th className="py-2 px-3.5 text-right">Details</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/40 text-xs">
                                 {payments.map((payment) => (
                                     <tr key={payment.id} className="hover:bg-muted/20 transition-colors group">
-                                        <td className="py-3.5 px-4">
-                                            <div>
-                                                <p className="font-semibold text-foreground">{payment.user_name || "Customer"}</p>
-                                                <p className="text-[11px] text-muted-foreground">{payment.user_email || "-"}</p>
+                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5 font-bold text-xs">
+                                                {payment.user_id ? (
+                                                    <>
+                                                        <Link
+                                                            href={`/clients/${payment.user_id}`}
+                                                            className="text-foreground font-semibold hover:text-emerald-500 hover:underline transition-colors"
+                                                            title="View client details"
+                                                        >
+                                                            {payment.user_name || "Customer"}
+                                                        </Link>
+                                                        <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </>
+                                                ) : (
+                                                    <span className="text-foreground font-semibold">{payment.user_name || "Customer"}</span>
+                                                )}
+                                                {payment.user_email && (
+                                                    <>
+                                                        <span className="text-muted-foreground/60 font-normal">·</span>
+                                                        <span className="text-muted-foreground font-medium text-xs">{payment.user_email}</span>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
-                                        <td className="py-3.5 px-4 font-mono text-foreground font-semibold">
+                                        <td className="py-1.5 px-3.5 font-mono text-foreground font-semibold whitespace-nowrap">
                                             {payment.razorpay_payment_id ? (
                                                 <div className="flex items-center gap-1.5">
                                                     <span>{payment.razorpay_payment_id}</span>
                                                     <button
                                                         onClick={() => handleCopy(payment.razorpay_payment_id!, `Payment ID ${payment.id}`)}
-                                                        className="text-muted-foreground hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="text-muted-foreground hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                                         title="Copy Payment ID"
                                                     >
                                                         {copiedField === `Payment ID ${payment.id}` ? (
@@ -347,36 +418,54 @@ export default function PaymentsPage() {
                                                 <span className="text-muted-foreground">-</span>
                                             )}
                                         </td>
-                                        <td className="py-3.5 px-4 font-bold text-foreground">
+                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                            {payment.order_number || payment.order_id ? (
+                                                <>
+                                                    <Link
+                                                        href={`/orders/${payment.order_id || payment.order_number}`}
+                                                        className="font-mono text-xs font-black px-2 py-0.5 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-2xs inline-flex items-center gap-1"
+                                                        title="View Order Details"
+                                                    >
+                                                        #{payment.order_number || payment.order_id}
+                                                        <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </Link>
+                                                </>
+                                            ) : (
+                                                <span className="text-muted-foreground font-mono text-xs">-</span>
+                                            )}
+                                        </td>
+                                        <td className="py-1.5 px-3.5 font-bold text-foreground whitespace-nowrap">
                                             ₹{parseFloat(String(payment.amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="py-3.5 px-4">
+                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
                                             {payment.status === "success" || payment.status === "completed" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                                     <CheckCircle2 className="w-3 h-3" />
                                                     Completed
                                                 </span>
                                             ) : payment.status === "initiated" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                                     <Clock className="w-3 h-3" />
                                                     Initiated
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
                                                     <AlertCircle className="w-3 h-3" />
                                                     {payment.status}
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="py-3.5 px-4 text-muted-foreground text-[11px] font-medium">
+                                        <td className="py-1.5 px-3.5 text-muted-foreground text-xs font-mono font-medium whitespace-nowrap">
                                             {formatDate(payment.created_at)}
                                         </td>
-                                        <td className="py-3.5 px-4 text-right">
+                                        <td className="py-1.5 px-3.5 text-right whitespace-nowrap">
                                             <button
                                                 onClick={() => setSelectedPayment(payment)}
-                                                className="px-3 py-1.5 rounded-xl border border-border/80 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all cursor-pointer"
+                                                title="View Details"
+                                                aria-label="View Details"
+                                                className="p-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500 hover:text-white transition-all cursor-pointer shadow-2xs"
                                             >
-                                                View
+                                                <Eye className="w-3.5 h-3.5" />
                                             </button>
                                         </td>
                                     </tr>
@@ -457,7 +546,17 @@ export default function PaymentsPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-foreground font-medium">
                                         <div className="flex items-center gap-2">
                                             <User className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                            <span className="truncate">{selectedPayment.user_name || "Guest Customer"}</span>
+                                            {selectedPayment.user_id ? (
+                                                <Link
+                                                    href={`/clients/${selectedPayment.user_id}`}
+                                                    className="truncate hover:text-emerald-500 hover:underline transition-colors font-semibold"
+                                                    title="View Client Details"
+                                                >
+                                                    {selectedPayment.user_name || "Guest Customer"}
+                                                </Link>
+                                            ) : (
+                                                <span className="truncate">{selectedPayment.user_name || "Guest Customer"}</span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Mail className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -470,9 +569,55 @@ export default function PaymentsPage() {
                                     </div>
                                 </div>
 
+                                {(selectedPayment.order_number || selectedPayment.order_id) && (
+                                    <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 space-y-2.5">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Order Details</p>
+                                        <div className="space-y-2 font-medium">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-muted-foreground">Order Id:</span>
+                                                <Link
+                                                    href={`/orders/${selectedPayment.order_id || selectedPayment.order_number}`}
+                                                    className="font-mono text-xs font-bold text-emerald-500 hover:underline inline-flex items-center gap-1"
+                                                    title="View Order Details"
+                                                >
+                                                    #{selectedPayment.order_number || selectedPayment.order_id}
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </Link>
+                                            </div>
+
+                                            {selectedPayment.order_created_at && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Order Date:</span>
+                                                    <span className="text-foreground font-mono font-medium">
+                                                        {formatDate(selectedPayment.order_created_at)}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {selectedPayment.gerber_file_name && (
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-muted-foreground shrink-0">Gerber File Name:</span>
+                                                    <span className="text-foreground font-medium truncate max-w-[220px]" title={selectedPayment.gerber_file_name}>
+                                                        {selectedPayment.gerber_file_name}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {selectedPayment.order_status && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Order Status:</span>
+                                                    <span className="text-foreground font-semibold">
+                                                        {selectedPayment.order_status}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 space-y-2.5">
                                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gateway Identifiers</p>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 font-medium">
                                         <div className="flex items-center justify-between">
                                             <span className="text-muted-foreground">Razorpay Payment ID:</span>
                                             <div className="flex items-center gap-1.5 font-mono text-foreground font-medium">
