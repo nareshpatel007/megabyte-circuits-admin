@@ -237,6 +237,20 @@ export default function OrderDetailPage() {
         return found ? found.meta_value : fallback;
     };
 
+    const isPastDeliveryDate = (dateString?: string | null) => {
+        if (!dateString || dateString === 'N/A') return false;
+        try {
+            const d = new Date(dateString);
+            if (isNaN(d.getTime())) return false;
+            const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return dDate < today;
+        } catch {
+            return false;
+        }
+    };
+
     if (loading) {
         return (
             <DashboardLayout title="Order Details" subtitle="Loading order specifications...">
@@ -385,7 +399,7 @@ export default function OrderDetailPage() {
                             )}
                         </div>
                         {!editingDeliveryDate ? (
-                            <p className="text-base font-bold text-foreground mt-1 font-mono">
+                            <p className={`text-base font-bold font-mono mt-1 ${isPastDeliveryDate(order.delivery_date) ? "text-red-600 dark:text-red-400 font-extrabold" : "text-foreground"}`}>
                                 {order.delivery_date && !isNaN(new Date(order.delivery_date).getTime())
                                     ? new Date(order.delivery_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                                     : 'N/A'}

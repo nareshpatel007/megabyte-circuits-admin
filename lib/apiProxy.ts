@@ -90,7 +90,11 @@ export async function handleApiProxy(
             path = `/api${path}`;
         }
 
-        const apiRes = await fetch(`${apiUrl}${path}`, fetchOptions);
+        // Append search parameters from incoming request URL if present
+        const searchParams = req.nextUrl.search;
+        const targetUrl = `${apiUrl}${path}${searchParams ? searchParams : ""}`;
+
+        const apiRes = await fetch(targetUrl, fetchOptions);
         const text = await apiRes.text();
 
         return new NextResponse(text, {

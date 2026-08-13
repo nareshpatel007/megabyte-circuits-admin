@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package } from "lucide-react";
-import * as Dialog from "@radix-ui/react-dialog";
-import * as Popover from "@radix-ui/react-popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrdersSkeleton } from "@/components/ui/skeleton";
@@ -87,6 +92,10 @@ export default function OrdersPage() {
     const [statusFilter, setStatusFilter] = useState("All");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    // Temporary dates for Popover drafting before clicking Apply
+    const [tempStartDate, setTempStartDate] = useState("");
+    const [tempEndDate, setTempEndDate] = useState("");
+    const [popoverOpen, setPopoverOpen] = useState(false);
     const [page, setPage] = useState(1);
 
     // Quick preview modal state
@@ -130,6 +139,25 @@ export default function OrdersPage() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [activePreset, setActivePreset] = useState<string | null>(null);
+
+    // Generate last 5 months options dynamically (e.g. Aug 2026, Jul 2026, etc.)
+    const getLast5MonthsOptions = () => {
+        const options: { label: string; start: string; end: string; key: string }[] = [];
+        const now = new Date();
+        for (let i = 0; i < 5; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const start = `${yyyy}-${mm}-01`;
+            const lastDay = new Date(yyyy, d.getMonth() + 1, 0).getDate();
+            const end = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+            options.push({ label, start, end, key: `month_${i}` });
+        }
+        return options;
+    };
+
+    const MONTH_OPTIONS = getLast5MonthsOptions();
 
     const PRESET_OPTIONS = [
         { label: "Today", value: "today" },
@@ -187,9 +215,8 @@ export default function OrdersPage() {
             end = new Date(now.getFullYear() - 1, 11, 31);
         }
 
-        setStartDate(formatDateStr(start));
-        setEndDate(formatDateStr(end));
-        setPage(1);
+        setTempStartDate(formatDateStr(start));
+        setTempEndDate(formatDateStr(end));
     };
 
     const formatDateShort = (dStr: string) => {
@@ -216,6 +243,7 @@ export default function OrdersPage() {
 
     // Fetch live orders and pipeline statuses
     const fetchData = async (searchQuery: string = debouncedSearch) => {
+        setLoading(true);
         setIsSearching(true);
         try {
             const token = localStorage.getItem("admin_token");
@@ -337,6 +365,21 @@ export default function OrdersPage() {
             return formatted.replace(/\b(AM|PM)\b/gi, (m) => m.toLowerCase());
         } catch {
             return dateString || 'N/A';
+        }
+    };
+
+    // Helper to check if delivery date is before today
+    const isPastDeliveryDate = (dateString?: string | null) => {
+        if (!dateString || dateString === 'N/A') return false;
+        try {
+            const d = new Date(dateString);
+            if (isNaN(d.getTime())) return false;
+            const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return dDate < today;
+        } catch {
+            return false;
         }
     };
 
@@ -465,57 +508,67 @@ export default function OrdersPage() {
                     )}
 
                     {/* Search & Filter Header Bar */}
-                    <div className="flex flex-row items-center gap-2 sm:gap-3 w-full overflow-x-auto pb-1">
-                        <div className="relative flex-1 min-w-[140px] sm:min-w-[200px]">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full pb-1">
+                        <div className="relative flex-1 min-w-[200px]">
                             {isSearching ? (
-                                <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
+                                <RefreshCw className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
                             ) : (
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             )}
-                            <input
+                            <Input
                                 type="search"
                                 placeholder="Search orders by number, board, email, mobile..."
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                                className="w-full h-10 sm:h-11 pl-9 pr-3 text-xs sm:text-sm bg-card border border-border/80 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all shadow-xs"
+                                className="w-full h-10 sm:h-11 pl-10 pr-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
                             />
                         </div>
-                        {/* Popover Date Range & Presets Selector */}
-                        <Popover.Root>
-                            <Popover.Trigger asChild>
-                                <button className="h-10 sm:h-11 flex items-center justify-between gap-2 px-3.5 bg-card border border-border/80 rounded-xl text-xs sm:text-sm font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
-                                    <div className="flex items-center gap-2">
-                                        <CalendarIcon className="w-4 h-4 text-emerald-500 shrink-0" />
-                                        <span>
-                                            {activePreset
-                                                ? PRESET_OPTIONS.find(p => p.value === activePreset)?.label
-                                                : startDate && endDate
-                                                ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
-                                                : startDate
-                                                ? `From ${formatDateShort(startDate)}`
-                                                : "Date Filter"}
-                                        </span>
-                                    </div>
-                                    {(startDate || endDate) && (
-                                        <span
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setStartDate("");
-                                                setEndDate("");
-                                                setActivePreset(null);
-                                                setPage(1);
-                                            }}
-                                            className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
-                                            title="Clear date filter"
-                                        >
-                                            <X className="w-3.5 h-3.5" />
-                                        </span>
-                                    )}
-                                </button>
-                            </Popover.Trigger>
-                            <Popover.Portal>
-                                <Popover.Content
-                                    className="z-50 w-80 sm:w-[380px] p-4 bg-card border border-border/80 rounded-2xl shadow-xl space-y-4 text-foreground animate-in fade-in-50 zoom-in-95 duration-150"
+
+                        <div className="flex items-center gap-2.5 shrink-0">
+                            {/* Popover Date Range & Presets Selector */}
+                            <Popover open={popoverOpen} onOpenChange={(open) => {
+                                setPopoverOpen(open);
+                                if (open) {
+                                    setTempStartDate(startDate);
+                                    setTempEndDate(endDate);
+                                }
+                            }}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="h-10 sm:h-11 min-w-[150px] sm:min-w-[170px] flex items-center justify-between gap-2 px-3.5 bg-card border-border/80 rounded-xl text-xs sm:text-sm font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                            <CalendarIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            <span>
+                                                {activePreset
+                                                    ? PRESET_OPTIONS.find(p => p.value === activePreset)?.label || MONTH_OPTIONS.find(m => m.key === activePreset)?.label
+                                                    : startDate && endDate
+                                                        ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
+                                                        : startDate
+                                                            ? `From ${formatDateShort(startDate)}`
+                                                            : "Date Filter"}
+                                            </span>
+                                        </div>
+                                        {(startDate || endDate) && (
+                                            <span
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setStartDate("");
+                                                    setEndDate("");
+                                                    setTempStartDate("");
+                                                    setTempEndDate("");
+                                                    setActivePreset(null);
+                                                    setPage(1);
+                                                    fetchData(debouncedSearch);
+                                                }}
+                                                className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                                                title="Clear date filter"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    className="z-50 w-80 sm:w-[360px] p-4 bg-card border-border/80 rounded-2xl shadow-xl space-y-4 text-foreground"
                                     align="end"
                                     sideOffset={8}
                                 >
@@ -523,86 +576,117 @@ export default function OrdersPage() {
                                         <span className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
                                             <CalendarIcon className="w-4 h-4 text-emerald-500" /> Select Date Range
                                         </span>
-                                        {(startDate || endDate) && (
-                                            <button
-                                                onClick={() => { setStartDate(""); setEndDate(""); setActivePreset(null); setPage(1); }}
-                                                className="text-[11px] font-extrabold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
-                                            >
-                                                Reset
-                                            </button>
-                                        )}
                                     </div>
 
-                                    {/* Quick Presets */}
+                                    {/* Side by Side Start & End Date Inputs */}
                                     <div>
-                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-2">Quick Presets</span>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {PRESET_OPTIONS.map((preset) => {
-                                                const isActive = activePreset === preset.value;
+                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-1.5">Custom Date Range</span>
+                                        <div className="grid grid-cols-2 gap-2.5">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">Start Date</label>
+                                                <Input
+                                                    type="date"
+                                                    value={tempStartDate}
+                                                    onChange={(e) => {
+                                                        setTempStartDate(e.target.value);
+                                                        setActivePreset(null);
+                                                    }}
+                                                    className="w-full bg-background border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus-visible:ring-emerald-500 cursor-pointer shadow-2xs h-9"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">End Date</label>
+                                                <Input
+                                                    type="date"
+                                                    value={tempEndDate}
+                                                    onChange={(e) => {
+                                                        setTempEndDate(e.target.value);
+                                                        setActivePreset(null);
+                                                    }}
+                                                    className="w-full bg-background border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus-visible:ring-emerald-500 cursor-pointer shadow-2xs h-9"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Last 5 Months Quick Options */}
+                                    <div className="pt-2 border-t border-border/60">
+                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-2">Last 5 Months</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {MONTH_OPTIONS.map((m) => {
+                                                const isActive = activePreset === m.key;
                                                 return (
-                                                    <button
-                                                        key={preset.value}
+                                                    <Button
+                                                        key={m.key}
                                                         type="button"
-                                                        onClick={() => applyPreset(preset.value)}
-                                                        className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all text-left cursor-pointer border ${
-                                                            isActive
-                                                                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                                                                : "bg-muted/40 hover:bg-muted text-foreground border-border/60"
-                                                        }`}
+                                                        variant={isActive ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setActivePreset(m.key);
+                                                            setTempStartDate(m.start);
+                                                            setTempEndDate(m.end);
+                                                        }}
+                                                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all h-auto cursor-pointer ${isActive
+                                                            ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs"
+                                                            : "bg-muted/40 hover:bg-muted text-foreground border-border/60"
+                                                            }`}
                                                     >
-                                                        {preset.label}
-                                                    </button>
+                                                        {m.label}
+                                                    </Button>
                                                 );
                                             })}
                                         </div>
                                     </div>
 
-                                    {/* Custom Dates Input */}
-                                    <div className="pt-2 border-t border-border/60 space-y-2">
-                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block">Custom Dates</span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">Start Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={startDate}
-                                                    onChange={(e) => {
-                                                        setStartDate(e.target.value);
-                                                        setActivePreset(null);
-                                                        setPage(1);
-                                                    }}
-                                                    className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">End Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={endDate}
-                                                    onChange={(e) => {
-                                                        setEndDate(e.target.value);
-                                                        setActivePreset(null);
-                                                        setPage(1);
-                                                    }}
-                                                    className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs"
-                                                />
-                                            </div>
-                                        </div>
+                                    {/* Action Buttons: Reset & Apply */}
+                                    <div className="pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setTempStartDate("");
+                                                setTempEndDate("");
+                                                setStartDate("");
+                                                setEndDate("");
+                                                setActivePreset(null);
+                                                setPage(1);
+                                                setPopoverOpen(false);
+                                            }}
+                                            className="px-3.5 py-1.5 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted h-auto cursor-pointer"
+                                        >
+                                            Reset
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            onClick={() => {
+                                                setStartDate(tempStartDate);
+                                                setEndDate(tempEndDate);
+                                                setPage(1);
+                                                setPopoverOpen(false);
+                                            }}
+                                            className="px-4 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs h-auto cursor-pointer"
+                                        >
+                                            Apply
+                                        </Button>
                                     </div>
-                                </Popover.Content>
-                            </Popover.Portal>
-                        </Popover.Root>
+                                </PopoverContent>
+                            </Popover>
 
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                            className="h-10 sm:h-11 px-2.5 sm:px-3.5 text-xs sm:text-sm bg-card border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold transition-all cursor-pointer shadow-xs shrink-0 max-w-[130px] sm:max-w-none truncate"
-                        >
-                            <option value="All">All Statuses</option>
-                            {statuses.map((s) => (
-                                <option key={s.id} value={s.name}>{s.name}</option>
-                            ))}
-                        </select>
+                            <Select
+                                value={statusFilter}
+                                onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
+                            >
+                                <SelectTrigger className="h-10 sm:h-11 w-[150px] sm:w-[170px] px-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl text-foreground font-semibold shadow-xs shrink-0">
+                                    <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Statuses</SelectItem>
+                                    {statuses.map((s) => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {/* Orders Data Table */}
@@ -737,7 +821,7 @@ export default function OrdersPage() {
                                                         </td>
 
                                                         {/* 6. Delivery Date */}
-                                                        <td className="py-1.5 px-3.5 font-bold text-foreground font-mono text-xs whitespace-nowrap">
+                                                        <td className={`py-1.5 px-3.5 font-bold font-mono text-xs whitespace-nowrap ${isPastDeliveryDate(order.delivery_date) ? "text-red-500 font-extrabold" : "text-foreground"}`}>
                                                             {formatDate(order.delivery_date)}
                                                         </td>
 
@@ -840,301 +924,278 @@ export default function OrdersPage() {
             )}
 
             {/* Change Status Modal */}
-            <Dialog.Root open={!!statusModalOrder} onOpenChange={(open) => !open && setStatusModalOrder(null)}>
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    {statusModalOrder && (() => {
-                        const modalPcbColorVal = getMetaValue(statusModalOrder, 'pcb_color', getMetaValue(statusModalOrder, 'solder_mask', 'Green'));
-                        const modalPcbColor = getPcbColorCode(modalPcbColorVal);
-                        return (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                                <Dialog.Content
-                                    className="pointer-events-auto w-full max-w-lg border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden relative"
-                                    style={{
-                                        backgroundColor: getPcbLightBg(modalPcbColor),
-                                        borderColor: `${modalPcbColor}60`
-                                    }}
-                                >
-                                    <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: modalPcbColor }} />
+            <Dialog open={!!statusModalOrder} onOpenChange={(open) => !open && setStatusModalOrder(null)}>
+                {statusModalOrder && (() => {
+                    const modalPcbColorVal = getMetaValue(statusModalOrder, 'pcb_color', getMetaValue(statusModalOrder, 'solder_mask', 'Green'));
+                    const modalPcbColor = getPcbColorCode(modalPcbColorVal);
+                    return (
+                        <DialogContent
+                            className="max-w-lg border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            style={{
+                                backgroundColor: getPcbLightBg(modalPcbColor),
+                                borderColor: `${modalPcbColor}60`
+                            }}
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: modalPcbColor }} />
 
-                                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
-                                        <div className="flex items-center gap-2.5">
-                                            <div
-                                                className="p-2 rounded-xl border shadow-xs"
-                                                style={{ backgroundColor: `${modalPcbColor}20`, color: modalPcbColor, borderColor: `${modalPcbColor}40` }}
-                                            >
-                                                <RefreshCw className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <Dialog.Title className="text-base font-black text-slate-900">
-                                                    Update Order Status
-                                                </Dialog.Title>
-                                                <p className="text-xs text-slate-600 font-semibold mt-0.5">
-                                                    Order #{statusModalOrder.order_number}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <Dialog.Close className="p-2 rounded-xl hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 transition-all cursor-pointer">
-                                            <X className="w-5 h-5" />
-                                        </Dialog.Close>
+                            <DialogHeader className="pb-3 border-b border-slate-200/80">
+                                <div className="flex items-center gap-2.5">
+                                    <div
+                                        className="p-2 rounded-xl border shadow-xs"
+                                        style={{ backgroundColor: `${modalPcbColor}20`, color: modalPcbColor, borderColor: `${modalPcbColor}40` }}
+                                    >
+                                        <RefreshCw className="w-5 h-5" />
                                     </div>
+                                    <div>
+                                        <DialogTitle className="text-base font-black text-slate-900">
+                                            Update Order Status
+                                        </DialogTitle>
+                                        <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
+                                            Order #{statusModalOrder.order_number}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
 
-                                    <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                                Select New Pipeline Status
-                                            </label>
-                                            <select
-                                                value={modalNewStatus}
-                                                onChange={(e) => setModalNewStatus(e.target.value)}
-                                                className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none transition-all cursor-pointer shadow-xs"
-                                                onFocus={(e) => { e.target.style.borderColor = modalPcbColor; e.target.style.boxShadow = `0 0 0 3px ${modalPcbColor}35`; }}
-                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
-                                            >
-                                                {statuses.map((s) => (
-                                                    <option key={s.id} value={s.name}>
-                                                        {s.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                            <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                        Select New Pipeline Status
+                                    </label>
+                                    <Select
+                                        value={modalNewStatus}
+                                        onValueChange={(val) => setModalNewStatus(val)}
+                                    >
+                                        <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
+                                            <SelectValue placeholder="Select status..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {statuses.map((s) => (
+                                                <SelectItem key={s.id} value={s.name}>
+                                                    {s.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                                Completed Quantity (Pcs)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
-                                                value={modalCompletedQty}
-                                                onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
-                                                placeholder="Enter completed Pcs..."
-                                                className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none transition-all shadow-xs"
-                                                onFocus={(e) => { e.target.style.borderColor = modalPcbColor; e.target.style.boxShadow = `0 0 0 3px ${modalPcbColor}35`; }}
-                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
-                                            />
-                                        </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                        Completed Quantity (Pcs)
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
+                                        value={modalCompletedQty}
+                                        onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
+                                        placeholder="Enter completed Pcs..."
+                                        className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                    />
+                                </div>
 
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                                Add Audit Note / Remark (Optional)
-                                            </label>
-                                            <textarea
-                                                rows={3}
-                                                value={modalRemark}
-                                                onChange={(e) => setModalRemark(e.target.value)}
-                                                placeholder="Enter reason or details for this status change..."
-                                                className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none font-medium transition-all shadow-xs"
-                                                onFocus={(e) => { e.target.style.borderColor = modalPcbColor; e.target.style.boxShadow = `0 0 0 3px ${modalPcbColor}35`; }}
-                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
-                                            />
-                                        </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                        Add Audit Note / Remark (Optional)
+                                    </label>
+                                    <Textarea
+                                        rows={3}
+                                        value={modalRemark}
+                                        onChange={(e) => setModalRemark(e.target.value)}
+                                        placeholder="Enter reason or details for this status change..."
+                                        className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 resize-none font-medium shadow-xs"
+                                    />
+                                </div>
 
-                                        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200/80">
-                                            <button
-                                                type="button"
-                                                onClick={() => setStatusModalOrder(null)}
-                                                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-300/80"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={updatingStatus}
-                                                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 hover:opacity-90 active:scale-95"
-                                                style={{ backgroundColor: modalPcbColor }}
-                                            >
-                                                <RefreshCw className={`w-3.5 h-3.5 ${updatingStatus ? 'animate-spin' : ''}`} />
-                                                {updatingStatus ? "Saving..." : "Update Status"}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </Dialog.Content>
-                            </div>
-                        );
-                    })()}
-                </Dialog.Portal>
-            </Dialog.Root>
+                                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200/80">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setStatusModalOrder(null)}
+                                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer border-slate-300/80 h-auto"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={updatingStatus}
+                                        className="inline-flex items-center gap-1.5 px-5 py-2.5 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 hover:opacity-90 active:scale-95 h-auto"
+                                        style={{ backgroundColor: modalPcbColor }}
+                                    >
+                                        <RefreshCw className={`w-3.5 h-3.5 ${updatingStatus ? 'animate-spin' : ''}`} />
+                                        {updatingStatus ? "Saving..." : "Update Status"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </DialogContent>
+                    );
+                })()}
+            </Dialog>
 
             {/* Quick Preview Modal */}
-            <Dialog.Root open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    {selectedOrder && (() => {
-                        const previewPcbColorVal = getMetaValue(selectedOrder, 'pcb_color', getMetaValue(selectedOrder, 'solder_mask', 'Green'));
-                        const previewPcbColor = getPcbColorCode(previewPcbColorVal);
-                        return (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                                <Dialog.Content
-                                    className="pointer-events-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto border rounded-2xl p-6 md:p-8 shadow-2xl space-y-5 text-slate-900 overflow-hidden relative"
-                                    style={{
-                                        backgroundColor: getPcbLightBg(previewPcbColor),
-                                        borderColor: `${previewPcbColor}60`
-                                    }}
-                                >
-                                    <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: previewPcbColor }} />
-                                    <div className="flex items-start justify-between pb-4 border-b border-slate-200/80">
-                                        <div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xl font-black text-slate-900 font-mono">#{selectedOrder.order_number}</span>
-                                                {(() => {
-                                                    const selStatusStr = (selectedOrder?.status || 'Pending').toString().toLowerCase();
-                                                    const selMatchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === selStatusStr);
-                                                    const selStatusColor = selMatchedStatus?.color || "#10b981";
-                                                    return (
-                                                        <span
-                                                            className="px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border text-black shadow-2xs"
-                                                            style={{
-                                                                backgroundColor: selStatusColor,
-                                                                color: "#000000",
-                                                                borderColor: `${selStatusColor}80`
-                                                            }}
-                                                        >
-                                                            {selectedOrder.status}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </div>
-                                            <p className="text-xs text-slate-600 mt-1 font-medium">
-                                                Board: <span className="font-bold text-slate-900">{selectedOrder.board_name}</span>
-                                            </p>
-                                        </div>
-                                        <Dialog.Close className="p-2 rounded-xl hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 transition-all cursor-pointer">
-                                            <X className="w-5 h-5" />
-                                        </Dialog.Close>
+            <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+                {selectedOrder && (() => {
+                    const previewPcbColorVal = getMetaValue(selectedOrder, 'pcb_color', getMetaValue(selectedOrder, 'solder_mask', 'Green'));
+                    const previewPcbColor = getPcbColorCode(previewPcbColorVal);
+                    return (
+                        <DialogContent
+                            className="max-w-2xl max-h-[90vh] overflow-y-auto border rounded-2xl p-6 md:p-8 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            style={{
+                                backgroundColor: getPcbLightBg(previewPcbColor),
+                                borderColor: `${previewPcbColor}60`
+                            }}
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: previewPcbColor }} />
+                            <DialogHeader className="pb-4 border-b border-slate-200/80">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <DialogTitle className="text-xl font-black text-slate-900 font-mono">#{selectedOrder.order_number}</DialogTitle>
+                                        {(() => {
+                                            const selStatusStr = (selectedOrder?.status || 'Pending').toString().toLowerCase();
+                                            const selMatchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === selStatusStr);
+                                            const selStatusColor = selMatchedStatus?.color || "#10b981";
+                                            return (
+                                                <span
+                                                    className="px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border text-black shadow-2xs"
+                                                    style={{
+                                                        backgroundColor: selStatusColor,
+                                                        color: "#000000",
+                                                        borderColor: `${selStatusColor}80`
+                                                    }}
+                                                >
+                                                    {selectedOrder.status}
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
+                                    <DialogDescription className="text-xs text-slate-600 mt-1 font-medium">
+                                        Board: <span className="font-bold text-slate-900">{selectedOrder.board_name}</span>
+                                    </DialogDescription>
+                                </div>
+                            </DialogHeader>
 
-                                    <div className="grid grid-cols-2 gap-3 bg-white/90 p-4 rounded-xl text-xs border border-slate-200 shadow-xs">
-                                        <div><span className="text-slate-500 font-semibold">Amount:</span> <span className="font-black text-emerald-700">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
-                                        <div><span className="text-slate-500 font-semibold">Email:</span> <span className="font-bold text-slate-900">{selectedOrder.user_email}</span></div>
-                                        <div><span className="text-slate-500 font-semibold">Mobile:</span> <span className="font-bold text-slate-900">{selectedOrder.user_mobile}</span></div>
-                                        <div><span className="text-slate-500 font-semibold">Delivery:</span> <span className="font-bold text-slate-900">{formatDate(selectedOrder.delivery_date)}</span></div>
-                                    </div>
-
-                                    <div className="pt-2 flex justify-end gap-3">
-                                        <Link
-                                            href={`/orders/${selectedOrder.id}`}
-                                            className="inline-flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl shadow-md hover:opacity-90 transition-all text-xs active:scale-95"
-                                            style={{ backgroundColor: previewPcbColor }}
-                                        >
-                                            <ExternalLink className="w-4 h-4" /> Go to Full Order Detail Page
-                                        </Link>
-                                    </div>
-                                </Dialog.Content>
+                            <div className="grid grid-cols-2 gap-3 bg-white/90 p-4 rounded-xl text-xs border border-slate-200 shadow-xs">
+                                <div><span className="text-slate-500 font-semibold">Amount:</span> <span className="font-black text-emerald-700">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Email:</span> <span className="font-bold text-slate-900">{selectedOrder.user_email}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Mobile:</span> <span className="font-bold text-slate-900">{selectedOrder.user_mobile}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Delivery:</span> <span className={`font-bold ${isPastDeliveryDate(selectedOrder.delivery_date) ? "text-red-600 font-extrabold" : "text-slate-900"}`}>{formatDate(selectedOrder.delivery_date)}</span></div>
                             </div>
-                        );
-                    })()}
-                </Dialog.Portal>
-            </Dialog.Root>
+
+                            <div className="pt-2 flex justify-end gap-3">
+                                <Link
+                                    href={`/orders/${selectedOrder.id}`}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl shadow-md hover:opacity-90 transition-all text-xs active:scale-95"
+                                    style={{ backgroundColor: previewPcbColor }}
+                                >
+                                    <ExternalLink className="w-4 h-4" /> Go to Full Order Detail Page
+                                </Link>
+                            </div>
+                        </DialogContent>
+                    );
+                })()}
+            </Dialog>
+
             {/* View Order Activity Logs Modal */}
-            <Dialog.Root open={!!logsModalOrder} onOpenChange={(open) => !open && setLogsModalOrder(null)}>
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity" />
-                    {logsModalOrder && (() => {
-                        const logsPcbColorVal = getMetaValue(logsModalOrder, 'pcb_color', getMetaValue(logsModalOrder, 'solder_mask', 'Green'));
-                        const logsPcbColor = getPcbColorCode(logsPcbColorVal);
-                        return (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                                <Dialog.Content
-                                    className="pointer-events-auto w-full max-w-3xl max-h-[85vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden relative"
-                                    style={{
-                                        backgroundColor: getPcbLightBg(logsPcbColor),
-                                        borderColor: `${logsPcbColor}60`
-                                    }}
-                                >
-                                    <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: logsPcbColor }} />
-                                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
-                                        <div className="flex items-center gap-2.5">
-                                            <div
-                                                className="p-2 rounded-xl border shadow-xs"
-                                                style={{ backgroundColor: `${logsPcbColor}20`, color: logsPcbColor, borderColor: `${logsPcbColor}40` }}
-                                            >
-                                                <History className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <Dialog.Title className="text-base font-black text-slate-900 flex items-center gap-2">
-                                                    Order Activity Logs
-                                                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-300">
-                                                        #{logsModalOrder.order_number}
-                                                    </span>
-                                                </Dialog.Title>
-                                                <p className="text-xs text-slate-600 font-semibold mt-0.5">
-                                                    Audit trail & pipeline status history for {logsModalOrder.board_name}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <Dialog.Close className="p-2 rounded-xl hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 transition-all cursor-pointer">
-                                            <X className="w-5 h-5" />
-                                        </Dialog.Close>
+            <Dialog open={!!logsModalOrder} onOpenChange={(open) => !open && setLogsModalOrder(null)}>
+                {logsModalOrder && (() => {
+                    const logsPcbColorVal = getMetaValue(logsModalOrder, 'pcb_color', getMetaValue(logsModalOrder, 'solder_mask', 'Green'));
+                    const logsPcbColor = getPcbColorCode(logsPcbColorVal);
+                    return (
+                        <DialogContent
+                            className="max-w-3xl max-h-[85vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            style={{
+                                backgroundColor: getPcbLightBg(logsPcbColor),
+                                borderColor: `${logsPcbColor}60`
+                            }}
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: logsPcbColor }} />
+                            <DialogHeader className="pb-3 border-b border-slate-200/80">
+                                <div className="flex items-center gap-2.5">
+                                    <div
+                                        className="p-2 rounded-xl border shadow-xs"
+                                        style={{ backgroundColor: `${logsPcbColor}20`, color: logsPcbColor, borderColor: `${logsPcbColor}40` }}
+                                    >
+                                        <History className="w-5 h-5" />
                                     </div>
+                                    <div>
+                                        <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+                                            Order Activity Logs
+                                            <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-300">
+                                                #{logsModalOrder.order_number}
+                                            </span>
+                                        </DialogTitle>
+                                        <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
+                                            Audit trail & pipeline status history for {logsModalOrder.board_name}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
 
-                                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
-                                        <div className="overflow-x-auto">
-                                            {loadingLogs ? (
-                                                <div className="p-6 space-y-4">
-                                                    <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
-                                                    <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
-                                                    <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
-                                                </div>
-                                            ) : (
-                                                <table className="w-full text-left text-xs">
-                                                    <thead>
-                                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-extrabold uppercase tracking-wider text-[10px]">
-                                                            <th className="py-3 px-4">Action</th>
-                                                            <th className="py-3 px-4">User / Admin</th>
-                                                            <th className="py-3 px-4">Timestamp</th>
-                                                            <th className="py-3 px-4">Details / Description</th>
+                            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
+                                <div className="overflow-x-auto">
+                                    {loadingLogs ? (
+                                        <div className="p-6 space-y-4">
+                                            <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
+                                            <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
+                                            <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
+                                        </div>
+                                    ) : (
+                                        <table className="w-full text-left text-xs">
+                                            <thead>
+                                                <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-extrabold uppercase tracking-wider text-[10px]">
+                                                    <th className="py-3 px-4">Action</th>
+                                                    <th className="py-3 px-4">User / Admin</th>
+                                                    <th className="py-3 px-4">Timestamp</th>
+                                                    <th className="py-3 px-4">Details / Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 font-sans">
+                                                {logsData.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={4} className="py-8 text-center text-slate-500 italic">
+                                                            No activity logs recorded for this order yet.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    logsData.map((log: any) => (
+                                                        <tr key={log.id} className="hover:bg-slate-50">
+                                                            <td className="py-3 px-4 whitespace-nowrap">
+                                                                <span className="font-extrabold text-emerald-700">
+                                                                    {log.action || "Order Action"}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
+                                                                {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
+                                                            </td>
+                                                            <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
+                                                                {formatDate(log.created_at)}
+                                                            </td>
+                                                            <td className="py-3 px-4 font-medium text-foreground">
+                                                                {log.description || "-"}
+                                                            </td>
                                                         </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100 font-sans">
-                                                        {logsData.length === 0 ? (
-                                                            <tr>
-                                                                <td colSpan={4} className="py-8 text-center text-slate-500 italic">
-                                                                    No activity logs recorded for this order yet.
-                                                                </td>
-                                                            </tr>
-                                                        ) : (
-                                                            logsData.map((log: any) => (
-                                                                <tr key={log.id} className="hover:bg-slate-50">
-                                                                    <td className="py-3 px-4 whitespace-nowrap">
-                                                                        <span className="font-extrabold text-emerald-700">
-                                                                            {log.action || "Order Action"}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
-                                                                        {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
-                                                                    </td>
-                                                                    <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
-                                                                        {formatDate(log.created_at)}
-                                                                    </td>
-                                                                    <td className="py-3 px-4 font-medium text-foreground">
-                                                                        {log.description || "-"}
-                                                                    </td>
-                                                                </tr>
-                                                            ))
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setLogsModalOrder(null)}
-                                            className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl transition-all cursor-pointer"
-                                        >
-                                            Close
-                                        </button>
-                                    </div>
-                                </Dialog.Content>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
                             </div>
-                        );
-                    })()}
-                </Dialog.Portal>
-            </Dialog.Root>
+
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => setLogsModalOrder(null)}
+                                    className="px-4 py-2 font-bold text-xs rounded-xl transition-all cursor-pointer h-auto"
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    );
+                })()}
+            </Dialog>
         </DashboardLayout>
     );
 }
