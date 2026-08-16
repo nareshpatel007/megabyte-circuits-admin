@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -117,6 +117,13 @@ export default function OrdersPage() {
     const [filmModalOrder, setFilmModalOrder] = useState<ApiOrder | null>(null);
     const [filmDateTime, setFilmDateTime] = useState("");
     const [savingFilm, setSavingFilm] = useState(false);
+
+    // Job Card modal state
+    const [jobCardModalOrder, setJobCardModalOrder] = useState<ApiOrder | null>(null);
+
+    const openJobCardModal = (order: ApiOrder) => {
+        setJobCardModalOrder(order);
+    };
 
     const openFilmModal = (order: ApiOrder) => {
         setFilmModalOrder(order);
@@ -930,6 +937,16 @@ export default function OrdersPage() {
                                                                     );
                                                                 })()}
 
+                                                                {/* Generate Job Card Icon Button */}
+                                                                <button
+                                                                    onClick={() => openJobCardModal(order)}
+                                                                    title="Generate Job Card"
+                                                                    aria-label="Generate Job Card"
+                                                                    className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                >
+                                                                    <FileText className="w-3.5 h-3.5" />
+                                                                </button>
+
                                                                 {/* View Activity Logs Icon Button */}
                                                                 {hasViewLogsPermission && (
                                                                     <button
@@ -1172,8 +1189,19 @@ export default function OrdersPage() {
                             </div>
 
                             <div className="pt-2 flex justify-end gap-3">
+                                <Button
+                                    type="button"
+                                    onClick={() => {
+                                        const ord = selectedOrder;
+                                        setSelectedOrder(null);
+                                        openJobCardModal(ord);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-xs active:scale-95 cursor-pointer h-auto"
+                                >
+                                    <FileText className="w-4 h-4" /> Generate Job Card
+                                </Button>
                                 <Link
-                                    href={`/orders/${selectedOrder.id}`}
+                                    href={`/orders/${selectedOrder.order_number}`}
                                     className="inline-flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl shadow-md hover:opacity-90 transition-all text-xs active:scale-95"
                                     style={{ backgroundColor: previewPcbColor }}
                                 >
@@ -1365,6 +1393,363 @@ export default function OrdersPage() {
                                     </Button>
                                 </div>
                             </form>
+                        </DialogContent>
+                    );
+                })()}
+            </Dialog>
+
+            {/* Dynamic Job Card Generator & Preview Modal */}
+            <Dialog open={!!jobCardModalOrder} onOpenChange={(open) => !open && setJobCardModalOrder(null)}>
+                {jobCardModalOrder && (() => {
+                    const order = jobCardModalOrder;
+                    const layersStr = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
+                    const isSingleSide = layersStr === "1" || layersStr.toLowerCase().includes("1-side") || layersStr.toLowerCase().includes("single");
+                    
+                    const createdDate = formatDate(order.created_at);
+                    const launchDate = formatDate(getMetaValue(order, 'launch_date', order.created_at));
+                    const shippingDate = formatDate(order.delivery_date);
+                    
+                    const orderQty = getMetaValue(order, 'qty', getMetaValue(order, 'quantity', 'N/A'));
+                    const launchedQty = getMetaValue(order, 'launched_qty', getMetaValue(order, 'launched', orderQty));
+                    const ups = getMetaValue(order, 'ups', '1');
+                    const panels = getMetaValue(order, 'panels', '1');
+                    const minHole = getMetaValue(order, 'min_hole', getMetaValue(order, 'min_hole_size', '0.8 MM'));
+                    
+                    const panelSize = getMetaValue(order, 'panel_size', getMetaValue(order, 'dimensions', ''));
+                    const cuttingSize = getMetaValue(order, 'cutting_size', '');
+                    
+                    const material = getMetaValue(order, 'material', getMetaValue(order, 'base_material', 'FR4'));
+                    const thickness = getMetaValue(order, 'board_thickness', getMetaValue(order, 'thickness', '1.6'));
+                    const copperThickness = getMetaValue(order, 'copper_thickness', getMetaValue(order, 'copper_weight', '1 Oz'));
+                    const surfaceFinish = getMetaValue(order, 'surface_finish', getMetaValue(order, 'finish', 'HAL Finish'));
+                    
+                    const maskColour = getMetaValue(order, 'pcb_color', getMetaValue(order, 'solder_mask', 'Green'));
+                    const lpColor = getMetaValue(order, 'legend_color', getMetaValue(order, 'silkscreen', 'White'));
+                    const lpSide = getMetaValue(order, 'silkscreen_side', getMetaValue(order, 'legend_side', 'Top'));
+                    
+                    const route = getMetaValue(order, 'route', getMetaValue(order, 'routing', 'CNC Routing'));
+                    const vCut = getMetaValue(order, 'v_cut', 'Yes');
+                    const fptProgram = getMetaValue(order, 'fpt_program', 'MNF-1 / MNF-2');
+                    const secondStage = getMetaValue(order, 'second_stage', 'Yes');
+                    const copperArea = getMetaValue(order, 'copper_area', '');
+                    const internalCutouts = getMetaValue(order, 'internal_cutouts', 'No');
+                    
+                    const productionNote = getMetaValue(order, 'production_note', '');
+                    const customerNote = getMetaValue(order, 'customer_note', getMetaValue(order, 'special_instructions', ''));
+
+                    const singleSideProcesses = [
+                        "CUTTING",
+                        "DRILL",
+                        "DH Print",
+                        "Expose/P&E",
+                        "Devloping",
+                        "ETCHING",
+                        "ETCHING QC",
+                        "PISM",
+                        "HAL",
+                        "LP",
+                        "Manual Cutting",
+                        "V-CUT",
+                        "Routing",
+                        "Final QC with QTY",
+                        "Packing"
+                    ];
+
+                    const multiLayerProcesses = [
+                        "CUTTING",
+                        "DRILL",
+                        "DH Print",
+                        "Exposing",
+                        "DEVLOPING QC",
+                        "PLATING",
+                        "PLATING QC",
+                        "CAUSTIC",
+                        "ETCHING",
+                        "ETCH QC",
+                        "PISM",
+                        "HAL",
+                        "LP",
+                        "ROUT",
+                        "V-CUT",
+                        "BBT / FPT",
+                        "FINAL QC",
+                        "Packing"
+                    ];
+
+                    const processList = isSingleSide ? singleSideProcesses : multiLayerProcesses;
+
+                    const handlePrint = () => {
+                        const printContent = document.getElementById("job-card-printable-content");
+                        if (!printContent) return;
+                        const printWin = window.open("", "_blank");
+                        if (!printWin) {
+                            toast.error("Popup blocked! Please allow popups to print/download job cards.");
+                            return;
+                        }
+                        printWin.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>JOB_CARD_${order.order_number}</title>
+                                <style>
+                                    @page { size: A4 portrait; margin: 5mm; }
+                                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 5px; color: #000; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                                    * { box-sizing: border-box; }
+                                    table { width: 100%; border-collapse: collapse !important; border-spacing: 0; }
+                                    td, th { color: #000; font-family: Arial, sans-serif; }
+                                    @media print {
+                                        body { padding: 0; }
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                ${printContent.innerHTML}
+                                <script>
+                                    window.onload = function() {
+                                        window.focus();
+                                        setTimeout(function() {
+                                            window.print();
+                                        }, 300);
+                                    };
+                                </script>
+                            </body>
+                            </html>
+                        `);
+                        printWin.document.close();
+                    };
+
+                    const handleDownload = () => {
+                        handlePrint();
+                    };
+
+                    return (
+                        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto border border-slate-300 rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 text-slate-900 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
+                            <DialogHeader className="pb-3 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between">
+                                <div>
+                                    <DialogTitle className="text-lg font-extrabold flex items-center gap-2 text-indigo-900 dark:text-indigo-300">
+                                        <FileText className="w-5 h-5 text-indigo-600" />
+                                        Job Card Preview & Generator
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
+                                        Order #{order.order_number} · {order.board_name || 'PCB Order'} ({isSingleSide ? '1-SIDE' : `${layersStr}-Layer`})
+                                    </DialogDescription>
+                                </div>
+
+                                <div className="flex items-center gap-2.5 mr-6">
+                                    <Button
+                                        type="button"
+                                        onClick={handlePrint}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto"
+                                    >
+                                        <Printer className="w-4 h-4" /> Print Job Card
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={handleDownload}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto"
+                                    >
+                                        <Download className="w-4 h-4" /> Download PDF
+                                    </Button>
+                                </div>
+                            </DialogHeader>
+
+                            {/* Single Master Table Container Matching PDF Screenshot */}
+                            <div className="p-3 bg-white border border-slate-300 rounded-lg shadow-md font-sans text-black overflow-x-auto">
+                                <div id="job-card-printable-content" className="text-black bg-white">
+                                    <table className="w-full border-collapse border-2 border-black text-xs font-semibold text-black" style={{ borderCollapse: 'collapse', border: '2px solid #000' }}>
+                                        <tbody>
+                                            {/* Header Row */}
+                                            <tr className="border-b-2 border-black">
+                                                <td className="p-2 border-r-2 border-black w-1/3 font-black text-sm align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    JOB NO: <span className="font-extrabold text-base underline ml-1">{order.order_number}</span>
+                                                </td>
+                                                <td className="p-2 border-r-2 border-black w-1/3 text-center align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    {isSingleSide ? (
+                                                        <>
+                                                            <div className="flex items-center justify-center gap-4 text-xs font-bold mb-0.5">
+                                                                <span>Expose <span className="inline-block border border-black px-1 font-mono font-bold">✓</span></span>
+                                                                <span>Print & Etch <span className="inline-block border border-black px-1.5 font-mono">&nbsp;</span></span>
+                                                            </div>
+                                                            <div className="text-xl font-black uppercase tracking-wider underline">JOB CARD</div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-xl font-black uppercase tracking-wider underline">JOB CARD</div>
+                                                    )}
+                                                </td>
+                                                <td className="p-2 w-1/3 text-right font-black text-base align-middle" style={{ borderBottom: '2px solid #000' }}>
+                                                    {isSingleSide ? "1- SIDE" : `${layersStr}-Layer Board`}
+                                                </td>
+                                            </tr>
+
+                                            {/* Row 2: Dates */}
+                                            <tr className="border-b-2 border-black">
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Order Date: <span className="font-bold ml-1">{createdDate}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Launch Date: <span className="font-bold ml-1">{launchDate}</span></td>
+                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>Shipping Date: <span className="font-bold ml-1">{shippingDate}</span></td>
+                                            </tr>
+
+                                            {/* Row 3: Quantities & Min Hole */}
+                                            <tr className="border-b-2 border-black">
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>ORDER QTY: <span className="font-bold ml-1">{orderQty}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>LAUNCHED: <span className="font-bold ml-1">{launchedQty}</span></td>
+                                                <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
+                                                    <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td className="p-1.5 border-r-2 border-black w-1/3" style={{ borderRight: '2px solid #000' }}>UPS: <span className="font-bold ml-1">{ups}</span></td>
+                                                                <td className="p-1.5 border-r-2 border-black w-1/3" style={{ borderRight: '2px solid #000' }}>PANELS: <span className="font-bold ml-1">{panels}</span></td>
+                                                                <td className="p-1.5 w-1/3">Min.Hole: <span className="font-bold ml-1">{minHole}</span></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+
+                                            {/* Row 4: Panel & Cutting Size */}
+                                            <tr className="border-b-2 border-black">
+                                                <td colSpan={2} className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>PANEL SIZE: <span className="font-bold ml-1">{panelSize ? `${panelSize} MM` : 'MM'}</span></td>
+                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>CUTTING SIZE: <span className="font-bold ml-1">{cuttingSize ? `${cuttingSize} MM` : 'MM'}</span></td>
+                                            </tr>
+
+                                            {/* Row 5: Material, Thickness, Copper, Finish */}
+                                            <tr className="border-b-2 border-black">
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Material: <span className="font-bold ml-1">{material}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Thick: <span className="font-bold ml-1">{thickness} MM</span></td>
+                                                <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
+                                                    <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>Copper Thick: <span className="font-bold ml-1">{copperThickness} Micron</span></td>
+                                                                <td className="p-1.5 w-1/2">Finish: <span className="font-bold ml-1">{surfaceFinish}</span></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+
+                                            {/* Row 6: Mask Colour, LP Color, LP Side */}
+                                            <tr className="border-b-2 border-black">
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Mask Colour: <span className="font-bold ml-1">{maskColour}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>LP Color: <span className="font-bold ml-1">{lpColor}</span></td>
+                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>LP Side: <span className="font-bold ml-1">{lpSide}</span></td>
+                                            </tr>
+
+                                            {/* Row 7: Routing / V-Cut / FPT / Stage / Cutouts */}
+                                            <tr className="border-b-2 border-black">
+                                                {isSingleSide ? (
+                                                    <>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Route: <span className="font-bold ml-1">{route}</span></td>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>V-Cut: <span className="font-bold ml-1">{vCut}</span></td>
+                                                        <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
+                                                            <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>Shearing Cut: <span className="font-bold ml-1">Yes</span></td>
+                                                                        <td className="p-1.5 w-1/2">Internal Cutouts Reqd.?: <span className="font-bold ml-1">{internalCutouts}</span></td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Route: <span className="font-bold ml-1">{route}</span></td>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>V-Cut: <span className="font-bold ml-1">{vCut}</span></td>
+                                                        <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
+                                                            <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
+                                                                <tbody>
+                                                                    <tr style={{ borderBottom: '2px solid #000' }}>
+                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>FPT Program: <span className="font-bold ml-1">{fptProgram}</span></td>
+                                                                        <td className="p-1.5 w-1/2">2<sup>nd</sup> stage reqd.?: <span className="font-bold ml-1">{secondStage}</span></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>Copper Area: <span className="font-bold ml-1">{copperArea ? `${copperArea} Amp` : 'Amp'}</span></td>
+                                                                        <td className="p-1.5 w-1/2">Internal Cutouts Reqd.?: <span className="font-bold ml-1">{internalCutouts}</span></td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+
+                                            {/* Row 8: Notes Section */}
+                                            <tr className="border-b-2 border-black">
+                                                <td colSpan={2} className="p-2 border-r-2 border-black align-top h-20" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="font-black text-xs underline mb-1">Production Note:</div>
+                                                    <div className="text-[11px] font-medium leading-relaxed pl-2 whitespace-pre-wrap">
+                                                        {productionNote ? productionNote : "• \n• "}
+                                                    </div>
+                                                </td>
+                                                <td className="p-2 align-top h-20" style={{ borderBottom: '2px solid #000' }}>
+                                                    <div className="font-black text-xs underline mb-1">Customer Special Note:</div>
+                                                    <div className="text-[11px] font-medium leading-relaxed pl-2 whitespace-pre-wrap">
+                                                        {customerNote ? customerNote : ""}
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            {/* Row 9: Final Quantities Header & Blank Row */}
+                                            <tr className="border-b-2 border-black">
+                                                <td colSpan={3} className="p-0" style={{ borderBottom: '2px solid #000' }}>
+                                                    <table className="w-full border-collapse text-center" style={{ borderCollapse: 'collapse' }}>
+                                                        <thead>
+                                                            <tr className="border-b-2 border-black font-bold">
+                                                                <th className="p-1.5 border-r-2 border-black w-1/4 font-bold text-xs" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Final Panel Qty.</th>
+                                                                <th className="p-1.5 border-r-2 border-black w-1/4 font-bold text-xs" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Final Board Qty.</th>
+                                                                <th className="p-1.5 border-r-2 border-black w-1/4 font-bold text-xs" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Rejected Board Qty.</th>
+                                                                <th className="p-1.5 w-1/4 font-bold text-xs" style={{ borderBottom: '2px solid #000' }}>Why Rejected?</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr className="h-7">
+                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}></td>
+                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}></td>
+                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}></td>
+                                                                <td className="p-1"></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+
+                                            {/* Row 10: Process Table Header & Rows */}
+                                            <tr>
+                                                <td colSpan={3} className="p-0">
+                                                    <table className="w-full border-collapse text-xs" style={{ borderCollapse: 'collapse' }}>
+                                                        <thead>
+                                                            <tr className="border-b-2 border-black font-black uppercase text-[10px] text-center" style={{ borderBottom: '2px solid #000' }}>
+                                                                <th className="p-1.5 border-r-2 border-black text-left font-black w-1/4 pl-3" style={{ borderRight: '2px solid #000' }}>PROCESS</th>
+                                                                <th className="p-1.5 border-r-2 border-black text-center font-black w-12" style={{ borderRight: '2px solid #000' }}>IN</th>
+                                                                <th className="p-1.5 border-r-2 border-black text-center font-black" style={{ borderRight: '2px solid #000' }}>PANEL QTY</th>
+                                                                <th className="p-1.5 border-r-2 border-black text-center font-black w-12" style={{ borderRight: '2px solid #000' }}>OUT</th>
+                                                                <th className="p-1.5 border-r-1.5 border-black text-center font-black" style={{ borderRight: '2px solid #000' }}>PANEL QTY</th>
+                                                                <th className="p-1.5 border-r-2 border-black text-center font-black w-14" style={{ borderRight: '2px solid #000' }}>Q.C</th>
+                                                                <th className="p-1.5 border-r-2 border-black text-center font-black w-20" style={{ borderRight: '2px solid #000' }}>SIGN</th>
+                                                                <th className="p-1.5 text-center font-black">REMARK</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {processList.map((proc, idx) => (
+                                                                <tr key={idx} className="border-b border-black h-5.5 text-[10px]" style={{ borderBottom: idx === processList.length - 1 ? 'none' : '1px solid #000' }}>
+                                                                    <td className="p-1 border-r-2 border-black font-black text-left pl-3 uppercase" style={{ borderRight: '2px solid #000' }}>{proc}</td>
+                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
+                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
+                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
+                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
+                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
+                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
+                                                                    <td className="p-1 text-center"></td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </DialogContent>
                     );
                 })()}
