@@ -295,8 +295,22 @@ export default function OrderDetailPage() {
     };
     const pcbColorHex = getPcbHexColor(pcbColorName);
 
-    // Filter out preview_data from technical parameters display
-    const filteredMetas = order.metas ? order.metas.filter(m => m.meta_key.toLowerCase() !== 'preview_data' && m.meta_key.toLowerCase() !== 'gerber_preview_data') : [];
+    // Filter out preview_data, board_name, build_time, and parent_order_number from technical parameters display
+    const filteredMetas = order.metas ? order.metas.filter(m => {
+        const key = m.meta_key.toLowerCase();
+        return key !== 'preview_data' &&
+            key !== 'gerber_preview_data' &&
+            key !== 'board_name' &&
+            key !== 'board name' &&
+            key !== 'boardname' &&
+            key !== 'build_time' &&
+            key !== 'build time' &&
+            key !== 'buildtime' &&
+            key !== 'parent_order_number' &&
+            key !== 'parent_order' &&
+            key !== 'parent order number' &&
+            key !== 'parent order';
+    }) : [];
 
     const pageHeaderTitle = (
         <div className="space-y-1">
@@ -305,10 +319,10 @@ export default function OrderDetailPage() {
             </h1>
             <div className="flex items-center gap-2">
                 <span
-                    className="px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider inline-flex items-center gap-1.5"
+                    className="px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider inline-flex items-center gap-1.5 text-black"
                     style={{
                         backgroundColor: `${currentStatusColor}15`,
-                        color: currentStatusColor,
+                        color: "#000000",
                         borderColor: `${currentStatusColor}40`
                     }}
                 >
