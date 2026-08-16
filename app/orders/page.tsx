@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -112,6 +112,76 @@ export default function OrdersPage() {
     const [logsModalOrder, setLogsModalOrder] = useState<ApiOrder | null>(null);
     const [logsData, setLogsData] = useState<any[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
+
+    // Add / Edit Film modal state
+    const [filmModalOrder, setFilmModalOrder] = useState<ApiOrder | null>(null);
+    const [filmDateTime, setFilmDateTime] = useState("");
+    const [savingFilm, setSavingFilm] = useState(false);
+
+    const openFilmModal = (order: ApiOrder) => {
+        setFilmModalOrder(order);
+        const existingFilmVal = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
+        if (existingFilmVal && existingFilmVal !== 'N/A') {
+            let formatted = existingFilmVal;
+            try {
+                const dateObj = new Date(existingFilmVal);
+                if (!isNaN(dateObj.getTime())) {
+                    const pad = (n: number) => n < 10 ? '0' + n : n;
+                    formatted = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`;
+                }
+            } catch (e) { }
+            setFilmDateTime(formatted);
+        } else {
+            const now = new Date();
+            const pad = (n: number) => n < 10 ? '0' + n : n;
+            const defaultNow = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            setFilmDateTime(defaultNow);
+        }
+    };
+
+    const handleSaveFilm = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!filmModalOrder) return;
+        if (!filmDateTime) {
+            toast.error("Please select a date and time");
+            return;
+        }
+
+        setSavingFilm(true);
+        const toastId = toast.loading("Saving Film Date & Time...");
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${filmModalOrder.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    meta_key: "film_datetime",
+                    meta_value: filmDateTime,
+                    metas: {
+                        film_datetime: filmDateTime,
+                        film_date: filmDateTime
+                    }
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Film date & time saved successfully", { id: toastId });
+                setFilmModalOrder(null);
+                fetchData(debouncedSearch);
+            } else {
+                toast.error(data.message || "Failed to save film date & time", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error saving film date & time", { id: toastId });
+        } finally {
+            setSavingFilm(false);
+        }
+    };
 
     const openLogsModal = async (order: ApiOrder) => {
         setLogsModalOrder(order);
@@ -840,6 +910,26 @@ export default function OrdersPage() {
                                                                     </button>
                                                                 )}
 
+                                                                {/* Add/Edit Film Icon Button */}
+                                                                {(() => {
+                                                                    const existingFilm = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
+                                                                    const hasFilm = existingFilm && existingFilm !== 'N/A';
+                                                                    return (
+                                                                        <button
+                                                                            onClick={() => openFilmModal(order)}
+                                                                            title={hasFilm ? `Edit Film (${existingFilm})` : "Add Film"}
+                                                                            aria-label="Add Film"
+                                                                            className={`p-1.5 rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                                                                                hasFilm
+                                                                                    ? "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/40 hover:bg-purple-500 hover:text-white"
+                                                                                    : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 hover:bg-purple-500 hover:text-white"
+                                                                            }`}
+                                                                        >
+                                                                            <Film className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    );
+                                                                })()}
+
                                                                 {/* View Activity Logs Icon Button */}
                                                                 {hasViewLogsPermission && (
                                                                     <button
@@ -1192,6 +1282,89 @@ export default function OrdersPage() {
                                     Close
                                 </Button>
                             </div>
+                        </DialogContent>
+                    );
+                })()}
+            </Dialog>
+
+            {/* Add / Edit Film Date & Time Modal */}
+            <Dialog open={!!filmModalOrder} onOpenChange={(open) => !open && setFilmModalOrder(null)}>
+                {filmModalOrder && (() => {
+                    const modalPcbColorVal = getMetaValue(filmModalOrder, 'pcb_color', getMetaValue(filmModalOrder, 'solder_mask', 'Green'));
+                    const modalPcbColor = getPcbColorCode(modalPcbColorVal);
+                    const existingFilmVal = getMetaValue(filmModalOrder, 'film_datetime', getMetaValue(filmModalOrder, 'film_date', ''));
+                    const isExisting = existingFilmVal && existingFilmVal !== 'N/A';
+
+                    return (
+                        <DialogContent
+                            className="max-w-md border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            style={{
+                                backgroundColor: getPcbLightBg(modalPcbColor),
+                                borderColor: `${modalPcbColor}60`
+                            }}
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: modalPcbColor }} />
+
+                            <DialogHeader className="pb-3 border-b border-slate-200/80">
+                                <div className="flex items-center gap-2.5">
+                                    <div
+                                        className="p-2 rounded-xl border shadow-xs"
+                                        style={{ backgroundColor: `${modalPcbColor}20`, color: modalPcbColor, borderColor: `${modalPcbColor}40` }}
+                                    >
+                                        <Film className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className="text-base font-black text-slate-900">
+                                            {isExisting ? "Update Film Date & Time" : "Add Film Date & Time"}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
+                                            Order #{filmModalOrder.order_number} · {filmModalOrder.board_name}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            <form onSubmit={handleSaveFilm} className="space-y-4">
+                                {isExisting && (
+                                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs space-y-0.5">
+                                        <span className="font-bold text-purple-900 block">Current Saved Film Date & Time:</span>
+                                        <span className="font-mono text-purple-700 font-extrabold">{existingFilmVal}</span>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                        Select Film Date & Time
+                                    </label>
+                                    <Input
+                                        type="datetime-local"
+                                        value={filmDateTime}
+                                        onChange={(e) => setFilmDateTime(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto cursor-pointer"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200/80">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setFilmModalOrder(null)}
+                                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer border-slate-300/80 h-auto"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={savingFilm}
+                                        className="inline-flex items-center gap-1.5 px-5 py-2.5 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 hover:opacity-90 active:scale-95 h-auto"
+                                        style={{ backgroundColor: modalPcbColor }}
+                                    >
+                                        <Film className={`w-3.5 h-3.5 ${savingFilm ? 'animate-spin' : ''}`} />
+                                        {savingFilm ? "Saving..." : isExisting ? "Update Film" : "Save Film"}
+                                    </Button>
+                                </div>
+                            </form>
                         </DialogContent>
                     );
                 })()}
