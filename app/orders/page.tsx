@@ -473,6 +473,36 @@ export default function OrdersPage() {
         setModalRemark("");
     };
 
+    // Quick inline status change handler
+    const handleInlineStatusChange = async (order: ApiOrder, newStatus: string) => {
+        if (!hasChangeStatusPermission || order.status === newStatus) return;
+        const toastId = toast.loading(`Updating Order #${order.order_number} status...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    status: newStatus
+                })
+            });
+
+            const data = await res.json();
+            if (data.status || data.success) {
+                toast.success(`Order #${order.order_number} status updated to "${newStatus}"`, { id: toastId });
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus } : o));
+            } else {
+                toast.error(data.message || "Failed to update status", { id: toastId });
+            }
+        } catch (err: any) {
+            console.error("Inline status update error:", err);
+            toast.error("Error updating status", { id: toastId });
+        }
+    };
+
     // Submit status update
     const handleStatusUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -827,16 +857,59 @@ export default function OrdersPage() {
                                                     <tr key={order.id} className="hover:bg-muted/20 transition-colors">
                                                         {/* 1. Status */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
-                                                            <span
-                                                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs text-black"
-                                                                style={{
-                                                                    backgroundColor: statusColor,
-                                                                    color: "#000000",
-                                                                    borderColor: `${statusColor}80`
-                                                                }}
-                                                            >
-                                                                {order.status}
-                                                            </span>
+                                                            {hasChangeStatusPermission ? (
+                                                                <Select
+                                                                    value={order.status}
+                                                                    onValueChange={(val) => handleInlineStatusChange(order, val)}
+                                                                >
+                                                                    <SelectTrigger
+                                                                        className="h-7 border text-[11px] font-black uppercase tracking-wider rounded-full px-2.5 shadow-2xs cursor-pointer focus:ring-1 focus:ring-emerald-500 gap-1 transition-all min-w-[110px]"
+                                                                        style={{
+                                                                            backgroundColor: statusColor,
+                                                                            color: "#000000",
+                                                                            borderColor: `${statusColor}90`
+                                                                        }}
+                                                                    >
+                                                                        <SelectValue placeholder={order.status}>
+                                                                            {order.status}
+                                                                        </SelectValue>
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="max-h-64 bg-popover text-popover-foreground rounded-xl border border-border shadow-xl">
+                                                                        {statuses && statuses.length > 0 ? (
+                                                                            statuses.map((st) => (
+                                                                                <SelectItem
+                                                                                    key={st.id || st.name}
+                                                                                    value={st.name}
+                                                                                    className="text-xs font-bold py-1.5 px-3 cursor-pointer hover:bg-emerald-500/10 focus:bg-emerald-500/10"
+                                                                                >
+                                                                                    <span className="flex items-center gap-2">
+                                                                                        <span
+                                                                                            className="w-2 h-2 rounded-full inline-block"
+                                                                                            style={{ backgroundColor: st.color || getPcbColorCode(st.name) }}
+                                                                                        />
+                                                                                        {st.name}
+                                                                                    </span>
+                                                                                </SelectItem>
+                                                                            ))
+                                                                        ) : (
+                                                                            <SelectItem value={order.status} className="text-xs font-bold">
+                                                                                {order.status}
+                                                                            </SelectItem>
+                                                                        )}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            ) : (
+                                                                <span
+                                                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs text-black"
+                                                                    style={{
+                                                                        backgroundColor: statusColor,
+                                                                        color: "#000000",
+                                                                        borderColor: `${statusColor}80`
+                                                                    }}
+                                                                >
+                                                                    {order.status}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         {/* 2. Order Number */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
