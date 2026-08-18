@@ -95,13 +95,42 @@ export default function CreateOrderPage() {
     const [layerCount, setLayerCount] = useState<string>("2");
     const [boardLength, setBoardLength] = useState<string>("100");
     const [boardWidth, setBoardWidth] = useState<string>("100");
+    const [dimensionUnit, setDimensionUnit] = useState<string>("mm");
     const [quantity, setQuantity] = useState<string>("5");
-    const [material, setMaterial] = useState<string>("FR4");
-    const [thickness, setThickness] = useState<string>("1.6");
-    const [surfaceFinish, setSurfaceFinish] = useState<string>("HASL with lead");
+    const [material, setMaterial] = useState<string>("FR-4");
+    const [thickness, setThickness] = useState<string>("1.6mm");
+    const [surfaceFinish, setSurfaceFinish] = useState<string>("HASL(Leaded)");
     const [solderMask, setSolderMask] = useState<string>("Green");
+    const [pcbColorHex, setPcbColorHex] = useState<string>("#52c41a");
     const [silkscreen, setSilkscreen] = useState<string>("White");
     const [copperWeight, setCopperWeight] = useState<string>("1 oz");
+    const [productType, setProductType] = useState<string>("Industrial/Consumer electronics");
+    const [differentDesign, setDifferentDesign] = useState<string>("1");
+    const [deliveryFormat, setDeliveryFormat] = useState<string>("Single PCB");
+    const [materialType, setMaterialType] = useState<string>("FR4-TG135");
+    const [goldThickness, setGoldThickness] = useState<string>("1 U*");
+    const [viaCovering, setViaCovering] = useState<string>("Not Specified");
+    const [viaPlating, setViaPlating] = useState<string>("Not Specified");
+    const [minHole, setMinHole] = useState<string>("0.3mm");
+    const [confirmFile, setConfirmFile] = useState<string>("No");
+    const [markOnPcb, setMarkOnPcb] = useState<string>("Remove Mark");
+    const [elecTest, setElecTest] = useState<string>("Flying Probe Fully Test");
+    const [goldFingers, setGoldFingers] = useState<string>("No");
+    const [castellated, setCastellated] = useState<string>("No");
+    const [edgePlating, setEdgePlating] = useState<string>("No");
+    const [blindSlots, setBlindSlots] = useState<string>("No");
+    const [ulMarking, setUlMarking] = useState<string>("No");
+    const [humidity, setHumidity] = useState<string>("No");
+    const [kelvinTest, setKelvinTest] = useState<string>("No");
+    const [paperBetween, setPaperBetween] = useState<string>("No");
+    const [appearanceQuality, setAppearanceQuality] = useState<string>("IPC Class 2 Standard");
+    const [silkscreenTech, setSilkscreenTech] = useState<string>("Ink-jet Printing Silkscreen");
+    const [inspectionReport, setInspectionReport] = useState<string>("No");
+    const [pcbRemark, setPcbRemark] = useState<string>("");
+
+    // Delivery Calendar Matrix Selection State
+    const [selectedDay, setSelectedDay] = useState<number>(3);
+    const [pricingConfig, setPricingConfig] = useState<{ fixedCosts: any; priceTiers: any } | null>(null);
 
     // Gerber File & Analysis State
     const [gerberFile, setGerberFile] = useState<File | null>(null);
@@ -132,6 +161,226 @@ export default function CreateOrderPage() {
     const [clientComboboxOpen, setClientComboboxOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
     const [debouncedClientSearch, setDebouncedClientSearch] = useState("");
+
+    // Fetch dynamic pricing configuration from backend API
+    useEffect(() => {
+        let active = true;
+        async function fetchPricingConfig() {
+            try {
+                const res = await fetch("/api/pcb-pricing");
+                const json = await res.json();
+                if (active && json.success && json.data) {
+                    setPricingConfig(json.data);
+                }
+            } catch (err) {
+                console.error("Failed to load PCB pricing configuration from API:", err);
+            }
+        }
+        fetchPricingConfig();
+        return () => { active = false; };
+    }, []);
+
+    // Helper pricing matrices matching quote page
+    const getStandardPrices = () => ({
+        '1': { "0.5 or less": [4.62, 3.08, 2.31, 1.925, 1.54], "0.51 to 1": [4.62, 3.08, 2.31, 1.925, 1.54], "1.01 to 2": [3.08, 1.54, 1.386, 1.078, 0.77], "2.01 to 3": [3.08, 1.54, 1.386, 0.886, 0.539], "3.01 to 9.99": [0, 1.54, 1.155, 0.847, 0.539] },
+        '2': { "0.5 or less": [5.28, 4.62, 3.3, 2.64, 1.98], "0.51 to 1": [5.28, 3.96, 2.64, 2.31, 1.98], "1.01 to 2": [0, 2.64, 2.31, 1.816, 1.32], "2.01 to 3": [0, 0, 1.848, 1.584, 1.32], "3.01 to 9.99": [0, 0, 0, 1.518, 1.32] },
+        '4': { "0.5 or less": [7, 5.6, 4.2, 3.5, 2.8], "0.51 to 1": [7, 5.6, 4.2, 3.5, 2.8], "1.01 to 2": [4.2, 2.8, 2.52, 2.1, 1.68], "2.01 to 3": [4.2, 2.8, 2.1, 1.68, 1.4], "3.01 to 9.99": [4.2, 2.8, 2.1, 1.68, 1.4] },
+        '6': { "0.5 or less": [9.8, 8.4, 6.3, 4.9, 4.2], "0.51 to 1": [9.8, 8.4, 6.3, 4.9, 4.2], "1.01 to 2": [7, 5.6, 4.9, 4.2, 3.5], "2.01 to 3": [7, 5.6, 4.2, 3.5, 2.8], "3.01 to 9.99": [7, 5.6, 4.2, 3.5, 2.8] },
+        '8': { "0.5 or less": [7, 5.6, 4.2, 3.5, 2.8], "0.51 to 1": [7, 5.6, 4.2, 3.5, 2.8], "1.01 to 2": [4.2, 2.8, 2.52, 2.1, 1.68], "2.01 to 3": [4.2, 2.8, 2.1, 1.68, 1.4], "3.01 to 9.99": [4.2, 2.8, 2.1, 1.68, 1.4] },
+        '10': { "0.5 or less": [9.8, 8.4, 6.3, 4.9, 4.2], "0.51 to 1": [9.8, 8.4, 6.3, 4.9, 4.2], "1.01 to 2": [7, 5.6, 4.9, 4.2, 3.5], "2.01 to 3": [7, 5.6, 4.2, 3.5, 2.8], "3.01 to 9.99": [7, 5.6, 4.2, 3.5, 2.8] }
+    });
+
+    const getOtherMask1ozPrices = () => ({
+        '1': { "0.5 or less": [5.39, 3.85, 3.08, 2.695, 2.31], "0.51 to 1": [5.39, 3.85, 3.08, 2.695, 2.31], "1.01 to 2": [3.85, 1.694, 1.54, 1.232, 0.924], "2.01 to 3": [3.85, 1.694, 1.54, 0.979, 0.57], "3.01 to 9.99": [0, 1.694, 1.309, 0.939, 0.57] },
+        '2': { "0.5 or less": [6.6, 5.94, 3.96, 3.136, 2.31], "0.51 to 1": [6.6, 5.28, 3.3, 2.806, 2.31], "1.01 to 2": [0, 3.036, 2.64, 2.146, 1.65], "2.01 to 3": [0, 0, 1.98, 1.782, 1.584], "3.01 to 9.99": [0, 0, 0, 1.65, 1.584] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getGreenMask1ozOtherThicknessPrices = () => ({
+        '1': { "0.5 or less": [6.93, 4.62, 3.465, 2.888, 2.31], "0.51 to 1": [6.93, 4.62, 3.465, 2.888, 2.31], "1.01 to 2": [4.62, 2.31, 2.079, 1.617, 1.155], "2.01 to 3": [4.62, 2.31, 1.848, 1.617, 1.155], "3.01 to 9.99": [0, 2.31, 1.733, 1.271, 0.809] },
+        '2': { "0.5 or less": [7.92, 6.93, 4.95, 3.96, 2.97], "0.51 to 1": [7.92, 5.94, 3.96, 3.466, 2.97], "1.01 to 2": [0, 3.96, 3.466, 2.723, 1.98], "2.01 to 3": [0, 0, 2.442, 2.212, 1.98], "3.01 to 9.99": [0, 0, 0, 2.278, 1.98] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getOtherMask1ozOtherThicknessPrices = () => ({
+        '1': { "0.5 or less": [8.085, 5.775, 4.62, 4.043, 3.465], "0.51 to 1": [8.085, 5.775, 4.62, 4.043, 3.465], "1.01 to 2": [5.775, 2.541, 2.31, 1.848, 1.386], "2.01 to 3": [5.775, 2.541, 2.079, 1.467, 0.855], "3.01 to 9.99": [0, 2.541, 1.964, 1.41, 0.855] },
+        '2': { "0.5 or less": [9.9, 8.91, 5.94, 4.712, 3.466], "0.51 to 1": [9.9, 7.92, 4.95, 4.208, 3.466], "1.01 to 2": [0, 4.554, 3.96, 3.234, 2.476], "2.01 to 3": [0, 0, 2.64, 2.508, 2.376], "3.01 to 9.99": [0, 0, 0, 2.508, 2.376] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getGreenMask2ozPrices = () => ({
+        '1': { "0.5 or less": [9.24, 6.16, 4.62, 3.85, 3.08], "0.51 to 1": [9.24, 6.16, 4.62, 3.85, 3.08], "1.01 to 2": [6.16, 3.08, 2.772, 2.156, 1.54], "2.01 to 3": [6.16, 3.08, 2.464, 1.771, 1.078], "3.01 to 9.99": [0, 3.08, 2.31, 1.694, 1.078] },
+        '2': { "0.5 or less": [10.56, 9.24, 6.6, 5.28, 3.96], "0.51 to 1": [10.56, 7.92, 5.28, 4.62, 3.96], "1.01 to 2": [0, 5.28, 4.62, 3.63, 2.64], "2.01 to 3": [0, 0, 3.3, 3.036, 2.64], "3.01 to 9.99": [0, 0, 0, 3.036, 2.64] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getOtherMask2ozPrices = () => ({
+        '1': { "0.5 or less": [10.78, 7.7, 6.16, 5.39, 4.62], "0.51 to 1": [10.78, 7.7, 6.16, 5.39, 4.62], "1.01 to 2": [7.7, 3.388, 3.08, 2.464, 1.848], "2.01 to 3": [7.7, 3.388, 2.772, 1.956, 1.14], "3.01 to 9.99": [0, 3.388, 2.618, 1.879, 1.14] },
+        '2': { "0.5 or less": [13.2, 11.88, 7.92, 6.27, 4.62], "0.51 to 1": [13.2, 10.56, 6.6, 5.61, 4.62], "1.01 to 2": [0, 6.072, 5.28, 4.29, 3.3], "2.01 to 3": [0, 0, 3.696, 3.432, 3.168], "3.01 to 9.99": [0, 0, 0, 3.3, 3.168] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getGreenMask2ozOtherThicknessPrices = () => ({
+        '1': { "0.5 or less": [13.86, 9.24, 6.93, 5.775, 4.62], "0.51 to 1": [13.86, 9.24, 6.93, 5.775, 4.62], "1.01 to 2": [9.24, 4.62, 4.158, 3.234, 2.31], "2.01 to 3": [9.24, 4.62, 3.696, 2.657, 1.617], "3.01 to 9.99": [0, 4.62, 3.465, 2.541, 1.617] },
+        '2': { "0.5 or less": [15.84, 13.86, 9.9, 7.92, 5.94], "0.51 to 1": [15.84, 11.88, 7.92, 6.93, 5.94], "1.01 to 2": [0, 7.92, 6.93, 5.446, 3.96], "2.01 to 3": [0, 0, 4.752, 4.554, 3.96], "3.01 to 9.99": [0, 0, 0, 4.554, 3.96] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getOtherMask2ozOtherThicknessPrices = () => ({
+        '1': { "0.5 or less": [16.17, 11.55, 9.24, 8.085, 6.93], "0.51 to 1": [16.17, 11.55, 9.24, 8.085, 6.93], "1.01 to 2": [11.55, 5.082, 4.62, 3.696, 2.772], "2.01 to 3": [11.55, 5.082, 4.158, 2.941, 1.709], "3.01 to 9.99": [0, 5.082, 3.927, 2.818, 1.709] },
+        '2': { "0.5 or less": [19.8, 17.82, 11.88, 9.406, 6.93], "0.51 to 1": [19.8, 15.84, 9.9, 8.416, 6.93], "1.01 to 2": [0, 9.108, 7.92, 6.436, 4.95], "2.01 to 3": [0, 0, 5.148, 4.95, 4.752], "3.01 to 9.99": [0, 0, 0, 4.95, 4.752] },
+        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
+        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
+        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
+    });
+
+    const getPriceTiers = (mask: string, weight: string, thicknessVal: number, customTiers?: any) => {
+        const isThickness1_6 = Math.abs(thicknessVal - 1.6) < 0.01;
+        const thicknessKey = isThickness1_6 ? 1.6 : 'other';
+
+        const defaultTiers: any = {
+            'Green': {
+                '1oz': { 1.6: getStandardPrices(), 'other': getGreenMask1ozOtherThicknessPrices() },
+                '2oz': { 1.6: getGreenMask2ozPrices(), 'other': getGreenMask2ozOtherThicknessPrices() }
+            },
+            'Other': {
+                '1oz': { 1.6: getOtherMask1ozPrices(), 'other': getOtherMask1ozOtherThicknessPrices() },
+                '2oz': { 1.6: getOtherMask2ozPrices(), 'other': getOtherMask2ozOtherThicknessPrices() }
+            }
+        };
+
+        const tiers = customTiers || defaultTiers;
+        return tiers[mask]?.[weight]?.[thicknessKey] ?? tiers[mask]?.[weight]?.['other'] ?? tiers['Other']?.[weight]?.['other'] ?? null;
+    };
+
+    // Calculate dynamic 20-day options based on PCB Quote matrix logic
+    const getLeadTimePricing = () => {
+        const layers = parseInt(layerCount, 10) || 1;
+        const unitMultiplier = dimensionUnit === "inches" ? 25.4 : 1;
+        const length = (parseFloat(boardWidth) || 0) * unitMultiplier;
+        const width = (parseFloat(boardLength) || 0) * unitMultiplier;
+        const qty = Math.max(parseInt(quantity, 10) || 3, 3);
+        const maskKey = solderMask === "Green" ? "Green" : "Other";
+        const cWeight = copperWeight.replace(" ", "");
+        const rawThicknessStr = (thickness || "1.6").toString().replace(/[^0-9.]/g, "");
+        const thickVal = parseFloat(rawThicknessStr) || 1.6;
+
+        if (length <= 0 || width <= 0 || qty <= 0) {
+            return { options: [], showContact: false, totalAreaInSqM: 0 };
+        }
+
+        const areaPerBoard = (length * width) / 1000000;
+        const totalAreaInSqM = areaPerBoard * qty;
+        const areaInSqCm = totalAreaInSqM * 10000;
+
+        const fixedCosts: Record<string, Record<number, number>> = pricingConfig?.fixedCosts || {
+            '1': { 1: 3100, 3: 2100, 5: 1600, 7: 1500, 10: 1400, 20: 1000 },
+            '2': { 1: 8100, 3: 4100, 5: 2600, 7: 2200, 10: 1900, 20: 1400 },
+            '4': { 20: 6000 },
+            '6': { 20: 7000 },
+            '8': { 20: 8000 },
+            '10': { 20: 9000 }
+        };
+
+        const priceTiers = getPriceTiers(maskKey, cWeight, thickVal, pricingConfig?.priceTiers);
+        if (!priceTiers) {
+            return { options: [], showContact: false, totalAreaInSqM };
+        }
+
+        let tierKey = "";
+        if (totalAreaInSqM <= 0.5) tierKey = "0.5 or less";
+        else if (totalAreaInSqM <= 1) tierKey = "0.51 to 1";
+        else if (totalAreaInSqM <= 2) tierKey = "1.01 to 2";
+        else if (totalAreaInSqM <= 3) tierKey = "2.01 to 3";
+        else if (totalAreaInSqM <= 9.99) tierKey = "3.01 to 9.99";
+        else {
+            return { options: [], showContact: true, totalAreaInSqM };
+        }
+
+        const applicablePrices = priceTiers[layers.toString()]?.[tierKey];
+        if (!applicablePrices) {
+            return { options: [], showContact: false, totalAreaInSqM };
+        }
+
+        const daysList = [1, 3, 5, 7, 10, 20];
+        const options = daysList.map((day, idx) => {
+            let costPerSqCm = applicablePrices[idx];
+            if (day === 20) {
+                costPerSqCm = (layers >= 4 && layers <= 10)
+                    ? applicablePrices[0]
+                    : (applicablePrices[4] ?? applicablePrices[0]) * 0.85;
+            }
+
+            const fixedCost = fixedCosts[layers.toString()]?.[day];
+            if (fixedCost === undefined) {
+                return { day, unitPrice: "0.00", orderValue: "0.00", visible: false };
+            }
+            const variableCost = areaInSqCm * costPerSqCm;
+            const totalCost = fixedCost + variableCost;
+            const uPrice = totalCost / qty;
+
+            return {
+                day,
+                unitPrice: uPrice.toFixed(2),
+                orderValue: totalCost.toFixed(2),
+                visible: true
+            };
+        });
+
+        let showContact = false;
+        if (layers >= 4 && layers <= 10) {
+            options.forEach(opt => {
+                if (opt.day !== 20) opt.visible = false;
+            });
+        } else if (layers === 1 || layers === 2) {
+            if (layers === 2 && totalAreaInSqM > 7) {
+                options.forEach(opt => opt.visible = false);
+                showContact = true;
+            } else if (layers === 1 && totalAreaInSqM > 10) {
+                options.forEach(opt => opt.visible = false);
+                showContact = true;
+            } else {
+                if (layers === 2) {
+                    if (totalAreaInSqM > 2) {
+                        options.forEach(opt => { if ([1, 3, 5].includes(opt.day)) opt.visible = false; });
+                    } else if (totalAreaInSqM > 1.5) {
+                        options.forEach(opt => { if ([1, 3].includes(opt.day)) opt.visible = false; });
+                    } else if (totalAreaInSqM > 1) {
+                        options.forEach(opt => { if (opt.day === 1) opt.visible = false; });
+                    }
+                } else if (layers === 1) {
+                    if (totalAreaInSqM > 5) {
+                        options.forEach(opt => { if ([1, 3, 5].includes(opt.day)) opt.visible = false; });
+                    } else if (totalAreaInSqM > 3) {
+                        options.forEach(opt => { if ([1, 3].includes(opt.day)) opt.visible = false; });
+                    } else if (totalAreaInSqM > 2) {
+                        options.forEach(opt => { if (opt.day === 1) opt.visible = false; });
+                    }
+                }
+            }
+        }
+
+        return { options, showContact, totalAreaInSqM };
+    };
 
     // Debounce search effect (400ms)
     useEffect(() => {
@@ -263,43 +512,34 @@ export default function CreateOrderPage() {
         }
     };
 
-    // Calculate Price based on PCB Quote Calculator Formula
+    // Calculate Price & Delivery Date based on Matrix Lead-Time Calculator
     useEffect(() => {
-        const lengthMm = parseFloat(boardLength) || 100;
-        const widthMm = parseFloat(boardWidth) || 100;
-        const qtyPcs = parseInt(quantity) || 5;
-        const layers = parseInt(layerCount) || 2;
+        const { options } = getLeadTimePricing();
+        const qtyPcs = parseInt(quantity, 10) || 5;
 
-        const areaCm2 = (lengthMm * widthMm) / 100;
+        // Try to match selectedDay option
+        let matched = options.find((o) => o.day === selectedDay && o.visible);
+        if (!matched) {
+            matched = options.find((o) => o.visible);
+        }
 
-        let layerMult = 1.2;
-        if (layers === 1) layerMult = 1.0;
-        else if (layers === 4) layerMult = 2.0;
-        else if (layers === 6) layerMult = 3.5;
-        else if (layers === 8) layerMult = 5.0;
+        if (matched) {
+            setOrderValue(matched.orderValue);
+            setUnitPrice(matched.unitPrice);
 
-        let matMult = 1.0;
-        if (material.includes("Aluminum")) matMult = 1.3;
-        else if (material.includes("High TG")) matMult = 1.4;
-        else if (material.includes("Rogers")) matMult = 3.0;
-
-        let thickMult = 1.0;
-        if (thickness === "0.8" || thickness === "1.0" || thickness === "1.2") thickMult = 1.1;
-        else if (thickness === "2.0") thickMult = 1.25;
-
-        let finishMult = 1.0;
-        if (surfaceFinish.includes("Lead-free")) finishMult = 1.15;
-        else if (surfaceFinish.includes("ENIG")) finishMult = 1.5;
-
-        let copperMult = copperWeight === "2 oz" ? 1.35 : 1.0;
-
-        const baseCostPerBoard = (areaCm2 * 0.45 + layers * 45) * matMult * thickMult * finishMult * copperMult;
-        const calculatedTotal = Math.max(500, Math.round(baseCostPerBoard * qtyPcs * layerMult));
-        const calculatedUnit = Math.round((calculatedTotal / qtyPcs) * 100) / 100;
-
-        setOrderValue(calculatedTotal.toString());
-        setUnitPrice(calculatedUnit.toString());
-    }, [boardLength, boardWidth, quantity, layerCount, material, thickness, surfaceFinish, copperWeight]);
+            // Compute delivery date string
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + matched.day);
+            setDeliveryDate(targetDate.toISOString().split("T")[0]);
+        } else {
+            // Fallback calculation if out of bounds matrix range
+            const len = parseFloat(boardWidth) || 100;
+            const wid = parseFloat(boardLength) || 100;
+            const defaultTotal = Math.max(500, Math.round(((len * wid) / 100 * 0.45 + (parseInt(layerCount) || 2) * 45) * qtyPcs));
+            setOrderValue(defaultTotal.toString());
+            setUnitPrice((defaultTotal / qtyPcs).toFixed(2));
+        }
+    }, [boardLength, boardWidth, quantity, layerCount, material, thickness, surfaceFinish, copperWeight, solderMask, selectedDay, pricingConfig]);
 
     // Handle Gerber File Analysis & Layer/Dimension Extraction (Quote Page Logic)
     const handleFileValidation = async (file: File) => {
@@ -478,6 +718,7 @@ export default function CreateOrderPage() {
             formData.append("layers", layerCount);
             formData.append("dimensions_length", boardLength);
             formData.append("dimensions_width", boardWidth);
+            formData.append("dimension_unit", dimensionUnit);
             formData.append("quantity", quantity);
             formData.append("material", material);
             formData.append("thickness", thickness);
@@ -485,6 +726,32 @@ export default function CreateOrderPage() {
             formData.append("solder_mask", solderMask);
             formData.append("silkscreen", silkscreen);
             formData.append("copper_weight", copperWeight);
+
+            // Extended Quote Specs Metas
+            formData.append("product_type", productType);
+            formData.append("different_design", differentDesign);
+            formData.append("delivery_format", deliveryFormat);
+            formData.append("material_type", materialType);
+            formData.append("gold_thickness", goldThickness);
+            formData.append("via_covering", viaCovering);
+            formData.append("via_plating", viaPlating);
+            formData.append("min_hole", minHole);
+            formData.append("confirm_file", confirmFile);
+            formData.append("mark_on_pcb", markOnPcb);
+            formData.append("elec_test", elecTest);
+            formData.append("gold_fingers", goldFingers);
+            formData.append("castellated", castellated);
+            formData.append("edge_plating", edgePlating);
+            formData.append("blind_slots", blindSlots);
+            formData.append("ul_marking", ulMarking);
+            formData.append("humidity", humidity);
+            formData.append("kelvin_test", kelvinTest);
+            formData.append("paper_between", paperBetween);
+            formData.append("appearance_quality", appearanceQuality);
+            formData.append("silkscreen_tech", silkscreenTech);
+            formData.append("inspection_report", inspectionReport);
+            if (pcbRemark) formData.append("pcb_remark", pcbRemark);
+            formData.append("lead_time_days", selectedDay.toString());
 
             // Financials
             formData.append("unit_price", unitPrice);
@@ -680,7 +947,7 @@ export default function CreateOrderPage() {
                     </div>
 
                     {/* Section 2: PCB Specifications */}
-                    <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-4">
+                    <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-5">
                         <div className="flex items-center justify-between border-b border-border/60 pb-3">
                             <div className="flex items-center gap-2.5">
                                 <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
@@ -688,7 +955,7 @@ export default function CreateOrderPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">2. PCB Specifications</h3>
-                                    <p className="text-xs text-muted-foreground font-medium">Configure board parameters</p>
+                                    <p className="text-xs text-muted-foreground font-medium">Configure detailed board parameters matching Quote page specifications</p>
                                 </div>
                             </div>
                         </div>
@@ -701,8 +968,42 @@ export default function CreateOrderPage() {
                             </div>
                         )}
 
+                        {/* Core Quote Options Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {/* Layers */}
+                            {/* Base Material */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Base Material</label>
+                                <Select value={material} onValueChange={(val) => {
+                                    setMaterial(val);
+                                    if (val === "Flex") {
+                                        setMaterialType("Polyimide (PI)");
+                                        setThickness("0.12mm");
+                                        setSurfaceFinish("ENIG");
+                                        setCopperWeight("0.5 oz");
+                                    } else if (val === "Rogers") {
+                                        setMaterialType("RO4350B(Dk=3.48,Df=0.0037)");
+                                        setThickness("1.6mm");
+                                    } else if (val === "PTFE Teflon") {
+                                        setMaterialType("ZYF300CA-P(Dk=3.0,Df=0.0016)");
+                                        setThickness("1.6mm");
+                                    } else {
+                                        setMaterialType("FR4-TG135");
+                                        setThickness("1.6mm");
+                                    }
+                                }}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Base Material" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="FR-4">FR-4 Standard</SelectItem>
+                                        <SelectItem value="Flex">Flex (FPC)</SelectItem>
+                                        <SelectItem value="Rogers">Rogers Ceramic</SelectItem>
+                                        <SelectItem value="PTFE Teflon">PTFE Teflon</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Layer Count */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Layer Count</label>
                                 <Select value={layerCount} onValueChange={setLayerCount}>
@@ -713,16 +1014,20 @@ export default function CreateOrderPage() {
                                         <SelectItem value="1">1 Layer</SelectItem>
                                         <SelectItem value="2">2 Layers</SelectItem>
                                         <SelectItem value="4">4 Layers</SelectItem>
-                                        <SelectItem value="6">6 Layers</SelectItem>
-                                        <SelectItem value="8">8 Layers</SelectItem>
+                                        <SelectItem value="6">6 Layers (High Precision)</SelectItem>
+                                        <SelectItem value="8">8 Layers (High Precision)</SelectItem>
+                                        <SelectItem value="10">10 Layers (High Precision)</SelectItem>
+                                        <SelectItem value="12">12 Layers (High Precision)</SelectItem>
+                                        <SelectItem value="14">14 Layers (High Precision)</SelectItem>
+                                        <SelectItem value="16">16 Layers (High Precision)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             {/* Dimensions */}
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Dimensions (L x W mm)</label>
-                                <div className="flex items-center gap-2">
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Dimensions (L x W)</label>
+                                <div className="flex items-center gap-1.5">
                                     <Input
                                         type="number"
                                         placeholder="Length"
@@ -738,6 +1043,15 @@ export default function CreateOrderPage() {
                                         onChange={(e) => setBoardWidth(e.target.value)}
                                         className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
+                                    <Select value={dimensionUnit} onValueChange={setDimensionUnit}>
+                                        <SelectTrigger className="w-20 h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="mm">mm</SelectItem>
+                                            <SelectItem value="inches">inches</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
 
@@ -753,23 +1067,53 @@ export default function CreateOrderPage() {
                                 />
                             </div>
 
-                            {/* Material */}
+                            {/* Product Type */}
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Material</label>
-                                <Select value={material} onValueChange={setMaterial}>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Product Type</label>
+                                <Select value={productType} onValueChange={setProductType}>
                                     <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue placeholder="Select Material" />
+                                        <SelectValue placeholder="Select Product Type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="FR4">FR4 Standard</SelectItem>
-                                        <SelectItem value="Aluminum">Aluminum Core</SelectItem>
-                                        <SelectItem value="High TG FR4">High TG FR-4</SelectItem>
-                                        <SelectItem value="Rogers">Rogers Ceramic</SelectItem>
+                                        <SelectItem value="Industrial/Consumer electronics">Industrial / Consumer Electronics</SelectItem>
+                                        <SelectItem value="Aerospace">Aerospace</SelectItem>
+                                        <SelectItem value="Medical">Medical</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Thickness */}
+                            {/* Different Design */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Different Design Count</label>
+                                <Select value={differentDesign} onValueChange={setDifferentDesign}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">1 Design</SelectItem>
+                                        <SelectItem value="2">2 Designs</SelectItem>
+                                        <SelectItem value="3">3 Designs</SelectItem>
+                                        <SelectItem value="4">4 Designs</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Delivery Format */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Delivery Format</label>
+                                <Select value={deliveryFormat} onValueChange={setDeliveryFormat}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Single PCB">Single PCB</SelectItem>
+                                        <SelectItem value="Panel by Customer">Panel by Customer</SelectItem>
+                                        <SelectItem value="Panel by Megabyte Circuit">Panel by Megabyte Circuit</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Board Thickness */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Board Thickness</label>
                                 <Select value={thickness} onValueChange={setThickness}>
@@ -777,27 +1121,28 @@ export default function CreateOrderPage() {
                                         <SelectValue placeholder="Select Thickness" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0.6">0.6 mm</SelectItem>
-                                        <SelectItem value="0.8">0.8 mm</SelectItem>
-                                        <SelectItem value="1.0">1.0 mm</SelectItem>
-                                        <SelectItem value="1.2">1.2 mm</SelectItem>
-                                        <SelectItem value="1.6">1.6 mm</SelectItem>
-                                        <SelectItem value="2.0">2.0 mm</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Surface Finish */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Surface Finish</label>
-                                <Select value={surfaceFinish} onValueChange={setSurfaceFinish}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue placeholder="Select Surface Finish" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="HASL with lead">HASL with lead</SelectItem>
-                                        <SelectItem value="Lead-free HASL">Lead-free HASL</SelectItem>
-                                        <SelectItem value="ENIG / Immersion Gold">ENIG (Immersion Gold)</SelectItem>
+                                        {material === "Flex" ? (
+                                            <>
+                                                <SelectItem value="0.11mm">0.11 mm</SelectItem>
+                                                <SelectItem value="0.12mm">0.12 mm</SelectItem>
+                                                <SelectItem value="0.2mm">0.2 mm</SelectItem>
+                                            </>
+                                        ) : material === "Rogers" ? (
+                                            <>
+                                                <SelectItem value="0.51mm">0.51 mm</SelectItem>
+                                                <SelectItem value="0.76mm">0.76 mm</SelectItem>
+                                                <SelectItem value="1.52mm">1.52 mm</SelectItem>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <SelectItem value="0.6mm">0.6 mm</SelectItem>
+                                                <SelectItem value="0.8mm">0.8 mm</SelectItem>
+                                                <SelectItem value="1.0mm">1.0 mm</SelectItem>
+                                                <SelectItem value="1.2mm">1.2 mm</SelectItem>
+                                                <SelectItem value="1.6mm">1.6 mm</SelectItem>
+                                                <SelectItem value="2.0mm">2.0 mm</SelectItem>
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -805,7 +1150,11 @@ export default function CreateOrderPage() {
                             {/* Solder Mask Color */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Solder Mask Color</label>
-                                <Select value={solderMask} onValueChange={setSolderMask}>
+                                <Select value={solderMask} onValueChange={(val) => {
+                                    setSolderMask(val);
+                                    const mapHex: Record<string, string> = { Green: "#52c41a", Red: "#f5222d", Blue: "#1677ff", Black: "#000000", White: "#ffffff", Yellow: "#fadb14", Purple: "#722ed1" };
+                                    setPcbColorHex(mapHex[val] || "#52c41a");
+                                }}>
                                     <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
                                         <SelectValue placeholder="Select Solder Mask Color" />
                                     </SelectTrigger>
@@ -816,6 +1165,7 @@ export default function CreateOrderPage() {
                                         <SelectItem value="Black">Black</SelectItem>
                                         <SelectItem value="White">White</SelectItem>
                                         <SelectItem value="Yellow">Yellow</SelectItem>
+                                        <SelectItem value="Purple">Purple</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -835,7 +1185,23 @@ export default function CreateOrderPage() {
                                 </Select>
                             </div>
 
-                            {/* Copper Weight */}
+                            {/* Surface Finish */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Surface Finish</label>
+                                <Select value={surfaceFinish} onValueChange={setSurfaceFinish}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Surface Finish" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="HASL(Leaded)">HASL (Leaded)</SelectItem>
+                                        <SelectItem value="LeadFree HASL">LeadFree HASL</SelectItem>
+                                        <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
+                                        <SelectItem value="OSP">OSP</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Outer Copper Weight */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Outer Copper Weight</label>
                                 <Select value={copperWeight} onValueChange={setCopperWeight}>
@@ -845,13 +1211,138 @@ export default function CreateOrderPage() {
                                     <SelectContent>
                                         <SelectItem value="1 oz">1 oz</SelectItem>
                                         <SelectItem value="2 oz">2 oz</SelectItem>
+                                        {material === "Flex" && <SelectItem value="0.5 oz">0.5 oz</SelectItem>}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Material Type */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Material Type</label>
+                                <Input
+                                    type="text"
+                                    value={materialType}
+                                    onChange={(e) => setMaterialType(e.target.value)}
+                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
+                                />
+                            </div>
+
+                            {/* Via Covering */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Via Covering</label>
+                                <Select value={viaCovering} onValueChange={setViaCovering}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Tented">Tented</SelectItem>
+                                        <SelectItem value="Untented">Untented</SelectItem>
+                                        <SelectItem value="Plugged">Plugged</SelectItem>
+                                        <SelectItem value="Epoxy Filled & Capped">Epoxy Filled & Capped</SelectItem>
+                                        <SelectItem value="Not Specified">Not Specified</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Via Plating Method */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Via Plating Method</label>
+                                <Select value={viaPlating} onValueChange={setViaPlating}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Not Specified">Not Specified</SelectItem>
+                                        <SelectItem value="Conductive Adhesive">Conductive Adhesive</SelectItem>
+                                        <SelectItem value="Horizontal Electroless Copper Plating">Horizontal Electroless Copper Plating</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Min Hole Size */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Min Via Hole Size</label>
+                                <Select value={minHole} onValueChange={setMinHole}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="0.3mm/(0.4/0.45mm)">0.3mm / (0.4/0.45mm)</SelectItem>
+                                        <SelectItem value="0.25mm/(0.35/0.4mm)">0.25mm / (0.35/0.4mm)</SelectItem>
+                                        <SelectItem value="0.2mm/(0.3/0.35mm)">0.2mm / (0.3/0.35mm)</SelectItem>
+                                        <SelectItem value="0.15mm/(0.25/0.3mm)">0.15mm / (0.25/0.3mm)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Electrical Test */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Electrical Test</label>
+                                <Select value={elecTest} onValueChange={setElecTest}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Flying Probe Fully Test">Flying Probe Fully Test</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Mark on PCB */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Mark on PCB</label>
+                                <Select value={markOnPcb} onValueChange={setMarkOnPcb}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Remove Mark">Remove Mark</SelectItem>
+                                        <SelectItem value="2D barcode (Serial Number)">2D barcode (Serial Number)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Section 3: Gerber Upload Zone OR Full Preview Section (Quote Page Layout) */}
+                        {/* Additional Boolean Badges Grid */}
+                        <div className="pt-3 border-t border-border/60">
+                            <h4 className="text-xs font-bold text-muted-foreground mb-2.5">High-Spec & Quality Options</h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { label: "Gold Fingers", state: goldFingers, setState: setGoldFingers },
+                                    { label: "Castellated Holes", state: castellated, setState: setCastellated },
+                                    { label: "Edge Plating", state: edgePlating, setState: setEdgePlating },
+                                    { label: "Blind Slots", state: blindSlots, setState: setBlindSlots },
+                                    { label: "Humidity Card", state: humidity, setState: setHumidity },
+                                    { label: "Kelvin Test", state: kelvinTest, setState: setKelvinTest },
+                                    { label: "Paper Between PCBs", state: paperBetween, setState: setPaperBetween },
+                                    { label: "Confirm Production File", state: confirmFile, setState: setConfirmFile }
+                                ].map((opt, idx) => (
+                                    <label key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/60 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={opt.state === "Yes"}
+                                            onChange={(e) => opt.setState(e.target.checked ? "Yes" : "No")}
+                                            className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                                        />
+                                        <span className="text-xs font-semibold text-foreground">{opt.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Special PCB Remarks */}
+                        <div className="pt-2">
+                            <label className="text-xs font-bold text-muted-foreground block mb-1">PCB Remarks / Custom Specifications</label>
+                            <Input
+                                type="text"
+                                placeholder="Add optional manufacturing remarks or instructions..."
+                                value={pcbRemark}
+                                onChange={(e) => setPcbRemark(e.target.value)}
+                                className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-medium text-foreground"
+                            />
+                        </div>
+                    </div>
+                    {/* Section 3: Upload Gerber File OR Full Preview Section */}
                     {!gerberFile ? (
                         /* Upload Zone (Shown when NO file uploaded) */
                         <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-4">
@@ -1002,16 +1493,183 @@ export default function CreateOrderPage() {
                         </div>
                     )}
 
-                    {/* Section 4: Pricing & Payment Record */}
-                    <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-4">
+                    {/* Section 4: Financials & Payment Record (Including Integrated Delivery Calendar) */}
+                    <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-5">
                         <div className="flex items-center gap-2.5 border-b border-border/60 pb-3">
                             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
                                 <CreditCard className="w-5 h-5" />
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-foreground">4. Financials & Payment Record</h3>
-                                <p className="text-xs text-muted-foreground font-medium">Review calculated pricing, set expected delivery date, and record manual payment</p>
+                                <p className="text-xs text-muted-foreground font-medium">Select delivery lead time, review calculated pricing, set expected delivery date, and record manual payment</p>
                             </div>
+                        </div>
+
+                        {/* Integrated 20-Day Delivery Lead Time Calendar Selector */}
+                        <div className="bg-muted/20 border border-border/80 p-4 rounded-xl space-y-3">
+                            {(() => {
+                                const { options, showContact } = getLeadTimePricing();
+
+                                if (showContact) {
+                                    return (
+                                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center shadow-xs">
+                                            <p className="text-xs font-bold text-red-800">For larger bulk PCB orders, please contact customer support directly.</p>
+                                        </div>
+                                    );
+                                }
+
+                                const unitMultiplier = dimensionUnit === "inches" ? 25.4 : 1;
+                                const length = (parseFloat(boardWidth) || 0) * unitMultiplier;
+                                const width = (parseFloat(boardLength) || 0) * unitMultiplier;
+                                const qty = Math.max(parseInt(quantity, 10) || 3, 3);
+                                const layers = parseInt(layerCount, 10) || 1;
+
+                                const defaultOrderValue = Math.max(Math.round(length * width * 0.05 * qty), 100);
+                                const defaultUnitPrice = (defaultOrderValue / qty).toFixed(2);
+                                const getOption = (dayNum: number) => options.find(o => o.day === dayNum && o.visible);
+
+                                const next20Days = Array.from({ length: 20 }, (_, i) => {
+                                    const daysAhead = i + 1;
+                                    const date = new Date();
+                                    date.setDate(date.getDate() + daysAhead);
+
+                                    let matchedOrderValue = defaultOrderValue;
+                                    let matchedUnitPrice = parseFloat(defaultUnitPrice);
+                                    let visible = false;
+
+                                    if (layers >= 4 && layers <= 10) {
+                                        const opt20 = getOption(20);
+                                        if (opt20) {
+                                            matchedOrderValue = parseFloat(opt20.orderValue);
+                                            matchedUnitPrice = parseFloat(opt20.unitPrice);
+                                            visible = true;
+                                        }
+                                    } else {
+                                        const interpolate = (d1: number, d2: number, ratio: number = 0.5) => {
+                                            const o1 = getOption(d1);
+                                            const o2 = getOption(d2);
+                                            if (o1 && o2) {
+                                                const val1 = parseFloat(o1.orderValue);
+                                                const val2 = parseFloat(o2.orderValue);
+                                                const u1 = parseFloat(o1.unitPrice);
+                                                const u2 = parseFloat(o2.unitPrice);
+                                                return {
+                                                    orderValue: val1 + (val2 - val1) * ratio,
+                                                    unitPrice: u1 + (u2 - u1) * ratio,
+                                                    visible: true
+                                                };
+                                            } else if (o2) {
+                                                return { orderValue: parseFloat(o2.orderValue), unitPrice: parseFloat(o2.unitPrice), visible: true };
+                                            } else if (o1) {
+                                                return { orderValue: parseFloat(o1.orderValue), unitPrice: parseFloat(o1.unitPrice), visible: true };
+                                            }
+                                            return null;
+                                        };
+
+                                        if (daysAhead === 1) {
+                                            const o = getOption(1);
+                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
+                                        } else if (daysAhead === 2) {
+                                            const res = interpolate(1, 3, 0.5);
+                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                        } else if (daysAhead === 3) {
+                                            const o = getOption(3);
+                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
+                                        } else if (daysAhead === 4) {
+                                            const res = interpolate(3, 5, 0.5);
+                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                        } else if (daysAhead === 5) {
+                                            const o = getOption(5);
+                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
+                                        } else if (daysAhead === 6) {
+                                            const res = interpolate(5, 7, 0.5);
+                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                        } else if (daysAhead === 7) {
+                                            const o = getOption(7);
+                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
+                                        } else if (daysAhead === 8) {
+                                            const res = interpolate(7, 10, 1 / 3);
+                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                        } else if (daysAhead === 9) {
+                                            const res = interpolate(7, 10, 2 / 3);
+                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                        } else if (daysAhead >= 10 && daysAhead <= 20) {
+                                            const ratio = (daysAhead - 10) / 10;
+                                            const res = interpolate(10, 20, ratio);
+                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                        }
+                                    }
+
+                                    return {
+                                        day: daysAhead,
+                                        dateNum: date.getDate(),
+                                        monthStr: date.toLocaleDateString("en-IN", { month: "short" }),
+                                        fullMonthYear: date.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+                                        weekday: date.toLocaleDateString("en-IN", { weekday: "short" }),
+                                        formattedDate: date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+                                        orderValue: matchedOrderValue.toFixed(2),
+                                        unitPrice: matchedUnitPrice.toFixed(2),
+                                        visible
+                                    };
+                                });
+
+                                const uniqueMonths = Array.from(new Set(next20Days.map(item => item.fullMonthYear)));
+                                const calendarHeaderTitle = uniqueMonths.length > 1
+                                    ? `${uniqueMonths[0]} - ${uniqueMonths[uniqueMonths.length - 1]}`
+                                    : uniqueMonths[0] || new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+
+                                return (
+                                    <div className="space-y-2.5">
+                                        <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                                            <div>
+                                                <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-500/30" />
+                                                    Select Delivery Date & Lead Time
+                                                </h4>
+                                            </div>
+                                            <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border border-emerald-500/30">
+                                                {calendarHeaderTitle}
+                                            </div>
+                                        </div>
+
+                                        {/* 20-Day Interactive Grid */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-10 gap-2">
+                                            {next20Days.map((item) => {
+                                                const isSelected = selectedDay === item.day;
+                                                return (
+                                                    <div
+                                                        key={item.day}
+                                                        onClick={() => {
+                                                            if (item.visible) {
+                                                                setSelectedDay(item.day);
+                                                                setOrderValue(item.orderValue);
+                                                                setUnitPrice(item.unitPrice);
+                                                                const d = new Date();
+                                                                d.setDate(d.getDate() + item.day);
+                                                                setDeliveryDate(d.toISOString().split("T")[0]);
+                                                            }
+                                                        }}
+                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between ${
+                                                            !item.visible
+                                                                ? "opacity-30 bg-muted/20 border-border/40 cursor-not-allowed"
+                                                                : isSelected
+                                                                ? "bg-emerald-500 text-white border-emerald-600 shadow-md scale-105"
+                                                                : "bg-card hover:bg-emerald-500/10 border-border/80 text-foreground"
+                                                        }`}
+                                                    >
+                                                        <div className="text-[10px] font-bold uppercase opacity-80">{item.weekday}</div>
+                                                        <div className="text-base font-black my-0.5">{item.dateNum}</div>
+                                                        <div className="text-[10px] font-semibold opacity-90">{item.monthStr}</div>
+                                                        <div className={`mt-1 pt-1 border-t text-[11px] font-extrabold ${isSelected ? "border-white/30 text-white" : "border-border/60 text-emerald-600 dark:text-emerald-400"}`}>
+                                                            ₹{item.orderValue}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

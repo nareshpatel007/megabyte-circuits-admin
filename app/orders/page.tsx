@@ -950,7 +950,12 @@ export default function OrdersPage() {
                                                         {/* 3. Layers */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <span className="px-2 py-0.5 rounded-lg text-foreground font-extrabold text-xs">
-                                                                {layerCount}
+                                                                {(() => {
+                                                                    const rawVal = (layerCount || '').toString().trim();
+                                                                    if (!rawVal) return '2 Layers';
+                                                                    if (rawVal.toLowerCase().includes('layer')) return rawVal;
+                                                                    return `${rawVal} ${parseInt(rawVal, 10) === 1 ? 'Layer' : 'Layers'}`;
+                                                                })()}
                                                             </span>
                                                         </td>
 
