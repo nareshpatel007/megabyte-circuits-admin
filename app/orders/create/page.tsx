@@ -107,7 +107,7 @@ export default function CreateOrderPage() {
     const [productType, setProductType] = useState<string>("Industrial/Consumer electronics");
     const [differentDesign, setDifferentDesign] = useState<string>("1");
     const [deliveryFormat, setDeliveryFormat] = useState<string>("Single PCB");
-    const [materialType, setMaterialType] = useState<string>("FR4-TG135");
+    const [materialType, setMaterialType] = useState<string>("FR-4");
     const [goldThickness, setGoldThickness] = useState<string>("1 U*");
     const [viaCovering, setViaCovering] = useState<string>("Not Specified");
     const [viaPlating, setViaPlating] = useState<string>("Not Specified");
@@ -186,96 +186,12 @@ export default function CreateOrderPage() {
         return () => { active = false; };
     }, []);
 
-    // Helper pricing matrices matching quote page
-    const getStandardPrices = () => ({
-        '1': { "0.5 or less": [4.62, 3.08, 2.31, 1.925, 1.54], "0.51 to 1": [4.62, 3.08, 2.31, 1.925, 1.54], "1.01 to 2": [3.08, 1.54, 1.386, 1.078, 0.77], "2.01 to 3": [3.08, 1.54, 1.386, 0.886, 0.539], "3.01 to 9.99": [0, 1.54, 1.155, 0.847, 0.539] },
-        '2': { "0.5 or less": [5.28, 4.62, 3.3, 2.64, 1.98], "0.51 to 1": [5.28, 3.96, 2.64, 2.31, 1.98], "1.01 to 2": [0, 2.64, 2.31, 1.816, 1.32], "2.01 to 3": [0, 0, 1.848, 1.584, 1.32], "3.01 to 9.99": [0, 0, 0, 1.518, 1.32] },
-        '4': { "0.5 or less": [7, 5.6, 4.2, 3.5, 2.8], "0.51 to 1": [7, 5.6, 4.2, 3.5, 2.8], "1.01 to 2": [4.2, 2.8, 2.52, 2.1, 1.68], "2.01 to 3": [4.2, 2.8, 2.1, 1.68, 1.4], "3.01 to 9.99": [4.2, 2.8, 2.1, 1.68, 1.4] },
-        '6': { "0.5 or less": [9.8, 8.4, 6.3, 4.9, 4.2], "0.51 to 1": [9.8, 8.4, 6.3, 4.9, 4.2], "1.01 to 2": [7, 5.6, 4.9, 4.2, 3.5], "2.01 to 3": [7, 5.6, 4.2, 3.5, 2.8], "3.01 to 9.99": [7, 5.6, 4.2, 3.5, 2.8] },
-        '8': { "0.5 or less": [7, 5.6, 4.2, 3.5, 2.8], "0.51 to 1": [7, 5.6, 4.2, 3.5, 2.8], "1.01 to 2": [4.2, 2.8, 2.52, 2.1, 1.68], "2.01 to 3": [4.2, 2.8, 2.1, 1.68, 1.4], "3.01 to 9.99": [4.2, 2.8, 2.1, 1.68, 1.4] },
-        '10': { "0.5 or less": [9.8, 8.4, 6.3, 4.9, 4.2], "0.51 to 1": [9.8, 8.4, 6.3, 4.9, 4.2], "1.01 to 2": [7, 5.6, 4.9, 4.2, 3.5], "2.01 to 3": [7, 5.6, 4.2, 3.5, 2.8], "3.01 to 9.99": [7, 5.6, 4.2, 3.5, 2.8] }
-    });
-
-    const getOtherMask1ozPrices = () => ({
-        '1': { "0.5 or less": [5.39, 3.85, 3.08, 2.695, 2.31], "0.51 to 1": [5.39, 3.85, 3.08, 2.695, 2.31], "1.01 to 2": [3.85, 1.694, 1.54, 1.232, 0.924], "2.01 to 3": [3.85, 1.694, 1.54, 0.979, 0.57], "3.01 to 9.99": [0, 1.694, 1.309, 0.939, 0.57] },
-        '2': { "0.5 or less": [6.6, 5.94, 3.96, 3.136, 2.31], "0.51 to 1": [6.6, 5.28, 3.3, 2.806, 2.31], "1.01 to 2": [0, 3.036, 2.64, 2.146, 1.65], "2.01 to 3": [0, 0, 1.98, 1.782, 1.584], "3.01 to 9.99": [0, 0, 0, 1.65, 1.584] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
-    const getGreenMask1ozOtherThicknessPrices = () => ({
-        '1': { "0.5 or less": [6.93, 4.62, 3.465, 2.888, 2.31], "0.51 to 1": [6.93, 4.62, 3.465, 2.888, 2.31], "1.01 to 2": [4.62, 2.31, 2.079, 1.617, 1.155], "2.01 to 3": [4.62, 2.31, 1.848, 1.617, 1.155], "3.01 to 9.99": [0, 2.31, 1.733, 1.271, 0.809] },
-        '2': { "0.5 or less": [7.92, 6.93, 4.95, 3.96, 2.97], "0.51 to 1": [7.92, 5.94, 3.96, 3.466, 2.97], "1.01 to 2": [0, 3.96, 3.466, 2.723, 1.98], "2.01 to 3": [0, 0, 2.442, 2.212, 1.98], "3.01 to 9.99": [0, 0, 0, 2.278, 1.98] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
-    const getOtherMask1ozOtherThicknessPrices = () => ({
-        '1': { "0.5 or less": [8.085, 5.775, 4.62, 4.043, 3.465], "0.51 to 1": [8.085, 5.775, 4.62, 4.043, 3.465], "1.01 to 2": [5.775, 2.541, 2.31, 1.848, 1.386], "2.01 to 3": [5.775, 2.541, 2.079, 1.467, 0.855], "3.01 to 9.99": [0, 2.541, 1.964, 1.41, 0.855] },
-        '2': { "0.5 or less": [9.9, 8.91, 5.94, 4.712, 3.466], "0.51 to 1": [9.9, 7.92, 4.95, 4.208, 3.466], "1.01 to 2": [0, 4.554, 3.96, 3.234, 2.476], "2.01 to 3": [0, 0, 2.64, 2.508, 2.376], "3.01 to 9.99": [0, 0, 0, 2.508, 2.376] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
-    const getGreenMask2ozPrices = () => ({
-        '1': { "0.5 or less": [9.24, 6.16, 4.62, 3.85, 3.08], "0.51 to 1": [9.24, 6.16, 4.62, 3.85, 3.08], "1.01 to 2": [6.16, 3.08, 2.772, 2.156, 1.54], "2.01 to 3": [6.16, 3.08, 2.464, 1.771, 1.078], "3.01 to 9.99": [0, 3.08, 2.31, 1.694, 1.078] },
-        '2': { "0.5 or less": [10.56, 9.24, 6.6, 5.28, 3.96], "0.51 to 1": [10.56, 7.92, 5.28, 4.62, 3.96], "1.01 to 2": [0, 5.28, 4.62, 3.63, 2.64], "2.01 to 3": [0, 0, 3.3, 3.036, 2.64], "3.01 to 9.99": [0, 0, 0, 3.036, 2.64] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
-    const getOtherMask2ozPrices = () => ({
-        '1': { "0.5 or less": [10.78, 7.7, 6.16, 5.39, 4.62], "0.51 to 1": [10.78, 7.7, 6.16, 5.39, 4.62], "1.01 to 2": [7.7, 3.388, 3.08, 2.464, 1.848], "2.01 to 3": [7.7, 3.388, 2.772, 1.956, 1.14], "3.01 to 9.99": [0, 3.388, 2.618, 1.879, 1.14] },
-        '2': { "0.5 or less": [13.2, 11.88, 7.92, 6.27, 4.62], "0.51 to 1": [13.2, 10.56, 6.6, 5.61, 4.62], "1.01 to 2": [0, 6.072, 5.28, 4.29, 3.3], "2.01 to 3": [0, 0, 3.696, 3.432, 3.168], "3.01 to 9.99": [0, 0, 0, 3.3, 3.168] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
-    const getGreenMask2ozOtherThicknessPrices = () => ({
-        '1': { "0.5 or less": [13.86, 9.24, 6.93, 5.775, 4.62], "0.51 to 1": [13.86, 9.24, 6.93, 5.775, 4.62], "1.01 to 2": [9.24, 4.62, 4.158, 3.234, 2.31], "2.01 to 3": [9.24, 4.62, 3.696, 2.657, 1.617], "3.01 to 9.99": [0, 4.62, 3.465, 2.541, 1.617] },
-        '2': { "0.5 or less": [15.84, 13.86, 9.9, 7.92, 5.94], "0.51 to 1": [15.84, 11.88, 7.92, 6.93, 5.94], "1.01 to 2": [0, 7.92, 6.93, 5.446, 3.96], "2.01 to 3": [0, 0, 4.752, 4.554, 3.96], "3.01 to 9.99": [0, 0, 0, 4.554, 3.96] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
-    const getOtherMask2ozOtherThicknessPrices = () => ({
-        '1': { "0.5 or less": [16.17, 11.55, 9.24, 8.085, 6.93], "0.51 to 1": [16.17, 11.55, 9.24, 8.085, 6.93], "1.01 to 2": [11.55, 5.082, 4.62, 3.696, 2.772], "2.01 to 3": [11.55, 5.082, 4.158, 2.941, 1.709], "3.01 to 9.99": [0, 5.082, 3.927, 2.818, 1.709] },
-        '2': { "0.5 or less": [19.8, 17.82, 11.88, 9.406, 6.93], "0.51 to 1": [19.8, 15.84, 9.9, 8.416, 6.93], "1.01 to 2": [0, 9.108, 7.92, 6.436, 4.95], "2.01 to 3": [0, 0, 5.148, 4.95, 4.752], "3.01 to 9.99": [0, 0, 0, 4.95, 4.752] },
-        '4': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '6': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] },
-        '8': { "0.5 or less": [7], "0.51 to 1": [7], "1.01 to 2": [4.2], "2.01 to 3": [4.2], "3.01 to 9.99": [4.2] },
-        '10': { "0.5 or less": [9.8], "0.51 to 1": [9.8], "1.01 to 2": [7], "2.01 to 3": [7], "3.01 to 9.99": [7] }
-    });
-
     const getPriceTiers = (mask: string, weight: string, thicknessVal: number, customTiers?: any) => {
+        if (!customTiers) return null;
         const isThickness1_6 = Math.abs(thicknessVal - 1.6) < 0.01;
         const thicknessKey = isThickness1_6 ? 1.6 : 'other';
 
-        const defaultTiers: any = {
-            'Green': {
-                '1oz': { 1.6: getStandardPrices(), 'other': getGreenMask1ozOtherThicknessPrices() },
-                '2oz': { 1.6: getGreenMask2ozPrices(), 'other': getGreenMask2ozOtherThicknessPrices() }
-            },
-            'Other': {
-                '1oz': { 1.6: getOtherMask1ozPrices(), 'other': getOtherMask1ozOtherThicknessPrices() },
-                '2oz': { 1.6: getOtherMask2ozPrices(), 'other': getOtherMask2ozOtherThicknessPrices() }
-            }
-        };
-
-        const tiers = customTiers || defaultTiers;
-        return tiers[mask]?.[weight]?.[thicknessKey] ?? tiers[mask]?.[weight]?.['other'] ?? tiers['Other']?.[weight]?.['other'] ?? null;
+        return customTiers[mask]?.[weight]?.[thicknessKey] ?? customTiers[mask]?.[weight]?.['other'] ?? customTiers['Other']?.[weight]?.['other'] ?? null;
     };
 
     // Calculate dynamic 20-day options based on PCB Quote matrix logic
@@ -1275,12 +1191,17 @@ export default function CreateOrderPage() {
                             {/* Material Type */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Material Type</label>
-                                <Input
-                                    type="text"
-                                    value={materialType}
-                                    onChange={(e) => setMaterialType(e.target.value)}
-                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
-                                />
+                                <Select value={materialType} onValueChange={setMaterialType}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Select Material Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="FR-4">FR-4</SelectItem>
+                                        <SelectItem value="Flex">Flex</SelectItem>
+                                        <SelectItem value="Rogers">Rogers</SelectItem>
+                                        <SelectItem value="PTFE Teflon">PTFE Teflon</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Via Covering */}
@@ -1699,13 +1620,12 @@ export default function CreateOrderPage() {
                                                                 setDeliveryDate(d.toISOString().split("T")[0]);
                                                             }
                                                         }}
-                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between ${
-                                                            !item.visible
-                                                                ? "opacity-30 bg-muted/20 border-border/40 cursor-not-allowed"
-                                                                : isSelected
+                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between ${!item.visible
+                                                            ? "opacity-30 bg-muted/20 border-border/40 cursor-not-allowed"
+                                                            : isSelected
                                                                 ? "bg-emerald-500 text-white border-emerald-600 shadow-md scale-105"
                                                                 : "bg-card hover:bg-emerald-500/10 border-border/80 text-foreground"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <div className="text-[10px] font-bold uppercase opacity-80">{item.weekday}</div>
                                                         <div className="text-base font-black my-0.5">{item.dateNum}</div>
@@ -1720,42 +1640,6 @@ export default function CreateOrderPage() {
                                     </div>
                                 );
                             })()}
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Unit Price (₹)</label>
-                                <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={unitPrice}
-                                    onChange={(e) => setUnitPrice(e.target.value)}
-                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-bold text-foreground"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Total Order Value (₹)</label>
-                                <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={orderValue}
-                                    onChange={(e) => setOrderValue(e.target.value)}
-                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-black text-emerald-600 dark:text-emerald-400"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Expected Delivery Date</label>
-                                <Input
-                                    type="date"
-                                    value={deliveryDate}
-                                    onChange={(e) => setDeliveryDate(e.target.value)}
-                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
-                                />
-                            </div>
                         </div>
 
                         {/* Manual Payment Section */}
@@ -1786,9 +1670,6 @@ export default function CreateOrderPage() {
                                                 <SelectItem value="Credit / Debit Card">Credit / Debit Card</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                    </div>
-                                    <div className="flex flex-col justify-end text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                                        ✓ A transaction record for ₹{orderValue} will be automatically generated and linked with this order.
                                     </div>
                                 </div>
                             )}
