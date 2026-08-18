@@ -26,6 +26,8 @@ import {
 import { ClientDetailSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
+const POSSIBLE_STATUSES = ["Active", "Inactive", "Pending", "Suspended", "On Hold"];
+
 interface ClientUser {
     id: number | string;
     name?: string;

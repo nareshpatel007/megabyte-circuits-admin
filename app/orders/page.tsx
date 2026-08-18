@@ -384,47 +384,6 @@ export default function OrdersPage() {
         return found ? found.meta_value : fallback;
     };
 
-    // Filter logic
-    const filtered = orders.filter((o) => {
-        if (!o) return false;
-        const query = search.toLowerCase();
-        const orderNum = (o.order_number || "").toString().toLowerCase();
-        const boardName = (o.board_name || "").toString().toLowerCase();
-        const userEmail = (o.user_email || "").toString().toLowerCase();
-        const userMobile = (o.user_mobile || "").toString().toLowerCase();
-        const customerName = (o.customer_name || "").toString().toLowerCase();
-
-        // Gerber file name & URL search
-        const gerberFileName = getMetaValue(o, 'gerber_file_name', getMetaValue(o, 'gerber_name', getMetaValue(o, 'file_name', getMetaValue(o, 'gerber_file', '')))).toLowerCase();
-        const gerberUrl = getMetaValue(o, 'gerber_file_url', getMetaValue(o, 'gerber_url', getMetaValue(o, 'gerber_path', ''))).toLowerCase();
-
-        // Payment details search
-        const paymentId = (getMetaValue(o, 'payment_id', getMetaValue(o, 'razorpay_payment_id', getMetaValue(o, 'transaction_id', (o as any).payment_id || ''))) || "").toString().toLowerCase();
-        const paymentStatus = (getMetaValue(o, 'payment_status', (o as any).payment_status || "")).toString().toLowerCase();
-        const paymentMode = (getMetaValue(o, 'payment_mode', getMetaValue(o, 'payment_method', (o as any).payment_mode || ""))).toString().toLowerCase();
-        const orderValue = (o.order_value || "").toString().toLowerCase();
-
-        const matchSearch =
-            orderNum.includes(query) ||
-            boardName.includes(query) ||
-            userEmail.includes(query) ||
-            userMobile.includes(query) ||
-            customerName.includes(query) ||
-            gerberFileName.includes(query) ||
-            gerberUrl.includes(query) ||
-            paymentId.includes(query) ||
-            paymentStatus.includes(query) ||
-            paymentMode.includes(query) ||
-            orderValue.includes(query);
-
-        const matchStatus = statusFilter === "All" || (o.status || "").toString().toLowerCase() === statusFilter.toLowerCase();
-        return matchSearch && matchStatus;
-    });
-
-    const [pageSize, setPageSize] = useState<number>(10);
-    const totalPages = Math.ceil(filtered.length / pageSize);
-    const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
-
     // Helper to format date as "05 Aug 2026, 11:41 am"
     const formatDate = (dateString?: string | null) => {
         if (!dateString || dateString === 'N/A') return 'N/A';
@@ -459,6 +418,51 @@ export default function OrdersPage() {
             return false;
         }
     };
+
+    // Filter logic
+    const filtered = orders.filter((o) => {
+        if (!o) return false;
+        const query = search.toLowerCase();
+        const orderNum = (o.order_number || "").toString().toLowerCase();
+        const boardName = (o.board_name || "").toString().toLowerCase();
+        const userEmail = (o.user_email || "").toString().toLowerCase();
+        const userMobile = (o.user_mobile || "").toString().toLowerCase();
+        const customerName = (o.customer_name || "").toString().toLowerCase();
+
+        // Gerber file name & URL search
+        const gerberFileName = getMetaValue(o, 'gerber_file_name', getMetaValue(o, 'gerber_name', getMetaValue(o, 'file_name', getMetaValue(o, 'gerber_file', '')))).toLowerCase();
+        const gerberUrl = getMetaValue(o, 'gerber_file_url', getMetaValue(o, 'gerber_url', getMetaValue(o, 'gerber_path', ''))).toLowerCase();
+
+        // Payment details search
+        const paymentId = (getMetaValue(o, 'payment_id', getMetaValue(o, 'razorpay_payment_id', getMetaValue(o, 'transaction_id', (o as any).payment_id || ''))) || "").toString().toLowerCase();
+        const paymentStatus = (getMetaValue(o, 'payment_status', (o as any).payment_status || "")).toString().toLowerCase();
+        const paymentMode = (getMetaValue(o, 'payment_mode', getMetaValue(o, 'payment_method', (o as any).payment_mode || ""))).toString().toLowerCase();
+        const orderValue = (o.order_value || "").toString().toLowerCase();
+
+        const filmVal = getMetaValue(o, 'film_datetime', getMetaValue(o, 'film_date', '')).toLowerCase();
+        const filmStatus = filmVal && filmVal !== 'n/a' ? `yes ${filmVal} ${formatDate(filmVal).toLowerCase()}` : 'no';
+
+        const matchSearch =
+            orderNum.includes(query) ||
+            boardName.includes(query) ||
+            userEmail.includes(query) ||
+            userMobile.includes(query) ||
+            customerName.includes(query) ||
+            gerberFileName.includes(query) ||
+            gerberUrl.includes(query) ||
+            paymentId.includes(query) ||
+            paymentStatus.includes(query) ||
+            paymentMode.includes(query) ||
+            orderValue.includes(query) ||
+            filmStatus.includes(query);
+
+        const matchStatus = statusFilter === "All" || (o.status || "").toString().toLowerCase() === statusFilter.toLowerCase();
+        return matchSearch && matchStatus;
+    });
+
+    const [pageSize, setPageSize] = useState<number>(10);
+    const totalPages = Math.ceil(filtered.length / pageSize);
+    const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
     // Open change status modal
     const openStatusModal = (order: ApiOrder) => {
@@ -805,11 +809,12 @@ export default function OrdersPage() {
                                     <div className="h-4 bg-muted/60 rounded-md animate-pulse w-24" />
                                 </div>
                                 {[1, 2, 3, 4, 5].map((i) => (
-                                    <div key={i} className="flex items-center justify-between py-3 px-2 border-b border-border/20 gap-4">
-                                        <div className="h-7 bg-muted/60 rounded-full animate-pulse w-24 shrink-0" />
+                                    <div key={i} className="p-4 border-b border-border/40 flex items-center justify-between gap-4">
                                         <div className="h-7 bg-muted/60 rounded-lg animate-pulse w-28 shrink-0" />
                                         <div className="h-5 bg-muted/40 rounded-md animate-pulse w-12 shrink-0" />
                                         <div className="h-5 bg-muted/40 rounded-md animate-pulse w-44 shrink-0" />
+                                        <div className="h-5 bg-muted/40 rounded-md animate-pulse w-32 shrink-0" />
+                                        <div className="h-5 bg-muted/40 rounded-md animate-pulse w-32 shrink-0" />
                                         <div className="h-5 bg-muted/40 rounded-md animate-pulse w-32 shrink-0" />
                                         <div className="h-5 bg-muted/40 rounded-md animate-pulse w-32 shrink-0" />
                                         <div className="h-8 bg-muted/60 rounded-xl animate-pulse w-24 shrink-0" />
@@ -824,6 +829,7 @@ export default function OrdersPage() {
                                             <th className="py-2 px-3.5">Status</th>
                                             <th className="py-2 px-3.5">Order Number</th>
                                             <th className="py-2 px-3.5">Layers</th>
+                                            <th className="py-2 px-3.5">Film</th>
                                             <th className="py-2 px-3.5">Qty (Total / Completed / Pending)</th>
                                             <th className="py-2 px-3.5">Order Date</th>
                                             <th className="py-2 px-3.5">Delivery Date</th>
@@ -833,7 +839,7 @@ export default function OrdersPage() {
                                     <tbody className="divide-y divide-border/40">
                                         {paginated.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
+                                                <td colSpan={8} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
                                                     No orders matched your search or status filter.
                                                 </td>
                                             </tr>
@@ -948,7 +954,27 @@ export default function OrdersPage() {
                                                             </span>
                                                         </td>
 
-                                                        {/* 4. Qty (Total / Completed / Pending) */}
+                                                        {/* 4. Film */}
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap text-xs">
+                                                            {(() => {
+                                                                const filmVal = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
+                                                                const hasFilm = filmVal && filmVal !== 'N/A' && filmVal.trim() !== '';
+                                                                if (hasFilm) {
+                                                                    return (
+                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-sans">
+                                                                            Yes
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-sans">
+                                                                        No
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </td>
+
+                                                        {/* 5. Qty (Total / Completed / Pending) */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <div className="flex items-center gap-1.5 font-bold text-xs">
                                                                 <span className="text-foreground font-extrabold" title="Total Order Quantity">
@@ -965,17 +991,17 @@ export default function OrdersPage() {
                                                             </div>
                                                         </td>
 
-                                                        {/* 5. Order Date */}
+                                                        {/* 6. Order Date */}
                                                         <td className="py-1.5 px-3.5 font-bold text-foreground font-mono text-xs whitespace-nowrap">
                                                             {createdDateFormatted}
                                                         </td>
 
-                                                        {/* 6. Delivery Date */}
+                                                        {/* 7. Delivery Date */}
                                                         <td className={`py-1.5 px-3.5 font-bold font-mono text-xs whitespace-nowrap ${isPastDeliveryDate(order.delivery_date) ? "text-red-500 font-extrabold" : "text-foreground"}`}>
                                                             {formatDate(order.delivery_date)}
                                                         </td>
 
-                                                        {/* 7. Actions */}
+                                                        {/* 8. Actions */}
                                                         <td className="py-1.5 px-3.5 text-right whitespace-nowrap">
                                                             <div className="inline-flex items-center justify-end gap-1">
                                                                 {/* Change Status Icon Button */}
