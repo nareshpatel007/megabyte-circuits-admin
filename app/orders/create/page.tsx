@@ -138,6 +138,12 @@ export default function CreateOrderPage() {
     const [detectionAlert, setDetectionAlert] = useState<string | null>(null);
     const [detectedLayers, setDetectedLayers] = useState<DetectedLayerItem[]>([]);
 
+    // Existing Client Gerber Files State
+    const [clientGerberFiles, setClientGerberFiles] = useState<any[]>([]);
+    const [loadingClientGerbers, setLoadingClientGerbers] = useState(false);
+    const [selectedGerberFileId, setSelectedGerberFileId] = useState<string>("");
+    const [gerberMode, setGerberMode] = useState<"select" | "upload">("upload");
+
     // Interactive Canvas Layer Toggles
     const [activeLayers, setActiveLayers] = useState({
         outline: true,
@@ -416,6 +422,7 @@ export default function CreateOrderPage() {
                         setUserEmail(newlyAdded.email || "");
                         setUserMobile(newlyAdded.phone_number || "");
                         setCompanyName(newlyAdded.company_name || "");
+                        fetchClientGerbers(newlyAdded.id.toString());
                     }
                 }
             }
@@ -436,14 +443,60 @@ export default function CreateOrderPage() {
         setDeliveryDate(d.toISOString().split("T")[0]);
     }, []);
 
+    // Fetch Gerber files for selected client
+    const fetchClientGerbers = async (clientId: string) => {
+        if (!clientId) {
+            setClientGerberFiles([]);
+            setSelectedGerberFileId("");
+            setGerberMode("upload");
+            return;
+        }
+        setLoadingClientGerbers(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/gerber-files?type=client`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.status && Array.isArray(data.data)) {
+                // Filter gerber files for this client
+                const filtered = data.data.filter((g: any) => g.user_id?.toString() === clientId.toString());
+                setClientGerberFiles(filtered);
+                if (filtered.length > 0) {
+                    setGerberMode("select");
+                    setSelectedGerberFileId(filtered[0].id.toString());
+                } else {
+                    setGerberMode("upload");
+                    setSelectedGerberFileId("");
+                }
+            } else {
+                setClientGerberFiles([]);
+                setGerberMode("upload");
+                setSelectedGerberFileId("");
+            }
+        } catch (err) {
+            console.error("Failed to fetch client gerber files:", err);
+            setClientGerberFiles([]);
+            setGerberMode("upload");
+        } finally {
+            setLoadingClientGerbers(false);
+        }
+    };
+
     // Handle Client Dropdown Selection
     const handleClientSelect = (clientIdStr: string) => {
         setSelectedClientId(clientIdStr);
+        setGerberFile(null);
+        setDetectionAlert(null);
+        setDetectedLayers([]);
         if (!clientIdStr) {
             setCustomerName("");
             setUserEmail("");
             setUserMobile("");
             setCompanyName("");
+            setClientGerberFiles([]);
+            setSelectedGerberFileId("");
+            setGerberMode("upload");
             return;
         }
         const found = clients.find((c) => c.id.toString() === clientIdStr);
@@ -454,6 +507,7 @@ export default function CreateOrderPage() {
             setUserMobile(found.phone_number || "");
             setCompanyName(found.company_name || "");
         }
+        fetchClientGerbers(clientIdStr);
     };
 
     // Quick Add Client Submit Handler
@@ -764,8 +818,10 @@ export default function CreateOrderPage() {
             formData.append("payment_status", paymentCompleted ? "completed" : "pending");
             formData.append("payment_method", paymentMethod);
 
-            // Gerber File
-            if (gerberFile) {
+            // Gerber File (Upload new file or select existing client file)
+            if (gerberMode === "select" && selectedGerberFileId) {
+                formData.append("gerber_file_id", selectedGerberFileId);
+            } else if (gerberFile) {
                 formData.append("gerber_file", gerberFile);
             }
 
@@ -1342,17 +1398,84 @@ export default function CreateOrderPage() {
                             />
                         </div>
                     </div>
-                    {/* Section 3: Upload Gerber File OR Full Preview Section */}
-                    {!gerberFile ? (
-                        /* Upload Zone (Shown when NO file uploaded) */
-                        <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-4">
-                            <div className="flex items-center gap-2.5 border-b border-border/60 pb-3">
-                                <div>
-                                    <h3 className="text-sm font-bold text-foreground">3. Upload Gerber File</h3>
-                                    <p className="text-xs text-muted-foreground font-medium">Upload Gerber ZIP file to analyze parameters and generate live board preview</p>
+                    {/* Section 3: Gerber File Selection / Upload Section */}
+                    <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 pb-3 gap-2">
+                            <div>
+                                <h3 className="text-sm font-bold text-foreground">3. Gerber File Selection / Upload</h3>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    Select an existing client Gerber file or upload a new ZIP/RAR archive
+                                </p>
+                            </div>
+                            {clientGerberFiles.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setGerberMode("select");
+                                            if (clientGerberFiles.length > 0 && !selectedGerberFileId) {
+                                                setSelectedGerberFileId(clientGerberFiles[0].id.toString());
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${gerberMode === "select" ? "bg-emerald-500 text-white shadow-xs" : "bg-muted/50 hover:bg-muted text-muted-foreground"}`}
+                                    >
+                                        Select Existing File ({clientGerberFiles.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setGerberMode("upload")}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${gerberMode === "upload" ? "bg-emerald-500 text-white shadow-xs" : "bg-muted/50 hover:bg-muted text-muted-foreground"}`}
+                                    >
+                                        + Upload New File
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {loadingClientGerbers ? (
+                            <div className="p-6 flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground">
+                                <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+                                Checking client Gerber files...
+                            </div>
+                        ) : gerberMode === "select" && clientGerberFiles.length > 0 ? (
+                            <div className="space-y-3">
+                                <label className="text-xs font-bold text-muted-foreground block">Select Existing Gerber File for Client</label>
+                                <Select
+                                    value={selectedGerberFileId}
+                                    onValueChange={(val) => setSelectedGerberFileId(val)}
+                                >
+                                    <SelectTrigger className="w-full h-11 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue placeholder="Choose a Gerber file" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {clientGerberFiles.map((gf) => (
+                                            <SelectItem key={gf.id} value={gf.id.toString()} className="text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <FileArchive className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                    <span className="font-bold">{gf.original_name || gf.file_name}</span>
+                                                    <span className="text-muted-foreground">({gf.file_size || 'N/A'}) — {new Date(gf.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        <span>Selected Gerber file will be linked to this new order upon submission.</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setGerberMode("upload")}
+                                        className="text-xs font-bold underline hover:text-emerald-800 dark:hover:text-emerald-100 cursor-pointer"
+                                    >
+                                        Upload New File Instead
+                                    </button>
                                 </div>
                             </div>
-
+                        ) : !gerberFile ? (
+                            /* Upload Zone */
                             <div className="border-2 border-dashed border-border/80 hover:border-emerald-500/50 rounded-xl p-10 flex flex-col items-center justify-center text-center transition-colors bg-muted/10">
                                 <FileArchive className="w-12 h-12 text-emerald-500 mb-3" />
                                 {isValidating ? (
@@ -1374,38 +1497,34 @@ export default function CreateOrderPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    ) : (
-                        /* Full Width Gerber Verification Review & Live Preview Section (Quote Page Design) */
-                        <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-6">
-                            {/* Review Header Bar with Re-upload Button */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 pb-4 gap-4">
+                        ) : (
+                            /* Simple File Uploaded Card (No Canvas Live Preview) */
+                            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                                         <CheckCircle2 className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-base font-extrabold text-foreground">{gerberFile.name}</h3>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                Verified & Analyzed
+                                            <h4 className="text-sm font-extrabold text-foreground">{gerberFile.name}</h4>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
+                                                File Uploaded
                                             </span>
                                         </div>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                            {(gerberFile.size / (1024 * 1024)).toFixed(2)} MB • Auto-filled parameters: {layerCount} Layers ({boardWidth} x {boardLength} mm)
+                                            Size: {(gerberFile.size / (1024 * 1024)).toFixed(2)} MB • Auto-detected: {layerCount} Layers ({boardWidth} x {boardLength} mm)
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Action Buttons: Re-upload Gerber & Remove File */}
                                 <div className="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/60 hover:bg-muted border border-border/80 text-foreground text-xs font-bold transition-colors cursor-pointer"
+                                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-card border border-border/80 hover:bg-muted text-foreground text-xs font-bold transition-colors cursor-pointer"
                                     >
-                                        <RotateCcw className="w-4 h-4 text-emerald-500" />
-                                        Re-upload Gerber File
+                                        <RotateCcw className="w-3.5 h-3.5 text-emerald-500" />
+                                        Re-upload
                                     </button>
                                     <button
                                         type="button"
@@ -1416,82 +1535,13 @@ export default function CreateOrderPage() {
                                         }}
                                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold transition-colors cursor-pointer"
                                     >
-                                        <X className="w-4 h-4" />
+                                        <X className="w-3.5 h-3.5" />
                                         Remove
                                     </button>
                                 </div>
                             </div>
-
-                            {/* Full Section Grid: Layer Inspection vs PCB Canvas Visualizer */}
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                                {/* Left Side: Detected Archive Layers & Controls (5 Cols) */}
-                                <div className="lg:col-span-5 space-y-4">
-                                    {/* Detected Archive Layers List */}
-                                    <div className="bg-muted/20 border border-border/80 rounded-xl p-4 space-y-3">
-                                        <h4 className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-                                            <span>Detected Archive Layers</span>
-                                            <span className="text-emerald-500 font-mono text-[10px]">
-                                                {detectedLayers.filter(l => l.status === 'detected').length} Layers Detected
-                                            </span>
-                                        </h4>
-
-                                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                                            {detectedLayers.map((layer, index) => (
-                                                <div key={index} className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-b-0 text-xs">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className={`w-2 h-2 rounded-full shrink-0 ${layer.status === 'detected' ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
-                                                        <span className="font-semibold text-foreground truncate">{layer.name}</span>
-                                                    </div>
-                                                    <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[140px]" title={layer.filename}>
-                                                        {layer.filename ? layer.filename.split('/').pop() : "Not Found"}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Interactive Visualizer Controls */}
-                                    <div className="bg-muted/20 border border-border/80 rounded-xl p-4 space-y-3">
-                                        <h4 className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
-                                            Visualizer Controls
-                                        </h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {Object.entries({
-                                                outline: "Board Outline",
-                                                topCopper: "Top Copper",
-                                                bottomCopper: "Bottom Copper",
-                                                solderMask: "Solder Mask Grid",
-                                                silkscreen: "Silkscreen Layer",
-                                                drills: "Drill Holes"
-                                            }).map(([key, label]) => (
-                                                <label key={key} className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-muted/40 transition-colors select-none">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={(activeLayers as any)[key]}
-                                                        onChange={(e) => setActiveLayers(prev => ({ ...prev, [key]: e.target.checked }))}
-                                                        className="rounded text-emerald-500 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                                                    />
-                                                    <span className="text-xs text-foreground font-semibold">{label}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Side: Full Interactive PCB Preview Canvas (7 Cols) */}
-                                <div className="lg:col-span-7 flex flex-col justify-center">
-                                    <PCBPreviewCanvas
-                                        pcbColor={solderMask}
-                                        activeLayers={activeLayers}
-                                        widthMm={boardWidth}
-                                        heightMm={boardLength}
-                                        layersCount={layerCount}
-                                        boardName={gerberFile ? gerberFile.name.replace(/\.[^/.]+$/, "") : "PCB BOARD"}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {/* Section 4: Financials & Payment Record (Including Integrated Delivery Calendar) */}
                     <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-5">
