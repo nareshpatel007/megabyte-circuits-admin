@@ -166,7 +166,7 @@ export default function AddStaffPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
                   Full Name <span className="text-rose-500">*</span>
                 </label>
@@ -179,22 +179,6 @@ export default function AddStaffPage() {
                     onChange={(e) => setName(e.target.value)}
                     required
                     className="w-full pl-9 pr-3.5 py-2.5 bg-muted/30 border border-border/80 rounded-xl text-foreground focus:outline-hidden focus:border-emerald-500 text-xs font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
-                  Login Username
-                </label>
-                <div className="relative">
-                  <span className="text-muted-foreground absolute left-3 top-2.5 font-mono text-xs">@</span>
-                  <input
-                    type="text"
-                    placeholder="rahul_admin"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-8 pr-3.5 py-2.5 bg-muted/30 border border-border/80 rounded-xl text-foreground font-mono focus:outline-hidden focus:border-emerald-500 text-xs"
                   />
                 </div>
               </div>
