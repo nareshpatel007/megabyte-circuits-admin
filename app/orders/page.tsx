@@ -1872,28 +1872,32 @@ export default function OrdersPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    {reorderModalOrder && (
-                        <div className="py-4 space-y-3">
-                            <div className="bg-muted/40 p-4 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground font-semibold">Original Order #:</span>
-                                    <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground font-semibold">Board Name:</span>
-                                    <span className="font-bold text-foreground">{reorderModalOrder.board_name}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground font-semibold">Customer:</span>
-                                    <span className="font-bold text-foreground">{reorderModalOrder.customer_name || reorderModalOrder.user_email || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground font-semibold">Order Value:</span>
-                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">₹{Number(reorderModalOrder.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    {reorderModalOrder && (() => {
+                        const custName = reorderModalOrder.customer_name 
+                            || getMetaValue(reorderModalOrder, 'customer_name', getMetaValue(reorderModalOrder, 'name', ''))
+                            || reorderModalOrder.user_email 
+                            || reorderModalOrder.user_mobile 
+                            || 'N/A';
+
+                        return (
+                            <div className="py-4 space-y-3">
+                                <div className="bg-muted/40 p-4 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-muted-foreground font-semibold">Original Order #:</span>
+                                        <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-muted-foreground font-semibold">Customer:</span>
+                                        <span className="font-bold text-foreground">{custName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-muted-foreground font-semibold">Order Value:</span>
+                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">₹{Number(reorderModalOrder.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     <DialogFooter className="flex items-center justify-end gap-2 pt-2">
                         <Button
@@ -1901,7 +1905,7 @@ export default function OrdersPage() {
                             variant="outline"
                             onClick={() => setReorderModalOrder(null)}
                             disabled={reordering}
-                            className="rounded-xl text-xs font-bold"
+                            className="rounded-xl text-xs font-bold cursor-pointer"
                         >
                             Cancel
                         </Button>
@@ -1909,7 +1913,7 @@ export default function OrdersPage() {
                             type="button"
                             onClick={handleReorderSubmit}
                             disabled={reordering}
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer"
                         >
                             {reordering ? (
                                 <>
