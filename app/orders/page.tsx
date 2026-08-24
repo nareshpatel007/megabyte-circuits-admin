@@ -1180,7 +1180,7 @@ export default function OrdersPage() {
                                         <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
                                             <SelectValue placeholder="Select status..." />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="max-h-60 overflow-y-auto font-semibold">
                                             {statuses.map((s) => (
                                                 <SelectItem key={s.id} value={s.name}>
                                                     {s.name}
