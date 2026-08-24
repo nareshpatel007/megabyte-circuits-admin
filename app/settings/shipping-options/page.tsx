@@ -134,7 +134,6 @@ export default function ShippingOptionsPage() {
                                         <th className="py-3 px-4 w-12 text-center">#</th>
                                         <th className="py-3 px-4">Delivery Region / Location</th>
                                         <th className="py-3 px-4">Transport Method</th>
-                                        <th className="py-3 px-4 w-52">Auto Option Key</th>
                                         <th className="py-3 px-4 w-44">Rate (₹ / kg)</th>
                                     </tr>
                                 </thead>
@@ -152,12 +151,6 @@ export default function ShippingOptionsPage() {
                                             <td className="py-3 px-4 font-bold text-foreground">
                                                 <div className="px-3 py-2 bg-muted/20 border border-border/40 rounded-lg text-xs font-semibold text-foreground">
                                                     {opt.method}
-                                                </div>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/30 border border-border/50 rounded-lg text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">
-                                                    <Key className="w-3.5 h-3.5 shrink-0 text-emerald-500/70" />
-                                                    <span>{opt.key}</span>
                                                 </div>
                                             </td>
                                             <td className="py-3 px-4">
