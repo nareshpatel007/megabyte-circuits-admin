@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -100,6 +100,39 @@ export default function OrdersPage() {
 
     // Quick preview modal state
     const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
+
+    // Reorder modal state
+    const [reorderModalOrder, setReorderModalOrder] = useState<ApiOrder | null>(null);
+    const [reordering, setReordering] = useState(false);
+
+    const handleReorderSubmit = async () => {
+        if (!reorderModalOrder) return;
+        setReordering(true);
+        const toastId = toast.loading(`Creating reorder for #${reorderModalOrder.order_number}...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${reorderModalOrder.id}/reorder`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success(data.message || `Order reordered successfully!`, { id: toastId });
+                setReorderModalOrder(null);
+                fetchData(debouncedSearch);
+            } else {
+                toast.error(data.message || "Failed to reorder", { id: toastId });
+            }
+        } catch (err: any) {
+            console.error("Reorder error:", err);
+            toast.error(err?.message || "Error processing reorder", { id: toastId });
+        } finally {
+            setReordering(false);
+        }
+    };
 
     // Change status modal state
     const [statusModalOrder, setStatusModalOrder] = useState<ApiOrder | null>(null);
@@ -1020,6 +1053,16 @@ export default function OrdersPage() {
                                                                     </button>
                                                                 )}
 
+                                                                {/* Reorder Icon Button */}
+                                                                <button
+                                                                    onClick={() => setReorderModalOrder(order)}
+                                                                    title="Reorder"
+                                                                    aria-label="Reorder"
+                                                                    className="p-1.5 bg-blue-500/10 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                >
+                                                                    <Copy className="w-3.5 h-3.5" />
+                                                                </button>
+
                                                                 {/* View Detail Page Icon Button */}
                                                                 <Link
                                                                     href={`/orders/${order.order_number}`}
@@ -1814,6 +1857,74 @@ export default function OrdersPage() {
                         </DialogContent>
                     );
                 })()}
+            </Dialog>
+
+            {/* Reorder Confirmation Dialog */}
+            <Dialog open={!!reorderModalOrder} onOpenChange={(open) => !open && setReorderModalOrder(null)}>
+                <DialogContent className="max-w-md rounded-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
+                            <Copy className="w-5 h-5 text-blue-500" />
+                            Confirm Reorder
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground pt-1">
+                            Are you sure you want to reorder this PCB order? A new order will be generated with all specifications duplicated.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {reorderModalOrder && (
+                        <div className="py-4 space-y-3">
+                            <div className="bg-muted/40 p-4 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground font-semibold">Original Order #:</span>
+                                    <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground font-semibold">Board Name:</span>
+                                    <span className="font-bold text-foreground">{reorderModalOrder.board_name}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground font-semibold">Customer:</span>
+                                    <span className="font-bold text-foreground">{reorderModalOrder.customer_name || reorderModalOrder.user_email || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground font-semibold">Order Value:</span>
+                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">₹{Number(reorderModalOrder.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setReorderModalOrder(null)}
+                            disabled={reordering}
+                            className="rounded-xl text-xs font-bold"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleReorderSubmit}
+                            disabled={reordering}
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2"
+                        >
+                            {reordering ? (
+                                <>
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    Reordering...
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    Confirm Reorder
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
             </Dialog>
         </DashboardLayout>
     );
