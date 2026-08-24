@@ -22,6 +22,7 @@ import {
     ListFilter,
     Sliders,
     Calculator,
+    Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
         children: [
             { href: "/settings", label: "General Settings", icon: Sliders, permission: "settings.general" },
             { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
+            { href: "/settings/shipping-options", label: "Shipping Options", icon: Truck, permission: "settings.general" },
             { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter, permission: "settings.order_status" },
         ],
     },

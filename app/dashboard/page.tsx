@@ -370,7 +370,7 @@ export default function DashboardPage() {
                                     {recentOrders.length === 0 ? (
                                         <div className="p-8 text-center text-xs text-muted-foreground italic">No recent orders found.</div>
                                     ) : (
-                                        recentOrders.map((order) => {
+                                        recentOrders.map((order, index) => {
                                             const orderStatusStr = (order?.status || 'Pending').toString().toLowerCase();
                                             const matchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === orderStatusStr);
                                             const statusColor = matchedStatus?.color || "#10b981";
@@ -415,7 +415,7 @@ export default function DashboardPage() {
 
                                             return (
                                                 <div
-                                                    key={order.id}
+                                                    key={`order-${order.id}-${index}`}
                                                     onClick={() => router.push(`/orders/${order.id}`)}
                                                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/50 border border-border/40 transition-all duration-200 cursor-pointer group shadow-sm gap-3"
                                                 >
@@ -517,7 +517,7 @@ export default function DashboardPage() {
                                     {recentPayments.length === 0 ? (
                                         <div className="p-8 text-center text-xs text-muted-foreground italic">No recent transactions found.</div>
                                     ) : (
-                                        recentPayments.slice(0, 10).map((tx) => {
+                                        recentPayments.slice(0, 10).map((tx, index) => {
                                             const isSuccess = tx.status.toLowerCase() === "success";
                                             const displayTxId = tx.razorpay_payment_id || tx.transaction_number;
                                             const customerDisplay = tx.user_name ? tx.user_name : "Customer";
@@ -532,7 +532,7 @@ export default function DashboardPage() {
 
                                             return (
                                                 <div
-                                                    key={tx.id}
+                                                    key={`tx-${tx.id}-${index}`}
                                                     onClick={() => router.push("/payments")}
                                                     className="p-3.5 rounded-xl bg-muted/20 hover:bg-muted/50 border border-border/40 transition-all cursor-pointer flex items-center justify-between gap-3 group shadow-sm"
                                                 >

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Save, Calculator, RefreshCw, Loader2, AlertTriangle, Layers, Palette, ShieldAlert } from "lucide-react";
+import { Save, Calculator, RefreshCw, Loader2, AlertTriangle, Layers, Palette, ShieldAlert, Truck, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { TableSkeleton } from "@/components/ui/skeleton";
 
@@ -36,15 +36,25 @@ const AREA_BRACKETS = [
 
 const LEAD_TIME_INDEX_LABELS = ["1 Day", "3 Days", "5 Days", "7 Days", "10/20 Days"];
 
+const DEFAULT_SHIPPING_OPTIONS = [
+    { key: "gujarat_road", location: "In Gujarat", method: "By Road", rate: 40 },
+    { key: "out_road", location: "Out of Gujarat", method: "By Road", rate: 80 },
+    { key: "out_air", location: "Out of Gujarat", method: "By Air", rate: 150 },
+    { key: "out_fastrack", location: "Out of Gujarat", method: "Fastrack", rate: 450 },
+];
+
 export default function PcbPricingPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    
+
     // Fixed Costs State
     const [fixedCosts, setFixedCosts] = useState<Record<string, Record<string, number>>>({});
 
     // Price Tiers State
     const [priceTiers, setPriceTiers] = useState<any>({});
+
+    // Shipping Options State
+    const [shippingOptions, setShippingOptions] = useState<Array<{ key: string; location: string; method: string; rate: number }>>([]);
 
     // UI Tab Filters for Price Tiers Table
     const [activeMask, setActiveMask] = useState<MaskType>("Green");
@@ -62,6 +72,11 @@ export default function PcbPricingPage() {
             if (data.success && data.data) {
                 setFixedCosts(data.data.fixedCosts || {});
                 setPriceTiers(data.data.priceTiers || {});
+                setShippingOptions(
+                    data.data.shippingOptions && data.data.shippingOptions.length > 0
+                        ? data.data.shippingOptions
+                        : DEFAULT_SHIPPING_OPTIONS
+                );
             } else {
                 toast.error(data.message || "Failed to load PCB pricing");
             }
@@ -101,7 +116,7 @@ export default function PcbPricingPage() {
         setPriceTiers((prev: any) => {
             const copy = JSON.parse(JSON.stringify(prev || {}));
             if (!copy[mask]) copy[mask] = {};
-            if (!copy[mask][copper]) copy[copy][copper] = {};
+            if (!copy[mask][copper]) copy[copper] = {};
             if (!copy[mask][copper][thickness]) copy[mask][copper][thickness] = {};
             if (!copy[mask][copper][thickness][layer]) copy[mask][copper][thickness][layer] = {};
             if (!Array.isArray(copy[mask][copper][thickness][layer][areaKey])) {
@@ -110,6 +125,28 @@ export default function PcbPricingPage() {
             copy[mask][copper][thickness][layer][areaKey][index] = num;
             return copy;
         });
+    };
+
+    const handleShippingChange = (index: number, field: string, value: any) => {
+        setShippingOptions(prev => {
+            const copy = [...prev];
+            copy[index] = {
+                ...copy[index],
+                [field]: field === "rate" ? (value === "" ? "" : parseFloat(value) || 0) : value
+            };
+            return copy;
+        });
+    };
+
+    const handleAddShippingOption = () => {
+        setShippingOptions(prev => [
+            ...prev,
+            { key: `shipping_${Date.now().toString().slice(-4)}`, location: "New Region", method: "Delivery Method", rate: 50 }
+        ]);
+    };
+
+    const handleDeleteShippingOption = (index: number) => {
+        setShippingOptions(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSave = async () => {
@@ -124,7 +161,8 @@ export default function PcbPricingPage() {
                 },
                 body: JSON.stringify({
                     fixedCosts,
-                    priceTiers
+                    priceTiers,
+                    shippingOptions
                 })
             });
             const data = await res.json();
@@ -170,34 +208,6 @@ export default function PcbPricingPage() {
             subtitle="Configure base setup fixed costs and variable tier matrices loaded live on the PCB quote calculator"
         >
             <div className="w-full space-y-6">
-                {/* Header Banner */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl px-5 py-4 gap-4 shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <Calculator className="w-5 h-5 shrink-0 text-emerald-500" />
-                        <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider">Dynamic Calculation Engine</h4>
-                            <p className="text-xs font-medium opacity-90 mt-0.5">
-                                All edits saved here update calculation rules live on the website quote page.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleReset}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500 hover:text-white transition-all cursor-pointer"
-                        >
-                            <RefreshCw className="w-3.5 h-3.5" /> Reset Defaults
-                        </button>
-                        <button
-                            onClick={fetchPricing}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-background border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                        >
-                            <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                        </button>
-                    </div>
-                </div>
-
                 {loading ? (
                     <div className="space-y-4">
                         <TableSkeleton />
@@ -283,32 +293,31 @@ export default function PcbPricingPage() {
                             </div>
 
                             {/* Sub-Filters / Selection Pills */}
-                            <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-border/50">
-                                {/* Filter 1: Solder Mask */}
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-                                        1. Solder Mask Color
-                                    </label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {MASKS.map((mask) => (
-                                            <button
-                                                key={mask.id}
-                                                type="button"
-                                                onClick={() => setActiveMask(mask.id)}
-                                                className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer border ${
-                                                    activeMask === mask.id
+                            <div className="bg-muted/20 p-4 rounded-xl border border-border/50">
+                                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                    {/* Filter 1: Solder Mask */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                            1. Solder Mask Color
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {MASKS.map((mask) => (
+                                                <button
+                                                    key={mask.id}
+                                                    type="button"
+                                                    onClick={() => setActiveMask(mask.id)}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${activeMask === mask.id
                                                         ? "bg-emerald-500 text-white border-emerald-500 shadow-xs"
                                                         : "bg-background text-foreground/80 hover:text-foreground border-border/80 hover:bg-muted/40"
-                                                }`}
-                                            >
-                                                {mask.label}
-                                            </button>
-                                        ))}
+                                                        }`}
+                                                >
+                                                    {mask.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Filter 2: Copper Weight & Thickness */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                    {/* Filter 2: Copper Weight */}
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
                                             2. Copper Weight
@@ -319,11 +328,10 @@ export default function PcbPricingPage() {
                                                     key={copper.id}
                                                     type="button"
                                                     onClick={() => setActiveCopper(copper.id)}
-                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${
-                                                        activeCopper === copper.id
-                                                            ? "bg-emerald-500 text-white border-emerald-500 shadow-xs"
-                                                            : "bg-background text-foreground/80 hover:text-foreground border-border/80 hover:bg-muted/40"
-                                                    }`}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${activeCopper === copper.id
+                                                        ? "bg-emerald-500 text-white border-emerald-500 shadow-xs"
+                                                        : "bg-background text-foreground/80 hover:text-foreground border-border/80 hover:bg-muted/40"
+                                                        }`}
                                                 >
                                                     {copper.label}
                                                 </button>
@@ -331,6 +339,7 @@ export default function PcbPricingPage() {
                                         </div>
                                     </div>
 
+                                    {/* Filter 3: PCB Thickness */}
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
                                             3. PCB Thickness
@@ -341,11 +350,10 @@ export default function PcbPricingPage() {
                                                     key={thickness.id}
                                                     type="button"
                                                     onClick={() => setActiveThickness(thickness.id)}
-                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${
-                                                        activeThickness === thickness.id
-                                                            ? "bg-emerald-500 text-white border-emerald-500 shadow-xs"
-                                                            : "bg-background text-foreground/80 hover:text-foreground border-border/80 hover:bg-muted/40"
-                                                    }`}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${activeThickness === thickness.id
+                                                        ? "bg-emerald-500 text-white border-emerald-500 shadow-xs"
+                                                        : "bg-background text-foreground/80 hover:text-foreground border-border/80 hover:bg-muted/40"
+                                                        }`}
                                                 >
                                                     {thickness.label}
                                                 </button>
