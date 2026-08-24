@@ -449,7 +449,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
                                     <div>
                                         <span className="text-muted-foreground block font-medium uppercase tracking-wider text-[10px]">GSTIN / Tax ID</span>
-                                        <span className="text-foreground font-mono font-semibold text-xs mt-0.5 block bg-muted/40 p-2 rounded-lg border border-border/60">
+                                        <span className="text-foreground font-medium text-xs mt-0.5 block">
                                             {client.gstin || client.gst_number || client.tax_id || "N/A"}
                                         </span>
                                     </div>
