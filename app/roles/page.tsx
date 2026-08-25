@@ -38,7 +38,7 @@ interface Role {
 
 const DEFAULT_PERMISSIONS = [
     { module: "Dashboard & Analytics", keys: ["dashboard.view", "analytics.view"] },
-    { module: "Order Management", keys: ["orders.view", "orders.create", "orders.edit", "orders.delete", "orders.status"] },
+    { module: "Order Management", keys: ["orders.view", "orders.create", "orders.edit", "orders.delete", "orders.status", "orders.reorder", "orders.generate_job_card", "orders.add_film"] },
     { module: "Client Management", keys: ["clients.view", "clients.create", "clients.edit", "clients.delete"] },
     { module: "Inventory Management", keys: ["inventory.view", "inventory.create", "inventory.edit", "inventory.delete"] },
     { module: "Staff & User Roles", keys: ["staff.view", "staff.create", "staff.edit", "staff.delete", "roles.manage"] },

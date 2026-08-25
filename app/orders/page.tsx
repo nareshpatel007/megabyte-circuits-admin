@@ -84,6 +84,9 @@ export default function OrdersPage() {
     const hasCreateOrderPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.create") : false);
     const hasChangeStatusPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.change_status") : false);
     const hasViewLogsPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.view_logs") : false);
+    const hasReorderPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.reorder") : false);
+    const hasGenerateJobCardPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.generate_job_card") : false);
+    const hasAddFilmPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.add_film") : false);
 
     const [orders, setOrders] = useState<ApiOrder[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
@@ -1012,7 +1015,7 @@ export default function OrdersPage() {
                                                                 )}
 
                                                                 {/* Add/Edit Film Icon Button */}
-                                                                {(() => {
+                                                                {hasAddFilmPermission && (() => {
                                                                     const existingFilm = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
                                                                     const hasFilm = existingFilm && existingFilm !== 'N/A';
                                                                     return (
@@ -1032,14 +1035,16 @@ export default function OrdersPage() {
                                                                 })()}
 
                                                                 {/* Generate Job Card Icon Button */}
-                                                                <button
-                                                                    onClick={() => openJobCardModal(order)}
-                                                                    title="Generate Job Card"
-                                                                    aria-label="Generate Job Card"
-                                                                    className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
-                                                                >
-                                                                    <FileText className="w-3.5 h-3.5" />
-                                                                </button>
+                                                                {hasGenerateJobCardPermission && (
+                                                                    <button
+                                                                        onClick={() => openJobCardModal(order)}
+                                                                        title="Generate Job Card"
+                                                                        aria-label="Generate Job Card"
+                                                                        className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                    >
+                                                                        <FileText className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
 
                                                                 {/* View Activity Logs Icon Button */}
                                                                 {hasViewLogsPermission && (
@@ -1054,14 +1059,16 @@ export default function OrdersPage() {
                                                                 )}
 
                                                                 {/* Reorder Icon Button */}
-                                                                <button
-                                                                    onClick={() => setReorderModalOrder(order)}
-                                                                    title="Reorder"
-                                                                    aria-label="Reorder"
-                                                                    className="p-1.5 bg-blue-500/10 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
-                                                                >
-                                                                    <Copy className="w-3.5 h-3.5" />
-                                                                </button>
+                                                                {hasReorderPermission && (
+                                                                    <button
+                                                                        onClick={() => setReorderModalOrder(order)}
+                                                                        title="Reorder"
+                                                                        aria-label="Reorder"
+                                                                        className="p-1.5 bg-blue-500/10 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                    >
+                                                                        <Copy className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
 
                                                                 {/* View Detail Page Icon Button */}
                                                                 <Link
@@ -1293,17 +1300,19 @@ export default function OrdersPage() {
                             </div>
 
                             <div className="pt-2 flex justify-end gap-3">
-                                <Button
-                                    type="button"
-                                    onClick={() => {
-                                        const ord = selectedOrder;
-                                        setSelectedOrder(null);
-                                        openJobCardModal(ord);
-                                    }}
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-xs active:scale-95 cursor-pointer h-auto"
-                                >
-                                    <FileText className="w-4 h-4" /> Generate Job Card
-                                </Button>
+                                {hasGenerateJobCardPermission && (
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            const ord = selectedOrder;
+                                            setSelectedOrder(null);
+                                            openJobCardModal(ord);
+                                        }}
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-xs active:scale-95 cursor-pointer h-auto"
+                                    >
+                                        <FileText className="w-4 h-4" /> Generate Job Card
+                                    </Button>
+                                )}
                                 <Link
                                     href={`/orders/${selectedOrder.order_number}`}
                                     className="inline-flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl shadow-md hover:opacity-90 transition-all text-xs active:scale-95"
