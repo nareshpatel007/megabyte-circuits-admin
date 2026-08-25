@@ -293,28 +293,46 @@ export default function OrderDetailPage() {
         if (colorStr.includes("purple")) return "#9333ea";
         return "#10b981"; // Default Green
     };
-    const pcbColorHex = getPcbHexColor(pcbColorName);
+    const productTypeVal = getMetaValue('product_type', 'pcb').toLowerCase();
+    const isPartProduct = productTypeVal === 'part';
 
     // Filter out preview_data, board_name, build_time, and parent_order_number from technical parameters display
     const filteredMetas = order.metas ? order.metas.filter(m => {
         const key = m.meta_key.toLowerCase();
-        return key !== 'preview_data' &&
-            key !== 'gerber_preview_data' &&
-            key !== 'board_name' &&
-            key !== 'board name' &&
-            key !== 'boardname' &&
-            key !== 'build_time' &&
-            key !== 'build time' &&
-            key !== 'buildtime' &&
-            key !== 'parent_order_number' &&
-            key !== 'parent_order' &&
-            key !== 'parent order number' &&
-            key !== 'parent order';
+        if (key === 'preview_data' ||
+            key === 'gerber_preview_data' ||
+            key === 'board_name' ||
+            key === 'board name' ||
+            key === 'boardname' ||
+            key === 'build_time' ||
+            key === 'build time' ||
+            key === 'buildtime' ||
+            key === 'parent_order_number' ||
+            key === 'parent_order' ||
+            key === 'parent order number' ||
+            key === 'parent order') {
+            return false;
+        }
+
+        // If product type is "part", hide PCB-specific parameters (Gerber, pcb_color, surface_finish, layers, dimensions, etc.) if not relevant
+        if (isPartProduct) {
+            if (key === 'gerber_file_name' ||
+                key === 'gerber_file' ||
+                key === 'pcb_color' ||
+                key === 'color' ||
+                key === 'surface_finish' ||
+                key === 'thickness' ||
+                key === 'layers' ||
+                key === 'dimensions') {
+                return false;
+            }
+        }
+        return true;
     }) : [];
 
     const pageHeaderTitle = (
         <div className="space-y-1">
-            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: pcbColorHex }}>
+            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : pcbColorHex }}>
                 Order #{order.order_number}
             </h1>
             <div className="flex items-center gap-2">
@@ -329,6 +347,11 @@ export default function OrderDetailPage() {
                     <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentStatusColor }} />
                     {order.status}
                 </span>
+                {isPartProduct && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wider">
+                        Part Order
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -433,57 +456,59 @@ export default function OrderDetailPage() {
                     </div>
                 </div>
 
-                {/* Gerber File Download / Preview Card */}
-                <div className="bg-gradient-to-r from-emerald-500/10 via-card to-card border border-emerald-500/30 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 rounded-2xl bg-[#0c3b19] flex items-center justify-center p-1 overflow-hidden shrink-0 border border-emerald-500/30 shadow-md">
-                            <GerberBoardPreview
-                                previewData={order.gerber_preview_data || getMetaValue('preview_data', '')}
-                                boardName={boardNameVal}
-                                layers={layerCount}
-                                dimensions={getMetaValue('dimensions', '')}
-                                pcbColor={getMetaValue('pcb_color', 'Green')}
-                            />
+                {/* Gerber File Download / Preview Card (Only shown for PCB / Stencil orders, hidden for Part orders) */}
+                {!isPartProduct && (
+                    <div className="bg-gradient-to-r from-emerald-500/10 via-card to-card border border-emerald-500/30 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-20 h-20 rounded-2xl bg-[#0c3b19] flex items-center justify-center p-1 overflow-hidden shrink-0 border border-emerald-500/30 shadow-md">
+                                <GerberBoardPreview
+                                    previewData={order.gerber_preview_data || getMetaValue('preview_data', '')}
+                                    boardName={boardNameVal}
+                                    layers={layerCount}
+                                    dimensions={getMetaValue('dimensions', '')}
+                                    pcbColor={getMetaValue('pcb_color', 'Green')}
+                                />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-extrabold text-foreground">Gerber Production File</h3>
+                                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                    File: <span className="font-mono font-bold text-foreground">{gerberFileName}</span>
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-sm font-extrabold text-foreground">Gerber Production File</h3>
-                            <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                File: <span className="font-mono font-bold text-foreground">{gerberFileName}</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        {(gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '') || gerberFileName ? (
-                            <>
-                                {gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '' && (
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            {(gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '') || gerberFileName ? (
+                                <>
+                                    {gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '' && (
+                                        <a
+                                            href={gerberUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-card border border-border/80 text-foreground font-bold rounded-xl hover:bg-muted text-xs transition-all w-full md:w-auto"
+                                        >
+                                            <Eye className="w-4 h-4 text-emerald-500" /> View Gerber File
+                                        </a>
+                                    )}
                                     <a
-                                        href={gerberUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-card border border-border/80 text-foreground font-bold rounded-xl hover:bg-muted text-xs transition-all w-full md:w-auto"
+                                        href={gerberUrl && gerberUrl !== 'N/A' ? gerberUrl : `#`}
+                                        download={gerberFileName}
+                                        onClick={(e) => {
+                                            if (!gerberUrl || gerberUrl === 'N/A') {
+                                                e.preventDefault();
+                                                toast.info(`Gerber File Name: ${gerberFileName}`);
+                                            }
+                                        }}
+                                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 text-xs shadow-md transition-all w-full md:w-auto"
                                     >
-                                        <Eye className="w-4 h-4 text-emerald-500" /> View Gerber File
+                                        <Download className="w-4 h-4" /> Download Gerber File
                                     </a>
-                                )}
-                                <a
-                                    href={gerberUrl && gerberUrl !== 'N/A' ? gerberUrl : `#`}
-                                    download={gerberFileName}
-                                    onClick={(e) => {
-                                        if (!gerberUrl || gerberUrl === 'N/A') {
-                                            e.preventDefault();
-                                            toast.info(`Gerber File Name: ${gerberFileName}`);
-                                        }
-                                    }}
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 text-xs shadow-md transition-all w-full md:w-auto"
-                                >
-                                    <Download className="w-4 h-4" /> Download Gerber File
-                                </a>
-                            </>
-                        ) : (
-                            <span className="text-xs text-muted-foreground italic">No Gerber file uploaded for this order.</span>
-                        )}
+                                </>
+                            ) : (
+                                <span className="text-xs text-muted-foreground italic">No Gerber file uploaded for this order.</span>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Customer Information & Technical Parameters Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
