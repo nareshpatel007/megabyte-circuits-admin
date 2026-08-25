@@ -50,6 +50,7 @@ interface ApiOrder {
     user_mobile: string;
     status: string;
     completed_qty?: number;
+    failed_qty?: number;
     unit_price: string | number;
     order_value: string | number;
     delivery_date: string | null;
@@ -92,7 +93,7 @@ export default function OrdersPage() {
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All");
+    const [statusFilter, setStatusFilter] = useState("In Production");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     // Temporary dates for Popover drafting before clicking Apply
@@ -141,6 +142,7 @@ export default function OrdersPage() {
     const [statusModalOrder, setStatusModalOrder] = useState<ApiOrder | null>(null);
     const [modalNewStatus, setModalNewStatus] = useState("");
     const [modalCompletedQty, setModalCompletedQty] = useState<number>(0);
+    const [modalFailedQty, setModalFailedQty] = useState<number>(0);
     const [modalRemark, setModalRemark] = useState("");
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -492,7 +494,18 @@ export default function OrdersPage() {
             orderValue.includes(query) ||
             filmStatus.includes(query);
 
-        const matchStatus = statusFilter === "All" || (o.status || "").toString().toLowerCase() === statusFilter.toLowerCase();
+        let matchStatus = false;
+        const currentStatusStr = (o.status || "").toString().toLowerCase().trim();
+
+        if (statusFilter === "All") {
+            matchStatus = true;
+        } else if (statusFilter === "In Production") {
+            const excludedStatuses = ["pending", "completed", "cancelled", "canceled"];
+            matchStatus = !excludedStatuses.includes(currentStatusStr);
+        } else {
+            matchStatus = currentStatusStr === statusFilter.toLowerCase().trim();
+        }
+
         return matchSearch && matchStatus;
     });
 
@@ -506,10 +519,12 @@ export default function OrdersPage() {
         const isCompleted = ['completed', 'shipped', 'delivered'].includes((order.status || '').toLowerCase());
         const totalQtyVal = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
         const initialCompletedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQtyVal : 0);
+        const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
 
         setStatusModalOrder(order);
         setModalNewStatus(order.status);
         setModalCompletedQty(initialCompletedQty);
+        setModalFailedQty(initialFailedQty);
         setModalRemark("");
     };
 
@@ -560,6 +575,7 @@ export default function OrdersPage() {
                 body: JSON.stringify({
                     status: modalNewStatus,
                     completed_qty: modalCompletedQty,
+                    failed_qty: modalFailedQty,
                     remark: modalRemark
                 })
             });
@@ -568,7 +584,7 @@ export default function OrdersPage() {
             if (data.status || data.success) {
                 toast.success(`Order #${statusModalOrder.order_number} status & quantity updated`);
                 // Update live orders list state immediately
-                setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? { ...o, status: modalNewStatus, completed_qty: modalCompletedQty } : o));
+                setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? { ...o, status: modalNewStatus, completed_qty: modalCompletedQty, failed_qty: modalFailedQty } : o));
                 setStatusModalOrder(null);
             } else {
                 toast.error(data.message || "Failed to update status");
@@ -591,64 +607,128 @@ export default function OrdersPage() {
         </Link>
     ) : undefined;
 
-    const activeOrdersCount = orders.filter((o) => !['completed', 'cancelled'].includes((o.status || '').toLowerCase())).length;
-    const completedOrdersCount = orders.filter((o) => (o.status || '').toLowerCase() === 'completed').length;
-    const totalOrderValue = orders.reduce((sum, o) => sum + (Number(o.order_value) || 0), 0);
+    // Dynamic statistics based on current filtered orders
+    const statsTotalOrders = filtered.length;
+    const statsActiveOrders = filtered.filter((o) => !['completed', 'shipped', 'delivered', 'cancelled', 'canceled'].includes((o.status || '').toLowerCase())).length;
+    const statsCompletedOrders = filtered.filter((o) => ['completed', 'shipped', 'delivered'].includes((o.status || '').toLowerCase())).length;
+    const statsTotalOrderValue = filtered.reduce((sum, o) => sum + (Number(o.order_value) || 0), 0);
+
+    // Quantity calculations excluding Part orders
+    const nonPartFilteredOrders = filtered.filter((o) => getMetaValue(o, 'product_type', 'pcb').toLowerCase() !== 'part');
+    const statsTotalQty = nonPartFilteredOrders.reduce((sum, o) => sum + (parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0), 0);
+    const statsCompletedQty = nonPartFilteredOrders.reduce((sum, o) => {
+        const orderStatusStr = (o.status || '').toString().toLowerCase();
+        const totalQ = parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0;
+        const isComp = ['completed', 'shipped', 'delivered'].includes(orderStatusStr);
+        const comp = typeof o.completed_qty === 'number' ? o.completed_qty : (isComp ? totalQ : 0);
+        return sum + comp;
+    }, 0);
+    const statsFailedQty = nonPartFilteredOrders.reduce((sum, o) => {
+        const fail = typeof o.failed_qty === 'number' ? o.failed_qty : (parseInt(getMetaValue(o, 'failed_qty', '0')) || 0);
+        return sum + fail;
+    }, 0);
+    const statsPendingQty = Math.max(0, statsTotalQty - statsCompletedQty - statsFailedQty);
 
     return (
         <DashboardLayout
             title="Orders"
-            subtitle={`${orders.length} total orders recorded (Sorted by Delivery Date desc)`}
+            subtitle={`${filtered.length} orders listed (${orders.length} total recorded)`}
             action={newOrderButton}
         >
             {loading ? (
                 <OrdersSkeleton />
             ) : (
                 <div className="w-full space-y-5">
-                    {/* Stats Row */}
+                    {/* Stats Section */}
                     {hasStatisticsPermission && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                    <ShoppingBag className="w-6 h-6" />
+                        <div className="space-y-2.5">
+                            {/* Row 1: Order Counts & Value */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                        <ShoppingBag className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
+                                        <h3 className="text-lg font-black text-foreground leading-tight mt-0.5">{statsTotalOrders}</h3>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
-                                    <h3 className="text-2xl font-black text-foreground mt-0.5">{orders.length}</h3>
+
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                        <Clock className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
+                                        <h3 className="text-lg font-black text-amber-500 leading-tight mt-0.5">{statsActiveOrders}</h3>
+                                    </div>
+                                </div>
+
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
+                                        <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5">{statsCompletedOrders}</h3>
+                                    </div>
+                                </div>
+
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                                        <Package className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
+                                        <h3 className="text-lg font-black text-emerald-600 dark:text-emerald-400 leading-tight mt-0.5">
+                                            {hasPaymentPermission
+                                                ? `₹${statsTotalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                                                : "XXXX"}
+                                        </h3>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                                    <Clock className="w-6 h-6" />
+                            {/* Row 2: PCB Quantity Breakdown (Excludes Part Orders) */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 font-extrabold text-xs">
+                                        QTY
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Quantity</p>
+                                        <h3 className="text-lg font-black text-foreground leading-tight mt-0.5">{statsTotalQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
-                                    <h3 className="text-2xl font-black text-amber-500 mt-0.5">{activeOrdersCount}</h3>
-                                </div>
-                            </div>
 
-                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                                    <CheckCircle2 className="w-6 h-6" />
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed Qty</p>
+                                        <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5">{statsCompletedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
-                                    <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{completedOrdersCount}</h3>
-                                </div>
-                            </div>
 
-                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-                                    <Package className="w-6 h-6" />
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 font-extrabold text-xs">
+                                        FAIL
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Failed Qty</p>
+                                        <h3 className="text-lg font-black text-rose-500 leading-tight mt-0.5">{statsFailedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
-                                    <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                        {hasPaymentPermission
-                                            ? `₹${totalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                                            : "XXXX"}
-                                    </h3>
+
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                        <Clock className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Qty</p>
+                                        <h3 className="text-lg font-black text-amber-500 leading-tight mt-0.5">{statsPendingQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -828,6 +908,7 @@ export default function OrdersPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">All Statuses</SelectItem>
+                                    <SelectItem value="In Production">In Production</SelectItem>
                                     {statuses.map((s) => (
                                         <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                                     ))}
@@ -866,7 +947,9 @@ export default function OrdersPage() {
                                             <th className="py-2 px-3.5">Order Number</th>
                                             <th className="py-2 px-3.5">Layers</th>
                                             <th className="py-2 px-3.5">Film</th>
-                                            <th className="py-2 px-3.5">Qty (Total / Completed / Pending)</th>
+                                            <th className="py-2 px-3.5">
+                                                Qty (Total / Completed / Failed / Pending)
+                                            </th>
                                             <th className="py-2 px-3.5">Order Date</th>
                                             <th className="py-2 px-3.5">Delivery Date</th>
                                             <th className="py-2 px-3.5 text-right">Actions</th>
@@ -891,7 +974,8 @@ export default function OrdersPage() {
                                                 const totalQty = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
                                                 const isCompleted = ['completed', 'shipped', 'delivered'].includes(orderStatusStr);
                                                 const completedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQty : 0);
-                                                const pendingQty = Math.max(0, totalQty - completedQty);
+                                                const failedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
+                                                const pendingQty = Math.max(0, totalQty - completedQty - failedQty);
                                                 const productTypeVal = getMetaValue(order, 'product_type', 'pcb').toLowerCase();
                                                 const isPartOrder = productTypeVal === 'part';
 
@@ -982,7 +1066,7 @@ export default function OrdersPage() {
                                                             })()}
                                                         </td>
 
-                                                        {/* 5. Qty (Total / Completed / Pending) */}
+                                                        {/* 5. Qty (Total / Completed / Failed / Pending) */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <div className="flex items-center gap-1.5 font-bold text-xs">
                                                                 <span className="text-foreground font-extrabold" title="Total Order Quantity">
@@ -991,6 +1075,10 @@ export default function OrdersPage() {
                                                                 <span className="text-muted-foreground">·</span>
                                                                 <span className="text-emerald-600 dark:text-emerald-400 font-extrabold" title="Completed Quantity">
                                                                     {completedQty} Done
+                                                                </span>
+                                                                <span className="text-muted-foreground">/</span>
+                                                                <span className="text-rose-600 dark:text-rose-400 font-extrabold" title="Failed Quantity">
+                                                                    {failedQty} Fail
                                                                 </span>
                                                                 <span className="text-muted-foreground">/</span>
                                                                 <span className="text-amber-600 dark:text-amber-400 font-extrabold" title="Pending Quantity">
@@ -1025,7 +1113,7 @@ export default function OrdersPage() {
                                                                 )}
 
                                                                 {/* Add/Edit Film Icon Button */}
-                                                                {hasAddFilmPermission && (() => {
+                                                                {hasAddFilmPermission && !isPartOrder && (() => {
                                                                     const existingFilm = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
                                                                     const hasFilm = existingFilm && existingFilm !== 'N/A';
                                                                     return (
@@ -1045,7 +1133,7 @@ export default function OrdersPage() {
                                                                 })()}
 
                                                                 {/* Generate Job Card Icon Button */}
-                                                                {hasGenerateJobCardPermission && (
+                                                                {hasGenerateJobCardPermission && !isPartOrder && (
                                                                     <button
                                                                         onClick={() => openJobCardModal(order)}
                                                                         title="Generate Job Card"
@@ -1069,7 +1157,7 @@ export default function OrdersPage() {
                                                                 )}
 
                                                                 {/* Reorder Icon Button */}
-                                                                {hasReorderPermission && (
+                                                                {hasReorderPermission && !isPartOrder && (
                                                                     <button
                                                                         onClick={() => setReorderModalOrder(order)}
                                                                         title="Reorder"
@@ -1207,19 +1295,36 @@ export default function OrdersPage() {
                                     </Select>
                                 </div>
 
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                        Completed Quantity (Pcs)
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
-                                        value={modalCompletedQty}
-                                        onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
-                                        placeholder="Enter completed Pcs..."
-                                        className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                    />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Completed Quantity (Pcs)
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
+                                            value={modalCompletedQty}
+                                            onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
+                                            placeholder="Completed Pcs..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Failed Quantity (Pcs)
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
+                                            value={modalFailedQty}
+                                            onChange={(e) => setModalFailedQty(parseInt(e.target.value) || 0)}
+                                            placeholder="Failed Pcs..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-rose-600 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div>
