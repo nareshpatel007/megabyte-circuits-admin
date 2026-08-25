@@ -892,6 +892,8 @@ export default function OrdersPage() {
                                                 const isCompleted = ['completed', 'shipped', 'delivered'].includes(orderStatusStr);
                                                 const completedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQty : 0);
                                                 const pendingQty = Math.max(0, totalQty - completedQty);
+                                                const productTypeVal = getMetaValue(order, 'product_type', 'pcb').toLowerCase();
+                                                const isPartOrder = productTypeVal === 'part';
 
                                                 const createdDateFormatted = formatDate(order.created_at);
 
@@ -919,9 +921,9 @@ export default function OrdersPage() {
                                                                     title="Click to Change Status"
                                                                     className="font-mono text-xs font-black px-2 py-0.5 rounded-md border transition-all cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 shadow-2xs"
                                                                     style={{
-                                                                        color: orderNumColor,
-                                                                        backgroundColor: `${orderNumColor}15`,
-                                                                        borderColor: `${orderNumColor}35`
+                                                                        color: isPartOrder ? "#2563eb" : orderNumColor,
+                                                                        backgroundColor: isPartOrder ? "#2563eb15" : `${orderNumColor}15`,
+                                                                        borderColor: isPartOrder ? "#2563eb35" : `${orderNumColor}35`
                                                                     }}
                                                                 >
                                                                     #{order.order_number}
@@ -930,9 +932,9 @@ export default function OrdersPage() {
                                                                 <span
                                                                     className="font-mono text-xs font-black px-2 py-0.5 rounded-md border shadow-2xs"
                                                                     style={{
-                                                                        color: orderNumColor,
-                                                                        backgroundColor: `${orderNumColor}15`,
-                                                                        borderColor: `${orderNumColor}35`
+                                                                        color: isPartOrder ? "#2563eb" : orderNumColor,
+                                                                        backgroundColor: isPartOrder ? "#2563eb15" : `${orderNumColor}15`,
+                                                                        borderColor: isPartOrder ? "#2563eb35" : `${orderNumColor}35`
                                                                     }}
                                                                 >
                                                                     #{order.order_number}
@@ -942,19 +944,27 @@ export default function OrdersPage() {
 
                                                         {/* 3. Layers */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
-                                                            <span className="px-2 py-0.5 rounded-lg text-foreground font-extrabold text-xs">
-                                                                {(() => {
-                                                                    const rawVal = (layerCount || '').toString().trim();
-                                                                    if (!rawVal) return '2 Layers';
-                                                                    if (rawVal.toLowerCase().includes('layer')) return rawVal;
-                                                                    return `${rawVal} ${parseInt(rawVal, 10) === 1 ? 'Layer' : 'Layers'}`;
-                                                                })()}
-                                                            </span>
+                                                            {isPartOrder ? (
+                                                                <span className="px-2.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-extrabold text-xs uppercase tracking-wider">
+                                                                    Part
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-2 py-0.5 rounded-lg text-foreground font-extrabold text-xs">
+                                                                    {(() => {
+                                                                        const rawVal = (layerCount || '').toString().trim();
+                                                                        if (!rawVal) return '2 Layers';
+                                                                        if (rawVal.toLowerCase().includes('layer')) return rawVal;
+                                                                        return `${rawVal} ${parseInt(rawVal, 10) === 1 ? 'Layer' : 'Layers'}`;
+                                                                    })()}
+                                                                </span>
+                                                            )}
                                                         </td>
 
                                                         {/* 4. Film */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap text-xs">
-                                                            {(() => {
+                                                            {isPartOrder ? (
+                                                                <span className="text-muted-foreground font-bold px-2">-</span>
+                                                            ) : (() => {
                                                                 const filmVal = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
                                                                 const hasFilm = filmVal && filmVal !== 'N/A' && filmVal.trim() !== '';
                                                                 if (hasFilm) {
