@@ -131,7 +131,10 @@ export default function SettingsPage() {
     const fetchPricing = async () => {
         setLoadingPricing(true);
         try {
-            const res = await fetch("/api/admin/pcb-pricing");
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch("/api/admin/pcb-pricing", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const data = await res.json();
             if (data.success && data.data) {
                 setFixedCosts(data.data.fixedCosts || {});
@@ -172,9 +175,13 @@ export default function SettingsPage() {
 
         setSavingPricing(true);
         try {
+            const token = localStorage.getItem("admin_token");
             const res = await fetch("/api/admin/pcb-pricing", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
                 body: JSON.stringify({
                     fixedCosts,
                     priceTiers: parsedPriceTiers
