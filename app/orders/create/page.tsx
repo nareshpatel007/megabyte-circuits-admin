@@ -1039,21 +1039,6 @@ export default function CreateOrderPage() {
                                 />
                             </div>
 
-                            {/* Product Type */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Product Type</label>
-                                <Select value={productType} onValueChange={setProductType}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue placeholder="Select Product Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Industrial/Consumer electronics">Industrial / Consumer Electronics</SelectItem>
-                                        <SelectItem value="Aerospace">Aerospace</SelectItem>
-                                        <SelectItem value="Medical">Medical</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
                             {/* Different Design */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Different Design Count</label>
