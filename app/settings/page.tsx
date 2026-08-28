@@ -121,6 +121,7 @@ export default function SettingsPage() {
     const [savingPricing, setSavingPricing] = useState(false);
     const [fixedCosts, setFixedCosts] = useState<Record<string, Record<string, number>>>({});
     const [priceTiersJson, setPriceTiersJson] = useState<string>("");
+    const [minPartsOrderAmount, setMinPartsOrderAmount] = useState<number>(3000);
 
     const tabs = [
         { id: "pricing", label: "PCB Calculation & Pricing" },
@@ -139,6 +140,9 @@ export default function SettingsPage() {
             if (data.success && data.data) {
                 setFixedCosts(data.data.fixedCosts || {});
                 setPriceTiersJson(JSON.stringify(data.data.priceTiers || {}, null, 2));
+                if (data.data.minPartsOrderAmount !== undefined) {
+                    setMinPartsOrderAmount(Number(data.data.minPartsOrderAmount));
+                }
             }
         } catch (err) {
             toast.error("Failed to load PCB pricing settings.");
@@ -184,7 +188,8 @@ export default function SettingsPage() {
                 },
                 body: JSON.stringify({
                     fixedCosts,
-                    priceTiers: parsedPriceTiers
+                    priceTiers: parsedPriceTiers,
+                    minPartsOrderAmount
                 })
             });
             const data = await res.json();
@@ -310,6 +315,31 @@ export default function SettingsPage() {
                                             className="w-full font-mono text-xs p-4 bg-slate-950 text-emerald-400 border border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed shadow-inner"
                                             placeholder="Paste or edit Price Tiers JSON matrix structure..."
                                         />
+                                    </div>
+                                </SettingsSection>
+
+                                {/* Section 3: Minimum Parts Order Amount */}
+                                <SettingsSection
+                                    title="Minimum Order Amount (Parts)"
+                                    onSave={handleSavePricing}
+                                    isSaving={savingPricing}
+                                >
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-muted-foreground font-medium">
+                                            Specify the minimum cart order amount (in ₹) required to enable the Secure Checkout button for Parts orders.
+                                        </p>
+                                        <div className="max-w-xs">
+                                            <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                                                Minimum Order Amount (₹)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={minPartsOrderAmount}
+                                                onChange={(e) => setMinPartsOrderAmount(parseFloat(e.target.value) || 0)}
+                                                className="w-full px-3.5 py-2.5 text-sm font-semibold bg-background border border-border/85 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                                                placeholder="3000"
+                                            />
+                                        </div>
                                     </div>
                                 </SettingsSection>
                             </div>
