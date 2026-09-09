@@ -23,6 +23,10 @@ import {
     Sliders,
     Calculator,
     Truck,
+    BookOpen,
+    FolderTree,
+    Tag,
+    MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +47,16 @@ const navItems: NavItem[] = [
     { href: "/clients", label: "Clients", icon: Users, permission: "clients.view" },
     { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
     { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
+    {
+        label: "Blog System",
+        icon: BookOpen,
+        children: [
+            { href: "/admin/blogs", label: "All Posts", icon: BookOpen },
+            { href: "/admin/blog-categories", label: "Categories", icon: FolderTree },
+            { href: "/admin/blog-tags", label: "Tags", icon: Tag },
+            { href: "/admin/blog-comments", label: "Comments", icon: MessageSquare },
+        ],
+    },
     {
         label: "Settings",
         icon: Settings,
