@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
 export default function AdminBlogsPage() {
@@ -145,7 +146,19 @@ export default function AdminBlogsPage() {
                 </div>
 
                 {/* Dashboard Metrics */}
-                {stats && (
+                {loading && !stats ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <Card key={i} className="border-border bg-card p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <Skeleton className="h-3 w-16" />
+                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                </div>
+                                <Skeleton className="h-7 w-12" />
+                            </Card>
+                        ))}
+                    </div>
+                ) : stats ? (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         <Card className="border-border bg-card">
                             <CardHeader className="p-4 pb-2">
@@ -218,7 +231,7 @@ export default function AdminBlogsPage() {
                             </CardContent>
                         </Card>
                     </div>
-                )}
+                ) : null}
 
                 {/* Filter and Search */}
                 <Card className="border-border bg-card">
@@ -270,11 +283,37 @@ export default function AdminBlogsPage() {
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                                            Loading blog posts...
-                                        </td>
-                                    </tr>
+                                    Array.from({ length: 5 }).map((_, index) => (
+                                        <tr key={index}>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    <Skeleton className="w-12 h-12 rounded-lg shrink-0" />
+                                                    <div className="space-y-2 flex-1">
+                                                        <Skeleton className="h-4 w-48" />
+                                                        <Skeleton className="h-3 w-32" />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-6 w-24 rounded-full" />
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-6 w-20 rounded-full" />
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-4 w-28" />
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-4 w-20" />
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : blogs.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="p-8 text-center text-muted-foreground">

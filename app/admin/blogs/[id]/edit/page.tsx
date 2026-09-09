@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { BlogForm } from "@/components/blog/BlogForm";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function EditBlogPage() {
     const params = useParams();
@@ -40,7 +41,15 @@ export default function EditBlogPage() {
                     <p className="text-sm text-muted-foreground">Update content, metadata, and publishing configuration.</p>
                 </div>
                 {loading ? (
-                    <div className="p-12 text-center text-muted-foreground">Loading blog details...</div>
+                    <div className="space-y-6">
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Skeleton className="h-10 w-full rounded-xl" />
+                            <Skeleton className="h-10 w-full rounded-xl" />
+                        </div>
+                        <Skeleton className="h-64 w-full rounded-xl" />
+                        <Skeleton className="h-32 w-full rounded-xl" />
+                    </div>
                 ) : !blog ? (
                     <div className="p-12 text-center text-destructive font-semibold">Blog post not found.</div>
                 ) : (

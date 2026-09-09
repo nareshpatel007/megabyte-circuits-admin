@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
 export default function BlogTagsPage() {
@@ -113,7 +114,11 @@ export default function BlogTagsPage() {
                     </CardHeader>
                     <CardContent>
                         {loading ? (
-                            <p className="text-sm text-muted-foreground">Loading tags...</p>
+                            <div className="flex flex-wrap gap-3">
+                                {[1, 2, 3, 4, 5, 6].map((i) => (
+                                    <Skeleton key={i} className="h-8 w-24 rounded-lg" />
+                                ))}
+                            </div>
                         ) : tags.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No tags created yet.</p>
                         ) : (

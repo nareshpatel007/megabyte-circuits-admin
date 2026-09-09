@@ -5,6 +5,7 @@ import { MessageSquare, Check, X, ShieldAlert, Trash2, Filter } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
 export default function BlogCommentsPage() {
@@ -135,11 +136,31 @@ export default function BlogCommentsPage() {
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                                            Loading comments...
-                                        </td>
-                                    </tr>
+                                    Array.from({ length: 4 }).map((_, index) => (
+                                        <tr key={index}>
+                                            <td className="p-4">
+                                                <div className="space-y-1.5">
+                                                    <Skeleton className="h-4 w-28" />
+                                                    <Skeleton className="h-3 w-36" />
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-12 w-full rounded-lg" />
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-4 w-32" />
+                                            </td>
+                                            <td className="p-4">
+                                                <Skeleton className="h-6 w-20 rounded-full" />
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Skeleton className="h-8 w-20 rounded-lg" />
+                                                    <Skeleton className="h-8 w-16 rounded-lg" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : comments.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="p-8 text-center text-muted-foreground">

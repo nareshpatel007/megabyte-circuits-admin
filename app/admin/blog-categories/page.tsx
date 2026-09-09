@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
 export default function BlogCategoriesPage() {
@@ -138,11 +139,20 @@ export default function BlogCategoriesPage() {
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                                            Loading categories...
-                                        </td>
-                                    </tr>
+                                    Array.from({ length: 4 }).map((_, index) => (
+                                        <tr key={index}>
+                                            <td className="p-4"><Skeleton className="h-4 w-32" /></td>
+                                            <td className="p-4"><Skeleton className="h-3 w-40" /></td>
+                                            <td className="p-4"><Skeleton className="h-3 w-48" /></td>
+                                            <td className="p-4"><Skeleton className="h-4 w-8" /></td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : categories.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="p-8 text-center text-muted-foreground">
