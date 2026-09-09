@@ -1,21 +1,23 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Edit, FolderTree, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, FolderTree, Search, Layers, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { toast } from "sonner";
 
 export default function BlogCategoriesPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
     const [open, setOpen] = useState(false);
     const [editingCat, setEditingCat] = useState<any>(null);
+    const [saving, setSaving] = useState(false);
 
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
@@ -31,9 +33,12 @@ export default function BlogCategoriesPage() {
             const data = await res.json();
             if (data.status) {
                 setCategories(data.categories || []);
+            } else {
+                toast.error("Failed to load blog categories");
             }
         } catch (e) {
             console.error(e);
+            toast.error("Error fetching categories");
         } finally {
             setLoading(false);
         }
@@ -45,8 +50,12 @@ export default function BlogCategoriesPage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
+        if (!name.trim()) {
+            toast.error("Category name is required");
+            return;
+        }
 
+        setSaving(true);
         const payload = { name, slug, description };
         const url = editingCat ? `/api/admin/blog-categories/${editingCat.id}` : "/api/admin/blog-categories";
         const method = editingCat ? "PUT" : "POST";
@@ -63,19 +72,22 @@ export default function BlogCategoriesPage() {
             });
             const data = await res.json();
             if (data.status) {
+                toast.success(data.message || (editingCat ? "Category updated successfully" : "Category created successfully"));
                 setOpen(false);
                 resetForm();
                 fetchCategories();
             } else {
-                alert(data.message || "Failed to save category.");
+                toast.error(data.message || "Failed to save category");
             }
         } catch (e) {
-            alert("Error saving category.");
+            toast.error("Error saving category");
+        } finally {
+            setSaving(false);
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this category?")) return;
+    const handleDelete = async (id: number, catName: string) => {
+        if (!confirm(`Are you sure you want to delete category "${catName}"?`)) return;
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/blog-categories/${id}`, {
@@ -83,9 +95,14 @@ export default function BlogCategoriesPage() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
-            if (data.status) fetchCategories();
+            if (data.status) {
+                toast.success("Category deleted successfully");
+                fetchCategories();
+            } else {
+                toast.error(data.message || "Failed to delete category");
+            }
         } catch (e) {
-            alert("Error deleting category.");
+            toast.error("Error deleting category");
         }
     };
 
@@ -104,135 +121,233 @@ export default function BlogCategoriesPage() {
         setOpen(true);
     };
 
+    const filtered = categories.filter((cat) => {
+        const q = search.toLowerCase();
+        return (
+            (cat.name || "").toLowerCase().includes(q) ||
+            (cat.slug || "").toLowerCase().includes(q) ||
+            (cat.description || "").toLowerCase().includes(q)
+        );
+    });
+
+    const addCategoryButton = (
+        <button
+            onClick={() => {
+                resetForm();
+                setOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer"
+        >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Add Category
+        </button>
+    );
+
+    const totalPostsCount = categories.reduce((sum, c) => sum + (Number(c.blogs_count) || 0), 0);
+
     return (
-        <DashboardLayout title="Blog Categories">
-            <div className="p-6 space-y-6 max-w-5xl mx-auto">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <FolderTree className="w-6 h-6 text-emerald-500" /> Blog Categories
-                        </h1>
-                        <p className="text-sm text-muted-foreground">Manage category groupings for articles.</p>
-                    </div>
-                    <Button
-                        onClick={() => {
-                            resetForm();
-                            setOpen(true);
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-2"
-                    >
-                        <Plus className="w-4 h-4" /> Add Category
-                    </Button>
-                </div>
+        <DashboardLayout
+            title="Blog Categories"
+            subtitle={`${categories.length} categories created`}
+            action={addCategoryButton}
+        >
+            {loading ? (
+                <TableSkeleton rows={6} />
+            ) : (
+                <div className="space-y-5">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                <FolderTree className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Categories</p>
+                                <h3 className="text-2xl font-black text-foreground mt-0.5">{categories.length}</h3>
+                            </div>
+                        </div>
 
-                <Card className="border-border bg-card">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground font-semibold text-xs uppercase">
-                                <tr>
-                                    <th className="p-4">Category Name</th>
-                                    <th className="p-4">Slug</th>
-                                    <th className="p-4">Description</th>
-                                    <th className="p-4">Total Posts</th>
-                                    <th className="p-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {loading ? (
-                                    Array.from({ length: 4 }).map((_, index) => (
-                                        <tr key={index}>
-                                            <td className="p-4"><Skeleton className="h-4 w-32" /></td>
-                                            <td className="p-4"><Skeleton className="h-3 w-40" /></td>
-                                            <td className="p-4"><Skeleton className="h-3 w-48" /></td>
-                                            <td className="p-4"><Skeleton className="h-4 w-8" /></td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Skeleton className="h-8 w-8 rounded-lg" />
-                                                    <Skeleton className="h-8 w-8 rounded-lg" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : categories.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                                            No categories created yet.
-                                        </td>
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Categorized Articles</p>
+                                <h3 className="text-2xl font-black text-blue-500 mt-0.5">{totalPostsCount}</h3>
+                            </div>
+                        </div>
+
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-4 sm:col-span-2 lg:col-span-1">
+                            <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                                <Layers className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Groupings</p>
+                                <h3 className="text-2xl font-black text-purple-500 mt-0.5">
+                                    {categories.filter(c => (c.blogs_count || 0) > 0).length} Active
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Search & Filter Bar */}
+                    <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="relative w-full sm:w-80">
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                                type="text"
+                                placeholder="Search category by name, slug..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-muted/30 border border-border/80 rounded-xl text-xs text-foreground focus:outline-none focus:border-emerald-500 font-medium"
+                            />
+                        </div>
+                        <span className="text-xs text-muted-foreground font-semibold">
+                            Showing {filtered.length} of {categories.length} categories
+                        </span>
+                    </div>
+
+                    {/* Table Container */}
+                    <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-xs">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead>
+                                    <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
+                                        <th className="py-3.5 px-5">Category Name</th>
+                                        <th className="py-3.5 px-5">URL Slug</th>
+                                        <th className="py-3.5 px-5">Description</th>
+                                        <th className="py-3.5 px-5">Total Posts</th>
+                                        <th className="py-3.5 px-5 text-right">Actions</th>
                                     </tr>
-                                ) : (
-                                    categories.map((cat) => (
-                                        <tr key={cat.id} className="hover:bg-muted/30">
-                                            <td className="p-4 font-semibold text-foreground">{cat.name}</td>
-                                            <td className="p-4 text-xs font-mono text-muted-foreground">/blogs/category/{cat.slug}</td>
-                                            <td className="p-4 text-xs text-muted-foreground max-w-xs truncate">{cat.description || "—"}</td>
-                                            <td className="p-4 text-xs font-bold text-emerald-600">{cat.blogs_count || 0}</td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button variant="ghost" size="sm" onClick={() => openEdit(cat)} className="h-8 w-8 p-0">
-                                                        <Edit className="w-4 h-4 text-muted-foreground" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0">
-                                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                                    </Button>
-                                                </div>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {filtered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-12 text-muted-foreground font-medium">
+                                                No categories found matching your search.
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
+                                    ) : (
+                                        filtered.map((cat) => (
+                                            <tr key={cat.id} className="hover:bg-muted/20 transition-colors">
+                                                <td className="py-4 px-5 font-bold text-foreground text-sm">
+                                                    {cat.name}
+                                                </td>
+                                                <td className="py-4 px-5 font-mono text-xs text-muted-foreground">
+                                                    /blog/category/{cat.slug}
+                                                </td>
+                                                <td className="py-4 px-5 text-xs text-muted-foreground max-w-xs truncate">
+                                                    {cat.description || "—"}
+                                                </td>
+                                                <td className="py-4 px-5">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                        {cat.blogs_count || 0} Articles
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-5 text-right whitespace-nowrap">
+                                                    <div className="inline-flex items-center justify-end gap-1.5">
+                                                        <button
+                                                            onClick={() => openEdit(cat)}
+                                                            title="Edit Category"
+                                                            aria-label="Edit Category"
+                                                            className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
 
-                {/* Modal Dialog */}
-                <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="bg-card text-foreground border-border">
-                        <DialogHeader>
-                            <DialogTitle>{editingCat ? "Edit Category" : "Add New Category"}</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleSave} className="space-y-4 py-2">
-                            <div>
-                                <Label className="text-sm font-semibold">Name *</Label>
-                                <Input
-                                    value={name}
-                                    onChange={(e) => {
-                                        setName(e.target.value);
-                                        if (!editingCat) setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-                                    }}
-                                    placeholder="e.g., Signal Integrity"
-                                    className="mt-1 bg-background"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-sm font-semibold">Slug *</Label>
-                                <Input
-                                    value={slug}
-                                    onChange={(e) => setSlug(e.target.value)}
-                                    placeholder="signal-integrity"
-                                    className="mt-1 bg-background"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-sm font-semibold">Description</Label>
-                                <Textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Brief description of articles under this category..."
-                                    className="mt-1 bg-background"
-                                />
-                            </div>
-                            <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                                    {editingCat ? "Update Category" : "Create Category"}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                                                        <button
+                                                            onClick={() => handleDelete(cat.id, cat.name)}
+                                                            title="Delete Category"
+                                                            aria-label="Delete Category"
+                                                            className="p-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Dialog Modal */}
+                    <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogContent className="bg-card text-foreground border-border/80 rounded-2xl max-w-md w-full p-6">
+                            <DialogHeader>
+                                <DialogTitle className="text-base font-bold text-foreground">
+                                    {editingCat ? "Edit Blog Category" : "Add New Category"}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={handleSave} className="space-y-4 pt-2">
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                        Category Name *
+                                    </Label>
+                                    <Input
+                                        value={name}
+                                        onChange={(e) => {
+                                            setName(e.target.value);
+                                            if (!editingCat) {
+                                                setSlug(e.target.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""));
+                                            }
+                                        }}
+                                        placeholder="e.g. Signal Integrity"
+                                        className="bg-muted/30 border-border/80 rounded-xl text-xs"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                        URL Slug *
+                                    </Label>
+                                    <Input
+                                        value={slug}
+                                        onChange={(e) => setSlug(e.target.value)}
+                                        placeholder="signal-integrity"
+                                        className="bg-muted/30 border-border/80 rounded-xl text-xs font-mono"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                        Description
+                                    </Label>
+                                    <Textarea
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Brief description of articles under this category..."
+                                        className="bg-muted/30 border-border/80 rounded-xl text-xs min-h-[80px]"
+                                    />
+                                </div>
+
+                                <DialogFooter className="pt-3 gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setOpen(false)}
+                                        className="rounded-xl text-xs font-bold border-border"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={saving}
+                                        className="rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+                                    >
+                                        {saving ? "Saving..." : editingCat ? "Update Category" : "Create Category"}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            )}
         </DashboardLayout>
     );
 }
+

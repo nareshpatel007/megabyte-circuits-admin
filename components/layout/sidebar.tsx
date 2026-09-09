@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
     { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
     { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
     {
-        label: "Blog System",
+        label: "Blog Managment",
         icon: BookOpen,
         children: [
             { href: "/admin/blogs", label: "All Posts", icon: BookOpen },
@@ -82,7 +82,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
     const isBlogActive = pathname ? pathname.startsWith("/admin/blog") : false;
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
         "Settings": isSettingsActive,
-        "Blog System": isBlogActive,
+        "Blog Managment": isBlogActive,
     });
     const [userPermissions, setUserPermissions] = useState<string[]>([]);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -92,7 +92,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
             setOpenMenus((prev) => ({
                 ...prev,
                 "Settings": pathname.startsWith("/settings") ? true : prev["Settings"],
-                "Blog System": pathname.startsWith("/admin/blog") ? true : prev["Blog System"],
+                "Blog Management": pathname.startsWith("/admin/blog") ? true : prev["Blog Management"],
             }));
         }
     }, [pathname]);
@@ -109,7 +109,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                     if (Array.isArray(u.permissions)) {
                         setUserPermissions(u.permissions);
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
         };
 

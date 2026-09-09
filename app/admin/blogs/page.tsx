@@ -131,23 +131,22 @@ export default function AdminBlogsPage() {
         }
     };
 
+    const createBlogButton = (
+        <Link href="/admin/blogs/create">
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer">
+                <Plus className="w-4 h-4 stroke-[2.5]" /> Create Blog Post
+            </button>
+        </Link>
+    );
+
     return (
-        <DashboardLayout title="Blog Posts">
-            <div className="p-6 space-y-6">
-                {/* Header Row */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Blog Posts</h1>
-                        <p className="text-sm text-muted-foreground">Manage articles, rich content, SEO metadata, and publishing status.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Link href="/admin/blogs/create">
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-2">
-                                <Plus className="w-4 h-4" /> Create Blog Post
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
+        <DashboardLayout
+            title="Blog Posts"
+            subtitle="Manage articles, rich content, SEO metadata, and publishing status"
+            action={createBlogButton}
+        >
+            <div className="space-y-5">
+
 
                 {/* Dashboard Metrics */}
                 {loading && !stats ? (

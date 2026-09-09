@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MessageSquare, Check, X, ShieldAlert, Trash2, Filter } from "lucide-react";
+import { MessageSquare, Check, ShieldAlert, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { toast } from "sonner";
 
 export default function BlogCommentsPage() {
     const [comments, setComments] = useState<any[]>([]);
@@ -30,9 +30,12 @@ export default function BlogCommentsPage() {
             if (data.status && data.comments) {
                 setComments(data.comments.data || []);
                 setTotalPages(data.comments.last_page || 1);
+            } else {
+                toast.error("Failed to load comments");
             }
         } catch (e) {
             console.error(e);
+            toast.error("Error fetching comments");
         } finally {
             setLoading(false);
         }
@@ -55,10 +58,13 @@ export default function BlogCommentsPage() {
             });
             const data = await res.json();
             if (data.status) {
+                toast.success(`Comment status updated to ${status}`);
                 fetchComments();
+            } else {
+                toast.error(data.message || "Failed to update comment status");
             }
         } catch (e) {
-            alert("Failed to update status.");
+            toast.error("Failed to update status.");
         }
     };
 
@@ -71,175 +77,153 @@ export default function BlogCommentsPage() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
-            if (data.status) fetchComments();
+            if (data.status) {
+                toast.success("Comment deleted");
+                fetchComments();
+            } else {
+                toast.error(data.message || "Failed to delete comment");
+            }
         } catch (e) {
-            alert("Failed to delete comment.");
+            toast.error("Failed to delete comment.");
         }
     };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "approved":
-                return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Approved</Badge>;
+                return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold uppercase text-[10px]">Approved</Badge>;
             case "pending":
-                return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">Pending</Badge>;
+                return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold uppercase text-[10px]">Pending</Badge>;
             case "spam":
-                return <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20">Spam</Badge>;
+                return <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold uppercase text-[10px]">Spam</Badge>;
             case "rejected":
-                return <Badge className="bg-muted text-muted-foreground">Rejected</Badge>;
+                return <Badge variant="outline" className="font-bold uppercase text-[10px]">Rejected</Badge>;
             default:
-                return <Badge variant="outline">{status}</Badge>;
+                return <Badge variant="outline" className="font-bold uppercase text-[10px]">{status}</Badge>;
         }
     };
 
     return (
-        <DashboardLayout title="Comment Moderation">
-            <div className="p-6 space-y-6 max-w-6xl mx-auto">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <MessageSquare className="w-6 h-6 text-purple-500" /> Comment Moderation
-                        </h1>
-                        <p className="text-sm text-muted-foreground">Review, approve, reject, or filter public user comments.</p>
+        <DashboardLayout
+            title="Comment Moderation"
+            subtitle="Review, approve, reject, or filter public user comments"
+        >
+            {loading ? (
+                <TableSkeleton rows={6} />
+            ) : (
+                <div className="space-y-5">
+                    <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Filter Status:</span>
+                            <select
+                                className="bg-muted/30 border border-border/80 text-foreground text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value);
+                                    setPage(1);
+                                }}
+                            >
+                                <option value="">All Comments</option>
+                                <option value="pending">Pending Moderation</option>
+                                <option value="approved">Approved</option>
+                                <option value="spam">Spam</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-semibold">
+                            Page {page} of {totalPages}
+                        </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-muted-foreground" />
-                        <select
-                            className="bg-background border border-input text-foreground text-sm rounded-md px-3 py-2 focus:outline-none"
-                            value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value);
-                                setPage(1);
-                            }}
-                        >
-                            <option value="">All Comments</option>
-                            <option value="pending">Pending Moderation</option>
-                            <option value="approved">Approved</option>
-                            <option value="spam">Spam</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                    </div>
-                </div>
-
-                <Card className="border-border bg-card">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground font-semibold text-xs uppercase">
-                                <tr>
-                                    <th className="p-4">Author & Email</th>
-                                    <th className="p-4">Comment Content</th>
-                                    <th className="p-4">Blog Post</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4 text-right">Moderation Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {loading ? (
-                                    Array.from({ length: 4 }).map((_, index) => (
-                                        <tr key={index}>
-                                            <td className="p-4">
-                                                <div className="space-y-1.5">
-                                                    <Skeleton className="h-4 w-28" />
-                                                    <Skeleton className="h-3 w-36" />
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <Skeleton className="h-12 w-full rounded-lg" />
-                                            </td>
-                                            <td className="p-4">
-                                                <Skeleton className="h-4 w-32" />
-                                            </td>
-                                            <td className="p-4">
-                                                <Skeleton className="h-6 w-20 rounded-full" />
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Skeleton className="h-8 w-20 rounded-lg" />
-                                                    <Skeleton className="h-8 w-16 rounded-lg" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : comments.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                                            No comments found matching the current filter.
-                                        </td>
+                    <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-xs">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead>
+                                    <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
+                                        <th className="py-3.5 px-5">Author & Email</th>
+                                        <th className="py-3.5 px-5">Comment Content</th>
+                                        <th className="py-3.5 px-5">Blog Post</th>
+                                        <th className="py-3.5 px-5">Status</th>
+                                        <th className="py-3.5 px-5 text-right">Moderation Actions</th>
                                     </tr>
-                                ) : (
-                                    comments.map((comment) => (
-                                        <tr key={comment.id} className="hover:bg-muted/30">
-                                            <td className="p-4">
-                                                <div className="font-semibold text-foreground">{comment.name}</div>
-                                                <div className="text-xs text-muted-foreground">{comment.email}</div>
-                                                <div className="text-[10px] text-muted-foreground mt-1">
-                                                    {new Date(comment.created_at).toLocaleString()}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 max-w-sm">
-                                                <p className="text-xs text-foreground leading-relaxed bg-muted/30 p-2.5 rounded-lg border border-border">
-                                                    "{comment.content}"
-                                                </p>
-                                            </td>
-                                            <td className="p-4 text-xs font-medium text-foreground">
-                                                {comment.blog?.title || `Blog #${comment.blog_id}`}
-                                            </td>
-                                            <td className="p-4">{getStatusBadge(comment.status)}</td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {comment.status !== "approved" && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-8 text-xs text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/30 flex items-center gap-1"
-                                                            onClick={() => handleUpdateStatus(comment.id, "approved")}
-                                                        >
-                                                            <Check className="w-3.5 h-3.5" /> Approve
-                                                        </Button>
-                                                    )}
-                                                    {comment.status !== "spam" && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-8 text-xs text-rose-600 hover:bg-rose-500/10 border-rose-500/30 flex items-center gap-1"
-                                                            onClick={() => handleUpdateStatus(comment.id, "spam")}
-                                                        >
-                                                            <ShieldAlert className="w-3.5 h-3.5" /> Spam
-                                                        </Button>
-                                                    )}
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                                        onClick={() => handleDelete(comment.id)}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {comments.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-12 text-muted-foreground font-medium">
+                                                No comments found matching the current filter.
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        comments.map((comment) => (
+                                            <tr key={comment.id} className="hover:bg-muted/20 transition-colors">
+                                                <td className="py-4 px-5 whitespace-nowrap">
+                                                    <div className="font-bold text-foreground text-sm">{comment.name}</div>
+                                                    <div className="text-xs text-muted-foreground font-medium">{comment.email}</div>
+                                                    <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                                                        {new Date(comment.created_at).toLocaleString()}
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-5 max-w-sm">
+                                                    <p className="text-xs text-foreground leading-relaxed bg-muted/30 p-2.5 rounded-xl border border-border/60">
+                                                        "{comment.content}"
+                                                    </p>
+                                                </td>
+                                                <td className="py-4 px-5 text-xs font-semibold text-foreground">
+                                                    {comment.blog?.title || `Blog #${comment.blog_id}`}
+                                                </td>
+                                                <td className="py-4 px-5">{getStatusBadge(comment.status)}</td>
+                                                <td className="py-4 px-5 text-right whitespace-nowrap">
+                                                    <div className="inline-flex items-center justify-end gap-1.5">
+                                                        {comment.status !== "approved" && (
+                                                            <button
+                                                                onClick={() => handleUpdateStatus(comment.id, "approved")}
+                                                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer inline-flex items-center gap-1"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" /> Approve
+                                                            </button>
+                                                        )}
+                                                        {comment.status !== "spam" && (
+                                                            <button
+                                                                onClick={() => handleUpdateStatus(comment.id, "spam")}
+                                                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all cursor-pointer inline-flex items-center gap-1"
+                                                            >
+                                                                <ShieldAlert className="w-3.5 h-3.5" /> Spam
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDelete(comment.id)}
+                                                            className="p-2 bg-muted/40 text-muted-foreground border border-border/80 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                                                            title="Delete Comment"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     {totalPages > 1 && (
-                        <div className="p-4 border-t border-border flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+                        <div className="p-4 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground font-medium bg-card rounded-xl border">
+                            <span>Page {page} of {totalPages}</span>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
+                                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-xl text-xs font-bold">
                                     Previous
                                 </Button>
-                                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
+                                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="rounded-xl text-xs font-bold">
                                     Next
                                 </Button>
                             </div>
                         </div>
                     )}
-                </Card>
-            </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 }
