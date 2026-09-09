@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Editor } from "@tinymce/tinymce-react";
 
 interface BlogFormProps {
     initialData?: any;
@@ -31,6 +32,7 @@ interface BlogFormProps {
 
 export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
     const router = useRouter();
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const [categories, setCategories] = useState<any[]>([]);
     const [tags, setTags] = useState<any[]>([]);
@@ -322,18 +324,23 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                         placeholder="/storage/blogs/my-image.webp or https://..."
                                         className="bg-background flex-1"
                                     />
-                                    <label className="cursor-pointer">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleImageUpload}
-                                            disabled={uploadingImg}
-                                        />
-                                        <Button type="button" variant="outline" className="flex items-center gap-2">
-                                            <Upload className="w-4 h-4" /> {uploadingImg ? "Uploading..." : "Upload File"}
-                                        </Button>
-                                    </label>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleImageUpload}
+                                        disabled={uploadingImg}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploadingImg}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Upload className="w-4 h-4" /> {uploadingImg ? "Uploading..." : "Upload File"}
+                                    </Button>
                                 </div>
                                 {featuredImage && (
                                     <div className="mt-3 w-48 h-32 rounded-lg border border-border overflow-hidden bg-muted">
@@ -344,33 +351,33 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Rich Content Editor */}
+                    {/* Rich Content Editor Package */}
                     <Card className="border-border bg-card">
                         <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg">Article Content</CardTitle>
-                                    <CardDescription>Rich HTML content rendered on the public website.</CardDescription>
-                                </div>
-                                {/* Editor Toolbar */}
-                                <div className="flex items-center gap-1.5 bg-muted p-1 rounded-md border border-border text-xs">
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => insertFormat("<h2>", "</h2>")}>H2</Button>
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => insertFormat("<h3>", "</h3>")}>H3</Button>
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 font-bold" onClick={() => insertFormat("<strong>", "</strong>")}>B</Button>
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 italic" onClick={() => insertFormat("<em>", "</em>")}>I</Button>
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => insertFormat("<blockquote>", "</blockquote>")}>Quote</Button>
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => insertFormat("<pre><code>", "</code></pre>")}>Code</Button>
-                                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => insertFormat("<ul>\n  <li>", "</li>\n</ul>")}>List</Button>
-                                </div>
-                            </div>
+                            <CardTitle className="text-lg">Article Content</CardTitle>
+                            <CardDescription>Visual WYSIWYG editor powered by TinyMCE package.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <Textarea
-                                rows={14}
+                        <CardContent className="min-h-[450px]">
+                            <Editor
+                                apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY || "no-api-key"}
                                 value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="<h2>Section Heading</h2><p>Write your article content here in rich HTML...</p>"
-                                className="font-mono text-sm bg-background leading-relaxed"
+                                onEditorChange={(newContent) => setContent(newContent)}
+                                init={{
+                                    height: 480,
+                                    menubar: true,
+                                    plugins: [
+                                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                                        'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                                    ],
+                                    toolbar: 'undo redo | blocks | ' +
+                                        'bold italic forecolor | alignleft aligncenter ' +
+                                        'alignright alignjustify | bullist numlist outdent indent | ' +
+                                        'removeformat | code fullscreen | help',
+                                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:15px }',
+                                    skin: 'oxide',
+                                    content_css: 'default',
+                                }}
                             />
                         </CardContent>
                     </Card>

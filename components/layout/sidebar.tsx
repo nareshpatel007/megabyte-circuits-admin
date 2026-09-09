@@ -79,15 +79,23 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
     const isSettingsActive = pathname ? pathname.startsWith("/settings") : false;
-    const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
+    const isBlogActive = pathname ? pathname.startsWith("/admin/blog") : false;
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+        "Settings": isSettingsActive,
+        "Blog System": isBlogActive,
+    });
     const [userPermissions, setUserPermissions] = useState<string[]>([]);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
     useEffect(() => {
-        if (isSettingsActive) {
-            setSettingsOpen(true);
+        if (pathname) {
+            setOpenMenus((prev) => ({
+                ...prev,
+                "Settings": pathname.startsWith("/settings") ? true : prev["Settings"],
+                "Blog System": pathname.startsWith("/admin/blog") ? true : prev["Blog System"],
+            }));
         }
-    }, [pathname, isSettingsActive]);
+    }, [pathname]);
 
     useEffect(() => {
         const checkPermissions = () => {
@@ -189,14 +197,22 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                     {filteredNavItems.map((item) => {
                         if (item.children) {
                             const validChildren = item.children.filter((c) => hasPermission(c.permission));
-                            const isChildActive = validChildren.some((child) => pathname === child.href);
+                            const isChildActive = validChildren.some((child) => {
+                                if (!pathname) return false;
+                                if (pathname === child.href) return true;
+                                if (child.href !== "/admin/blogs" && pathname.startsWith(child.href)) return true;
+                                if (child.href === "/admin/blogs" && (pathname.startsWith("/admin/blogs/create") || pathname.includes("/edit"))) return true;
+                                return false;
+                            });
+                            const isOpen = openMenus[item.label] ?? isChildActive;
+
                             return (
                                 <div key={item.label} className="space-y-1">
                                     <button
                                         type="button"
                                         onClick={() => {
                                             if (isCollapsed) onCollapse(false);
-                                            setSettingsOpen(!settingsOpen);
+                                            setOpenMenus((prev) => ({ ...prev, [item.label]: !isOpen }));
                                         }}
                                         className={cn(
                                             "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 relative group cursor-pointer",
@@ -210,14 +226,18 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                                             {!isCollapsed && <span className="truncate">{item.label}</span>}
                                         </div>
                                         {!isCollapsed && (
-                                            <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform duration-200 text-white/60", settingsOpen && "rotate-180")} />
+                                            <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform duration-200 text-white/60", isOpen && "rotate-180")} />
                                         )}
                                     </button>
 
-                                    {settingsOpen && !isCollapsed && (
+                                    {isOpen && !isCollapsed && (
                                         <div className="pl-4 space-y-1 pt-0.5">
                                             {validChildren.map((child) => {
-                                                const childActive = pathname === child.href;
+                                                const childActive = pathname ? (
+                                                    pathname === child.href ||
+                                                    (child.href === "/admin/blogs" && (pathname.startsWith("/admin/blogs/create") || pathname.includes("/edit"))) ||
+                                                    (child.href !== "/admin/blogs" && pathname.startsWith(child.href))
+                                                ) : false;
                                                 const ChildIcon = child.icon;
                                                 return (
                                                     <Link

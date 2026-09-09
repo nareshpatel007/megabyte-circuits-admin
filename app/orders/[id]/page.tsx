@@ -332,7 +332,7 @@ export default function OrderDetailPage() {
 
     const pageHeaderTitle = (
         <div className="space-y-1">
-            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : pcbColorHex }}>
+            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : "#059669" }}>
                 Order #{order.order_number}
             </h1>
             <div className="flex items-center gap-2">
