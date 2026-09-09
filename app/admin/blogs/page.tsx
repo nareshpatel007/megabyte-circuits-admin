@@ -32,7 +32,9 @@ export default function AdminBlogsPage() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
     const [totalPages, setTotalPages] = useState(1);
+    const [totalBlogs, setTotalBlogs] = useState(0);
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
     const fetchStats = async () => {
@@ -56,6 +58,7 @@ export default function AdminBlogsPage() {
             const token = localStorage.getItem("admin_token");
             const query = new URLSearchParams({
                 page: page.toString(),
+                per_page: perPage.toString(),
                 search,
                 status: statusFilter,
             });
@@ -66,6 +69,7 @@ export default function AdminBlogsPage() {
             if (data.status && data.blogs) {
                 setBlogs(data.blogs.data || []);
                 setTotalPages(data.blogs.last_page || 1);
+                setTotalBlogs(data.blogs.total || 0);
             }
         } catch (e) {
             console.error(e);
@@ -80,7 +84,7 @@ export default function AdminBlogsPage() {
 
     useEffect(() => {
         fetchBlogs();
-    }, [page, search, statusFilter]);
+    }, [page, perPage, search, statusFilter]);
 
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure you want to delete this blog post?")) return;
@@ -418,26 +422,62 @@ export default function AdminBlogsPage() {
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="p-4 border-t border-border flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">
-                                Page {page} of {totalPages}
-                            </span>
-                            <div className="flex items-center gap-2">
+                    {/* Pagination Bar */}
+                    {!loading && totalBlogs > 0 && (
+                        <div className="p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-4">
+                                <span className="text-xs text-muted-foreground">
+                                    Showing {totalBlogs > 0 ? (page - 1) * perPage + 1 : 0} to {Math.min(page * perPage, totalBlogs)} of {totalBlogs} entries
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Rows per page:</span>
+                                    <select
+                                        className="bg-background border border-input text-foreground text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                                        value={perPage}
+                                        onChange={(e) => {
+                                            setPerPage(Number(e.target.value));
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <option value={5}>5</option>
+                                        <option value={10}>10</option>
+                                        <option value={25}>25</option>
+                                        <option value={50}>50</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     disabled={page === 1}
                                     onClick={() => setPage(page - 1)}
+                                    className="h-8 px-3 text-xs"
                                 >
                                     Previous
                                 </Button>
+
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                                    <Button
+                                        key={p}
+                                        variant={p === page ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setPage(p)}
+                                        className={`h-8 w-8 p-0 text-xs font-semibold ${
+                                            p === page ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600" : ""
+                                        }`}
+                                    >
+                                        {p}
+                                    </Button>
+                                ))}
+
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    disabled={page === totalPages}
+                                    disabled={page === totalPages || totalPages === 0}
                                     onClick={() => setPage(page + 1)}
+                                    className="h-8 px-3 text-xs"
                                 >
                                     Next
                                 </Button>

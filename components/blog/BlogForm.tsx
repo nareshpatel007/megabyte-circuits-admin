@@ -14,6 +14,7 @@ import {
     Sparkles,
     Eye,
     Check,
+    Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,18 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
     const [loading, setLoading] = useState(false);
     const [uploadingImg, setUploadingImg] = useState(false);
 
+    const formatPublishedAt = (dateStr?: string) => {
+        if (!dateStr) return "";
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return "";
+            const tzOffset = d.getTimezoneOffset() * 60000;
+            return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+        } catch {
+            return "";
+        }
+    };
+
     // Form fields
     const [title, setTitle] = useState(initialData?.title || "");
     const [slug, setSlug] = useState(initialData?.slug || "");
@@ -47,6 +60,8 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
     const [featuredImage, setFeaturedImage] = useState(initialData?.featured_image || "");
     const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
     const [categoryName, setCategoryName] = useState(initialData?.category || "");
+    const [authorName, setAuthorName] = useState(initialData?.author_name || "");
+    const [publishedAt, setPublishedAt] = useState(formatPublishedAt(initialData?.published_at) || "");
     const [tagsInput, setTagsInput] = useState(initialData?.tags || "");
     const [status, setStatus] = useState(initialData?.status || "draft");
     const [readingTime, setReadingTime] = useState(initialData?.reading_time || "5 min read");
@@ -107,31 +122,34 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setUploadingImg(true);
-        const formData = new FormData();
-        formData.append("image", file);
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Image file size should be less than 5MB.");
+            return;
+        }
 
-        try {
-            const token = localStorage.getItem("admin_token");
-            const res = await fetch("/api/admin/blogs/upload-image", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-            });
-            const data = await res.json();
-            if (data.status && data.url) {
-                setFeaturedImage(data.url);
-            } else {
-                alert(data.message || "Failed to upload image.");
+        setUploadingImg(true);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            if (typeof reader.result === "string") {
+                setFeaturedImage(reader.result);
             }
-        } catch (err) {
-            alert("Error uploading image.");
-        } finally {
             setUploadingImg(false);
+        };
+        reader.onerror = () => {
+            alert("Error reading file.");
+            setUploadingImg(false);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveImage = () => {
+        setFeaturedImage("");
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
         }
     };
 
@@ -151,6 +169,8 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
             featured_image: featuredImage,
             category_id: categoryId ? parseInt(categoryId) : null,
             category: categoryName,
+            author_name: authorName,
+            published_at: publishedAt || null,
             tags: tagsInput,
             status,
             reading_time: readingTime,
@@ -302,6 +322,24 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                         ))}
                                     </select>
                                 </div>
+                                <div>
+                                    <Label className="text-sm font-semibold">Author / Person Name</Label>
+                                    <Input
+                                        value={authorName}
+                                        onChange={(e) => setAuthorName(e.target.value)}
+                                        placeholder="e.g. Megabyte Circuits"
+                                        className="mt-1 bg-background"
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-semibold">Publish / Creation Date</Label>
+                                    <Input
+                                        type="datetime-local"
+                                        value={publishedAt}
+                                        onChange={(e) => setPublishedAt(e.target.value)}
+                                        className="mt-1 bg-background"
+                                    />
+                                </div>
                             </div>
 
                             <div>
@@ -316,14 +354,8 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                             </div>
 
                             <div>
-                                <Label className="text-sm font-semibold">Featured Image URL / Text Path</Label>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <Input
-                                        value={featuredImage}
-                                        onChange={(e) => setFeaturedImage(e.target.value)}
-                                        placeholder="/storage/blogs/my-image.webp or https://..."
-                                        className="bg-background flex-1"
-                                    />
+                                <Label className="text-sm font-semibold">Featured Image</Label>
+                                <div className="mt-2 flex items-start gap-4">
                                     <input
                                         ref={fileInputRef}
                                         type="file"
@@ -332,21 +364,47 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                         onChange={handleImageUpload}
                                         disabled={uploadingImg}
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={uploadingImg}
-                                        className="flex items-center gap-2"
-                                    >
-                                        <Upload className="w-4 h-4" /> {uploadingImg ? "Uploading..." : "Upload File"}
-                                    </Button>
+
+                                    {featuredImage ? (
+                                        <div className="relative group w-48 h-32 rounded-lg border border-border overflow-hidden bg-muted shrink-0">
+                                            <img src={featuredImage} alt="Featured Preview" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={handleRemoveImage}
+                                                    className="flex items-center gap-1 text-xs"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImg}
+                                            className="flex items-center gap-2 h-20 w-48 border-dashed border-2 justify-center text-muted-foreground hover:text-foreground"
+                                        >
+                                            <Upload className="w-5 h-5" /> {uploadingImg ? "Processing..." : "Select Image"}
+                                        </Button>
+                                    )}
+
+                                    {featuredImage && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImg}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Upload className="w-4 h-4" /> Change Image
+                                        </Button>
+                                    )}
                                 </div>
-                                {featuredImage && (
-                                    <div className="mt-3 w-48 h-32 rounded-lg border border-border overflow-hidden bg-muted">
-                                        <img src={featuredImage} alt="Preview" className="w-full h-full object-cover" />
-                                    </div>
-                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -355,7 +413,6 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                     <Card className="border-border bg-card">
                         <CardHeader>
                             <CardTitle className="text-lg">Article Content</CardTitle>
-                            <CardDescription>Visual WYSIWYG editor powered by TinyMCE package.</CardDescription>
                         </CardHeader>
                         <CardContent className="min-h-[450px]">
                             <Editor
