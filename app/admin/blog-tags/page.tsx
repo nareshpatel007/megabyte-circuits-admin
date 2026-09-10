@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Tag as TagIcon, Search, FileText } from "lucide-react";
+import { Plus, Trash2, Pencil, Tag as TagIcon, Search, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,7 @@ export default function BlogTagsPage() {
     const userPermissions = user?.permissions || [];
 
     const canCreate = isSuperAdmin || userPermissions.includes("blog_tag.create");
+    const canEdit = isSuperAdmin || userPermissions.includes("blog_tag.edit");
     const canDelete = isSuperAdmin || userPermissions.includes("blog_tag.delete");
 
     const [tags, setTags] = useState<any[]>([]);
@@ -50,6 +51,10 @@ export default function BlogTagsPage() {
 
     const handleAddTag = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canCreate) {
+            toast.error("You do not have permission to create tags");
+            return;
+        }
         if (!tagName.trim()) {
             toast.error("Tag name is required");
             return;
@@ -81,7 +86,41 @@ export default function BlogTagsPage() {
         }
     };
 
+    const handleEditTag = async (tag: any) => {
+        if (!canEdit) {
+            toast.error("You do not have permission to edit tags");
+            return;
+        }
+        const newName = prompt("Enter new tag name:", tag.name);
+        if (!newName || newName.trim() === tag.name) return;
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/blog-tags/${tag.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ name: newName.trim() }),
+            });
+            const data = await res.json();
+            if (data.status) {
+                toast.success("Tag updated successfully");
+                fetchTags();
+            } else {
+                toast.error(data.message || "Failed to update tag");
+            }
+        } catch (e) {
+            toast.error("Error updating tag");
+        }
+    };
+
     const handleDelete = async (id: number, name: string) => {
+        if (!canDelete) {
+            toast.error("You do not have permission to delete tags");
+            return;
+        }
         if (!confirm(`Are you sure you want to delete tag "${name}"?`)) return;
         try {
             const token = localStorage.getItem("admin_token");
@@ -189,6 +228,15 @@ export default function BlogTagsPage() {
                                         <span className="text-[10px] font-extrabold text-muted-foreground bg-background px-2 py-0.5 rounded-md border border-border/60">
                                             {tag.blogs_count || 0}
                                         </span>
+                                        {canEdit && (
+                                            <button
+                                                onClick={() => handleEditTag(tag)}
+                                                className="text-muted-foreground hover:text-blue-500 transition-colors ml-1 p-0.5 rounded-md hover:bg-blue-500/10"
+                                                title="Edit tag"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
                                         {canDelete && (
                                             <button
                                                 onClick={() => handleDelete(tag.id, tag.name)}

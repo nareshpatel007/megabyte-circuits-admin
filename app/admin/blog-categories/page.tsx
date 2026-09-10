@@ -59,6 +59,14 @@ export default function BlogCategoriesPage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (editingCat && !canEdit) {
+            toast.error("You do not have permission to edit categories");
+            return;
+        }
+        if (!editingCat && !canCreate) {
+            toast.error("You do not have permission to create categories");
+            return;
+        }
         if (!name.trim()) {
             toast.error("Category name is required");
             return;
@@ -96,6 +104,10 @@ export default function BlogCategoriesPage() {
     };
 
     const handleDelete = async (id: number, catName: string) => {
+        if (!canDelete) {
+            toast.error("You do not have permission to delete categories");
+            return;
+        }
         if (!confirm(`Are you sure you want to delete category "${catName}"?`)) return;
         try {
             const token = localStorage.getItem("admin_token");

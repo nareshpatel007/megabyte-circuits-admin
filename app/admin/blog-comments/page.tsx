@@ -54,6 +54,10 @@ export default function BlogCommentsPage() {
     }, [page, statusFilter]);
 
     const handleUpdateStatus = async (id: number, status: string) => {
+        if (!canModerate) {
+            toast.error("You do not have permission to moderate comments");
+            return;
+        }
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/blog-comments/${id}/status`, {
@@ -77,6 +81,10 @@ export default function BlogCommentsPage() {
     };
 
     const handleDelete = async (id: number) => {
+        if (!canDelete) {
+            toast.error("You do not have permission to delete comments");
+            return;
+        }
         if (!confirm("Are you sure you want to delete this comment?")) return;
         try {
             const token = localStorage.getItem("admin_token");

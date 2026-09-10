@@ -1,19 +1,33 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { BlogForm } from "@/components/blog/BlogForm";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/lib/auth-context";
 
 export default function EditBlogPage() {
     const params = useParams();
+    const router = useRouter();
     const id = params?.id;
+    const { user, isLoading: authLoading } = useAuth();
+
+    const roleName = user?.role?.toLowerCase() || "";
+    const isSuperAdmin = roleName === "super admin" || roleName === "superadmin";
+    const canEdit = isSuperAdmin || (user?.permissions || []).includes("blog.edit");
+
     const [blog, setBlog] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!id) return;
+        if (!authLoading && !canEdit) {
+            router.replace("/admin/blogs");
+        }
+    }, [authLoading, canEdit, router]);
+
+    useEffect(() => {
+        if (!id || !canEdit) return;
         const fetchBlog = async () => {
             try {
                 const token = localStorage.getItem("admin_token");
@@ -31,7 +45,11 @@ export default function EditBlogPage() {
             }
         };
         fetchBlog();
-    }, [id]);
+    }, [id, canEdit]);
+
+    if (authLoading || !canEdit) {
+        return null;
+    }
 
     return (
         <DashboardLayout title="Edit Blog Post">
