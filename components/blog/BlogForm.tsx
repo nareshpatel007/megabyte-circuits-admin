@@ -34,11 +34,13 @@ interface BlogFormProps {
 export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
     const router = useRouter();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const ogFileInputRef = React.useRef<HTMLInputElement>(null);
 
     const [categories, setCategories] = useState<any[]>([]);
     const [tags, setTags] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [uploadingImg, setUploadingImg] = useState(false);
+    const [uploadingOgImg, setUploadingOgImg] = useState(false);
 
     const formatPublishedAt = (dateStr?: string) => {
         if (!dateStr) return "";
@@ -153,6 +155,37 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
+    const handleOgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("OG Image file size should be less than 5MB.");
+            return;
+        }
+
+        setUploadingOgImg(true);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            if (typeof reader.result === "string") {
+                setOgImage(reader.result);
+            }
+            setUploadingOgImg(false);
+        };
+        reader.onerror = () => {
+            alert("Error reading file.");
+            setUploadingOgImg(false);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveOgImage = () => {
+        setOgImage("");
+        if (ogFileInputRef.current) {
+            ogFileInputRef.current.value = "";
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!title.trim()) {
@@ -246,7 +279,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                 </Button>
                 <div className="flex items-center gap-3">
                     <select
-                        className="bg-background border border-input text-foreground text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
+                        className="bg-background border border-input text-foreground text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold cursor-pointer"
                         value={status}
                         onChange={(e) => setStatus(e.target.value)}
                     >
@@ -305,7 +338,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                 <div>
                                     <Label className="text-sm font-semibold">Category</Label>
                                     <select
-                                        className="w-full mt-1 bg-background border border-input text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                        className="w-full mt-1 bg-background border border-input text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                                         value={categoryId}
                                         onChange={(e) => {
                                             const id = e.target.value;
@@ -505,13 +538,66 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">OG Image URL</Label>
-                                        <Input
-                                            value={ogImage}
-                                            onChange={(e) => setOgImage(e.target.value)}
-                                            placeholder={featuredImage || "/storage/blogs/..."}
-                                            className="mt-1 bg-background text-xs"
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-medium text-muted-foreground">OG Image</Label>
+                                            {featuredImage && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOgImage(featuredImage)}
+                                                    className="text-[11px] text-emerald-600 hover:underline font-medium cursor-pointer"
+                                                >
+                                                    Use Featured Image
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        <input
+                                            ref={ogFileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleOgImageUpload}
+                                            disabled={uploadingOgImg}
                                         />
+
+                                        <div className="mt-1 flex flex-col gap-2">
+                                            <Input
+                                                value={ogImage}
+                                                onChange={(e) => setOgImage(e.target.value)}
+                                                placeholder={featuredImage || "Paste image URL or upload below..."}
+                                                className="bg-background text-xs"
+                                            />
+                                            
+                                            <div className="flex items-center gap-3">
+                                                {ogImage ? (
+                                                    <div className="relative group w-32 h-20 rounded border border-border overflow-hidden bg-muted shrink-0">
+                                                        <img src={ogImage} alt="OG Preview" className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={handleRemoveOgImage}
+                                                                className="h-6 px-2 text-[10px] flex items-center gap-1 cursor-pointer"
+                                                            >
+                                                                <Trash2 className="w-3 h-3" /> Remove
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : null}
+
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => ogFileInputRef.current?.click()}
+                                                    disabled={uploadingOgImg}
+                                                    className="text-xs flex items-center gap-2 cursor-pointer h-9"
+                                                >
+                                                    <Upload className="w-3.5 h-3.5" /> {uploadingOgImg ? "Uploading..." : ogImage ? "Change Image" : "Upload OG Image"}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -541,13 +627,13 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                             </div>
 
                             <div className="pt-4 border-t border-border flex items-center gap-8">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => setRobotsIndex(!robotsIndex)}>
                                     <Switch checked={robotsIndex} onCheckedChange={setRobotsIndex} />
-                                    <Label className="text-sm font-medium">Index (robots: index)</Label>
+                                    <Label className="text-sm font-medium cursor-pointer">Index (robots: index)</Label>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => setRobotsFollow(!robotsFollow)}>
                                     <Switch checked={robotsFollow} onCheckedChange={setRobotsFollow} />
-                                    <Label className="text-sm font-medium">Follow links (robots: follow)</Label>
+                                    <Label className="text-sm font-medium cursor-pointer">Follow links (robots: follow)</Label>
                                 </div>
                             </div>
                         </CardContent>
@@ -584,17 +670,17 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                             </div>
 
                             <div className="pt-4 border-t border-border space-y-4">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsFeatured(!isFeatured)}>
                                     <div>
-                                        <Label className="font-semibold">Featured Blog</Label>
+                                        <Label className="font-semibold cursor-pointer">Featured Blog</Label>
                                         <p className="text-xs text-muted-foreground">Highlight this post prominently at the top of the blog directory.</p>
                                     </div>
                                     <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
                                 </div>
 
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAllowComments(!allowComments)}>
                                     <div>
-                                        <Label className="font-semibold">Allow Public Comments</Label>
+                                        <Label className="font-semibold cursor-pointer">Allow Public Comments</Label>
                                         <p className="text-xs text-muted-foreground">Enable visitors to post comments awaiting moderation.</p>
                                     </div>
                                     <Switch checked={allowComments} onCheckedChange={setAllowComments} />

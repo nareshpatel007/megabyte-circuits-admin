@@ -75,6 +75,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  button, select, [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled, select:disabled, [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 10px; }
