@@ -7,8 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export default function BlogCommentsPage() {
+    const { user } = useAuth();
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
+    const userPermissions = user?.permissions || [];
+
+    const canModerate = isSuperAdmin || userPermissions.includes("blog_comment.moderation");
+    const canDelete = isSuperAdmin || userPermissions.includes("blog_comment.delete");
+
     const [comments, setComments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("");
@@ -176,7 +184,7 @@ export default function BlogCommentsPage() {
                                                 <td className="py-4 px-5">{getStatusBadge(comment.status)}</td>
                                                 <td className="py-4 px-5 text-right whitespace-nowrap">
                                                     <div className="inline-flex items-center justify-end gap-1.5">
-                                                        {comment.status !== "approved" && (
+                                                        {canModerate && comment.status !== "approved" && (
                                                             <button
                                                                 onClick={() => handleUpdateStatus(comment.id, "approved")}
                                                                 className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer inline-flex items-center gap-1"
@@ -184,7 +192,7 @@ export default function BlogCommentsPage() {
                                                                 <Check className="w-3.5 h-3.5" /> Approve
                                                             </button>
                                                         )}
-                                                        {comment.status !== "spam" && (
+                                                        {canModerate && comment.status !== "spam" && (
                                                             <button
                                                                 onClick={() => handleUpdateStatus(comment.id, "spam")}
                                                                 className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all cursor-pointer inline-flex items-center gap-1"
@@ -192,13 +200,15 @@ export default function BlogCommentsPage() {
                                                                 <ShieldAlert className="w-3.5 h-3.5" /> Spam
                                                             </button>
                                                         )}
-                                                        <button
-                                                            onClick={() => handleDelete(comment.id)}
-                                                            className="p-2 bg-muted/40 text-muted-foreground border border-border/80 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
-                                                            title="Delete Comment"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                        {canDelete && (
+                                                            <button
+                                                                onClick={() => handleDelete(comment.id)}
+                                                                className="p-2 bg-muted/40 text-muted-foreground border border-border/80 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                                                                title="Delete Comment"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

@@ -7,8 +7,16 @@ import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export default function BlogTagsPage() {
+    const { user } = useAuth();
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
+    const userPermissions = user?.permissions || [];
+
+    const canCreate = isSuperAdmin || userPermissions.includes("blog_tag.create");
+    const canDelete = isSuperAdmin || userPermissions.includes("blog_tag.delete");
+
     const [tags, setTags] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [tagName, setTagName] = useState("");
@@ -127,25 +135,27 @@ export default function BlogTagsPage() {
                     </div>
 
                     {/* Add Tag Card */}
-                    <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs space-y-3">
-                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Add New Topic Tag</h3>
-                        <form onSubmit={handleAddTag} className="flex flex-col sm:flex-row gap-3">
-                            <Input
-                                value={tagName}
-                                onChange={(e) => setTagName(e.target.value)}
-                                placeholder="e.g. High-Speed Layout, SMT, ENIG"
-                                className="bg-muted/30 border-border/80 rounded-xl text-xs flex-1"
-                            />
-                            <button
-                                type="submit"
-                                disabled={adding}
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                            >
-                                <Plus className="w-4 h-4 stroke-[2.5]" />
-                                {adding ? "Adding..." : "Add Tag"}
-                            </button>
-                        </form>
-                    </div>
+                    {canCreate && (
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs space-y-3">
+                            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Add New Topic Tag</h3>
+                            <form onSubmit={handleAddTag} className="flex flex-col sm:flex-row gap-3">
+                                <Input
+                                    value={tagName}
+                                    onChange={(e) => setTagName(e.target.value)}
+                                    placeholder="e.g. High-Speed Layout, SMT, ENIG"
+                                    className="bg-muted/30 border-border/80 rounded-xl text-xs flex-1"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={adding}
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                                >
+                                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                                    {adding ? "Adding..." : "Add Tag"}
+                                </button>
+                            </form>
+                        </div>
+                    )}
 
                     {/* Tags List Container */}
                     <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4">
@@ -179,13 +189,15 @@ export default function BlogTagsPage() {
                                         <span className="text-[10px] font-extrabold text-muted-foreground bg-background px-2 py-0.5 rounded-md border border-border/60">
                                             {tag.blogs_count || 0}
                                         </span>
-                                        <button
-                                            onClick={() => handleDelete(tag.id, tag.name)}
-                                            className="text-muted-foreground hover:text-rose-500 transition-colors ml-1 p-0.5 rounded-md hover:bg-rose-500/10"
-                                            title="Delete tag"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
+                                        {canDelete && (
+                                            <button
+                                                onClick={() => handleDelete(tag.id, tag.name)}
+                                                className="text-muted-foreground hover:text-rose-500 transition-colors ml-1 p-0.5 rounded-md hover:bg-rose-500/10"
+                                                title="Delete tag"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>

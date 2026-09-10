@@ -24,8 +24,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { useAuth } from "@/lib/auth-context";
 
 export default function AdminBlogsPage() {
+    const { user } = useAuth();
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
+    const userPermissions = user?.permissions || [];
+
+    const canCreate = isSuperAdmin || userPermissions.includes("blog.create");
+    const canEdit = isSuperAdmin || userPermissions.includes("blog.edit");
+    const canDelete = isSuperAdmin || userPermissions.includes("blog.delete");
+
     const [blogs, setBlogs] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -143,7 +152,7 @@ export default function AdminBlogsPage() {
         <DashboardLayout
             title="Blog Posts"
             subtitle="Manage articles, rich content, SEO metadata, and publishing status"
-            action={createBlogButton}
+            action={canCreate ? createBlogButton : undefined}
         >
             <div className="space-y-5">
 
@@ -342,12 +351,18 @@ export default function AdminBlogsPage() {
                                                         )}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <Link
-                                                            href={`/admin/blogs/${blog.id}/edit`}
-                                                            className="font-semibold text-foreground hover:text-emerald-600 transition-colors line-clamp-1"
-                                                        >
-                                                            {blog.title}
-                                                        </Link>
+                                                        {canEdit ? (
+                                                            <Link
+                                                                href={`/admin/blogs/${blog.id}/edit`}
+                                                                className="font-semibold text-foreground hover:text-emerald-600 transition-colors line-clamp-1"
+                                                            >
+                                                                {blog.title}
+                                                            </Link>
+                                                        ) : (
+                                                            <span className="font-semibold text-foreground line-clamp-1">
+                                                                {blog.title}
+                                                            </span>
+                                                        )}
                                                         <span className="text-xs text-muted-foreground block truncate">
                                                             /blog/{blog.slug}
                                                         </span>
@@ -360,21 +375,33 @@ export default function AdminBlogsPage() {
                                                 </Badge>
                                             </td>
                                             <td className="p-4">
-                                                <button
-                                                    onClick={() => handleToggleStatus(blog)}
-                                                    className="cursor-pointer"
-                                                    title="Click to toggle status"
-                                                >
-                                                    {blog.status === "published" ? (
-                                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold hover:bg-emerald-500/20">
+                                                {canEdit ? (
+                                                    <button
+                                                        onClick={() => handleToggleStatus(blog)}
+                                                        className="cursor-pointer"
+                                                        title="Click to toggle status"
+                                                    >
+                                                        {blog.status === "published" ? (
+                                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold hover:bg-emerald-500/20">
+                                                                Published
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-semibold hover:bg-amber-500/20">
+                                                                Draft
+                                                            </Badge>
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    blog.status === "published" ? (
+                                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold">
                                                             Published
                                                         </Badge>
                                                     ) : (
-                                                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-semibold hover:bg-amber-500/20">
+                                                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-semibold">
                                                             Draft
                                                         </Badge>
-                                                    )}
-                                                </button>
+                                                    )
+                                                )}
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -398,20 +425,24 @@ export default function AdminBlogsPage() {
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <Link href={`/admin/blogs/${blog.id}/edit`}>
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
-                                                            <Edit className="w-4 h-4" />
+                                                    {canEdit && (
+                                                        <Link href={`/admin/blogs/${blog.id}/edit`}>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                                                                <Edit className="w-4 h-4" />
+                                                            </Button>
+                                                        </Link>
+                                                    )}
+                                                    {canDelete && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => handleDelete(blog.id)}
+                                                            disabled={deletingId === blog.id}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
                                                         </Button>
-                                                    </Link>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                                        onClick={() => handleDelete(blog.id)}
-                                                        disabled={deletingId === blog.id}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

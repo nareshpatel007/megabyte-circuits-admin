@@ -10,8 +10,17 @@ import { Label } from "@/components/ui/label";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export default function BlogCategoriesPage() {
+    const { user } = useAuth();
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
+    const userPermissions = user?.permissions || [];
+
+    const canCreate = isSuperAdmin || userPermissions.includes("blog_category.create");
+    const canEdit = isSuperAdmin || userPermissions.includes("blog_category.edit");
+    const canDelete = isSuperAdmin || userPermissions.includes("blog_category.delete");
+
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -149,7 +158,7 @@ export default function BlogCategoriesPage() {
         <DashboardLayout
             title="Blog Categories"
             subtitle={`${categories.length} categories created`}
-            action={addCategoryButton}
+            action={canCreate ? addCategoryButton : undefined}
         >
             {loading ? (
                 <TableSkeleton rows={6} />
@@ -246,23 +255,27 @@ export default function BlogCategoriesPage() {
                                                 </td>
                                                 <td className="py-4 px-5 text-right whitespace-nowrap">
                                                     <div className="inline-flex items-center justify-end gap-1.5">
-                                                        <button
-                                                            onClick={() => openEdit(cat)}
-                                                            title="Edit Category"
-                                                            aria-label="Edit Category"
-                                                            className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-500 hover:text-white transition-all cursor-pointer shadow-2xs"
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
+                                                        {canEdit && (
+                                                            <button
+                                                                onClick={() => openEdit(cat)}
+                                                                title="Edit Category"
+                                                                aria-label="Edit Category"
+                                                                className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                        )}
 
-                                                        <button
-                                                            onClick={() => handleDelete(cat.id, cat.name)}
-                                                            title="Delete Category"
-                                                            aria-label="Delete Category"
-                                                            className="p-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-2xs"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                        {canDelete && (
+                                                            <button
+                                                                onClick={() => handleDelete(cat.id, cat.name)}
+                                                                title="Delete Category"
+                                                                aria-label="Delete Category"
+                                                                className="p-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

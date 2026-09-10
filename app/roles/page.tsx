@@ -42,6 +42,7 @@ const DEFAULT_PERMISSIONS = [
     { module: "Client Management", keys: ["clients.view", "clients.create", "clients.edit", "clients.delete"] },
     { module: "Inventory Management", keys: ["inventory.view", "inventory.create", "inventory.edit", "inventory.delete"] },
     { module: "Staff & User Roles", keys: ["staff.view", "staff.create", "staff.edit", "staff.delete", "roles.manage"] },
+    { module: "Blog Management", keys: ["blog.view", "blog.create", "blog.edit", "blog.delete", "blog_category.view", "blog_category.create", "blog_category.edit", "blog_category.delete", "blog_tag.view", "blog_tag.create", "blog_tag.edit", "blog_tag.delete", "blog_comment.view", "blog_comment.moderation", "blog_comment.delete"] },
     { module: "System Settings", keys: ["settings.view", "settings.edit"] },
 ];
 

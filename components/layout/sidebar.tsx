@@ -48,13 +48,13 @@ const navItems: NavItem[] = [
     { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
     { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
     {
-        label: "Blog Managment",
+        label: "Blog Management",
         icon: BookOpen,
         children: [
-            { href: "/admin/blogs", label: "All Posts", icon: BookOpen },
-            { href: "/admin/blog-categories", label: "Categories", icon: FolderTree },
-            { href: "/admin/blog-tags", label: "Tags", icon: Tag },
-            { href: "/admin/blog-comments", label: "Comments", icon: MessageSquare },
+            { href: "/admin/blogs", label: "All Posts", icon: BookOpen, permission: "blog.view" },
+            { href: "/admin/blog-categories", label: "Categories", icon: FolderTree, permission: "blog_category.view" },
+            { href: "/admin/blog-tags", label: "Tags", icon: Tag, permission: "blog_tag.view" },
+            { href: "/admin/blog-comments", label: "Comments", icon: MessageSquare, permission: "blog_comment.view" },
         ],
     },
     {
@@ -82,7 +82,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
     const isBlogActive = pathname ? pathname.startsWith("/admin/blog") : false;
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
         "Settings": isSettingsActive,
-        "Blog Managment": isBlogActive,
+        "Blog Management": isBlogActive,
     });
     const [userPermissions, setUserPermissions] = useState<string[]>([]);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -199,10 +199,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                             const validChildren = item.children.filter((c) => hasPermission(c.permission));
                             const isChildActive = validChildren.some((child) => {
                                 if (!pathname) return false;
-                                if (pathname === child.href) return true;
-                                if (child.href !== "/admin/blogs" && pathname.startsWith(child.href)) return true;
-                                if (child.href === "/admin/blogs" && (pathname.startsWith("/admin/blogs/create") || pathname.includes("/edit"))) return true;
-                                return false;
+                                return pathname === child.href || pathname.startsWith(child.href + "/");
                             });
                             const isOpen = openMenus[item.label] ?? isChildActive;
 
@@ -234,9 +231,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                                         <div className="pl-4 space-y-1 pt-0.5">
                                             {validChildren.map((child) => {
                                                 const childActive = pathname ? (
-                                                    pathname === child.href ||
-                                                    (child.href === "/admin/blogs" && (pathname.startsWith("/admin/blogs/create") || pathname.includes("/edit"))) ||
-                                                    (child.href !== "/admin/blogs" && pathname.startsWith(child.href))
+                                                    pathname === child.href || pathname.startsWith(child.href + "/")
                                                 ) : false;
                                                 const ChildIcon = child.icon;
                                                 return (
@@ -262,7 +257,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                             );
                         }
 
-                        const active = pathname ? (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href!))) : false;
+                        const active = pathname ? (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))) : false;
                         return (
                             <Link
                                 key={item.href}
