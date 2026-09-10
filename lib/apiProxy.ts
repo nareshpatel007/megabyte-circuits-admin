@@ -29,6 +29,7 @@ export async function handleApiProxy(
         const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
 
         const headers: HeadersInit = {
+            "Accept": "application/json",
             "Requested-Domain": ALLOWED_ORIGIN,
             "X-Api-Token": API_TOKEN,
             "Authorization": clientAuth || `Bearer ${API_TOKEN}`
