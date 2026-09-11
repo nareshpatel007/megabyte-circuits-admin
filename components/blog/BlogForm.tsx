@@ -26,8 +26,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Editor } from "@tinymce/tinymce-react";
 import { BlogImage } from "@/components/blog/BlogImage";
-import { getBlogImageUrl, getBlogImageFileId, parseBlogImage } from "@/lib/blog-image-utils";
-
 
 interface BlogFormProps {
     initialData?: any;
@@ -62,9 +60,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
     const [slug, setSlug] = useState(initialData?.slug || "");
     const [excerpt, setExcerpt] = useState(initialData?.excerpt || "");
     const [content, setContent] = useState(initialData?.content || "");
-    const initialImgObj = parseBlogImage(initialData?.featured_image);
     const [featuredImage, setFeaturedImage] = useState(initialData?.featured_image || "");
-    const [featuredImageFileId, setFeaturedImageFileId] = useState<string | undefined>(initialImgObj?.fileId);
     const [previewUrl, setPreviewUrl] = useState<string>("");
 
     const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
@@ -167,37 +163,8 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
 
             const data = await res.json();
             if (data.status && data.url) {
-                const oldFileId = featuredImageFileId;
-
-                // Create structured ImageKit object
-                const imageObj = {
-                    type: "imagekit",
-                    url: data.url,
-                    fileId: data.fileId,
-                    alt: title || "Blog image",
-                };
-
-                // Store stringified JSON object or URL string
-                const storedValue = JSON.stringify(imageObj);
-                setFeaturedImage(storedValue);
-                setFeaturedImageFileId(data.fileId);
-                setPreviewUrl(""); // upload complete, now featuredImage holds ImageKit URL
-
-                // Safely delete old ImageKit image if it existed and was NOT Base64
-                if (oldFileId && !oldFileId.startsWith("data:image")) {
-                    try {
-                        await fetch("/api/admin/blogs/delete-image", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                            },
-                            body: JSON.stringify({ fileId: oldFileId }),
-                        });
-                    } catch (delErr) {
-                        console.warn("Old ImageKit image delete warning:", delErr);
-                    }
-                }
+                setFeaturedImage(data.url);
+                setPreviewUrl(""); // upload complete, now using returned backend URL
             } else {
                 alert(data.message || "Image upload failed.");
                 setPreviewUrl("");
@@ -212,7 +179,6 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
 
     const handleRemoveImage = () => {
         setFeaturedImage("");
-        setFeaturedImageFileId(undefined);
         setPreviewUrl("");
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
