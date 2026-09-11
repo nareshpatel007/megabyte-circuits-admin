@@ -25,6 +25,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Editor } from "@tinymce/tinymce-react";
+import { BlogImage } from "@/components/blog/BlogImage";
+import { getBlogImageUrl, getBlogImageFileId, parseBlogImage } from "@/lib/blog-image-utils";
+
 
 interface BlogFormProps {
     initialData?: any;
@@ -59,7 +62,11 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
     const [slug, setSlug] = useState(initialData?.slug || "");
     const [excerpt, setExcerpt] = useState(initialData?.excerpt || "");
     const [content, setContent] = useState(initialData?.content || "");
+    const initialImgObj = parseBlogImage(initialData?.featured_image);
     const [featuredImage, setFeaturedImage] = useState(initialData?.featured_image || "");
+    const [featuredImageFileId, setFeaturedImageFileId] = useState<string | undefined>(initialImgObj?.fileId);
+    const [previewUrl, setPreviewUrl] = useState<string>("");
+
     const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
     const [categoryName, setCategoryName] = useState(initialData?.category || "");
     const [authorName, setAuthorName] = useState(initialData?.author_name || "");
@@ -133,7 +140,18 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
             return;
         }
 
+        const allowedExtensions = ["jpg", "jpeg", "png", "webp", "gif", "svg"];
+        const ext = file.name.split(".").pop()?.toLowerCase() || "";
+        if (!allowedExtensions.includes(ext)) {
+            alert("Unsupported image format. Allowed formats: JPG, PNG, WEBP, GIF, SVG.");
+            return;
+        }
+
+        // Instant local preview
+        const localUrl = URL.createObjectURL(file);
+        setPreviewUrl(localUrl);
         setUploadingImg(true);
+
         try {
             const token = localStorage.getItem("admin_token");
             const formData = new FormData();
@@ -149,12 +167,44 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
 
             const data = await res.json();
             if (data.status && data.url) {
-                setFeaturedImage(data.url);
+                const oldFileId = featuredImageFileId;
+
+                // Create structured ImageKit object
+                const imageObj = {
+                    type: "imagekit",
+                    url: data.url,
+                    fileId: data.fileId,
+                    alt: title || "Blog image",
+                };
+
+                // Store stringified JSON object or URL string
+                const storedValue = JSON.stringify(imageObj);
+                setFeaturedImage(storedValue);
+                setFeaturedImageFileId(data.fileId);
+                setPreviewUrl(""); // upload complete, now featuredImage holds ImageKit URL
+
+                // Safely delete old ImageKit image if it existed and was NOT Base64
+                if (oldFileId && !oldFileId.startsWith("data:image")) {
+                    try {
+                        await fetch("/api/admin/blogs/delete-image", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({ fileId: oldFileId }),
+                        });
+                    } catch (delErr) {
+                        console.warn("Old ImageKit image delete warning:", delErr);
+                    }
+                }
             } else {
                 alert(data.message || "Image upload failed.");
+                setPreviewUrl("");
             }
         } catch (err) {
             alert("Error uploading image file.");
+            setPreviewUrl("");
         } finally {
             setUploadingImg(false);
         }
@@ -162,6 +212,8 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
 
     const handleRemoveImage = () => {
         setFeaturedImage("");
+        setFeaturedImageFileId(undefined);
+        setPreviewUrl("");
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -173,6 +225,13 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
 
         if (file.size > 5 * 1024 * 1024) {
             alert("OG Image file size should be less than 5MB.");
+            return;
+        }
+
+        const allowedExtensions = ["jpg", "jpeg", "png", "webp", "gif", "svg"];
+        const ext = file.name.split(".").pop()?.toLowerCase() || "";
+        if (!allowedExtensions.includes(ext)) {
+            alert("Unsupported image format. Allowed formats: JPG, PNG, WEBP, GIF, SVG.");
             return;
         }
 
@@ -416,22 +475,26 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                     <input
                                         ref={fileInputRef}
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/svg+xml"
                                         className="hidden"
                                         onChange={handleImageUpload}
                                         disabled={uploadingImg}
                                     />
 
-                                    {featuredImage ? (
+                                    {(previewUrl || featuredImage) ? (
                                         <div className="relative group w-48 h-32 rounded-lg border border-border overflow-hidden bg-muted shrink-0">
-                                            <img src={featuredImage} alt="Featured Preview" className="w-full h-full object-cover" />
+                                            <BlogImage
+                                                src={previewUrl || featuredImage}
+                                                alt="Featured Preview"
+                                                className="w-full h-full object-cover"
+                                            />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                                 <Button
                                                     type="button"
                                                     variant="destructive"
                                                     size="sm"
                                                     onClick={handleRemoveImage}
-                                                    className="flex items-center gap-1 text-xs"
+                                                    className="flex items-center gap-1 text-xs cursor-pointer"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" /> Remove
                                                 </Button>
@@ -443,22 +506,22 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                             variant="outline"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadingImg}
-                                            className="flex items-center gap-2 h-20 w-48 border-dashed border-2 justify-center text-muted-foreground hover:text-foreground"
+                                            className="flex items-center gap-2 h-20 w-48 border-dashed border-2 justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                                         >
-                                            <Upload className="w-5 h-5" /> {uploadingImg ? "Processing..." : "Select Image"}
+                                            <Upload className="w-5 h-5" /> {uploadingImg ? "Uploading..." : "Select Image"}
                                         </Button>
                                     )}
 
-                                    {featuredImage && (
+                                    {(previewUrl || featuredImage) && (
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadingImg}
-                                            className="flex items-center gap-2"
+                                            className="flex items-center gap-2 cursor-pointer"
                                         >
-                                            <Upload className="w-4 h-4" /> Change Image
+                                            <Upload className="w-4 h-4" /> {uploadingImg ? "Uploading..." : "Change Image"}
                                         </Button>
                                     )}
                                 </div>

@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/lib/auth-context";
+import { BlogImage } from "@/components/blog/BlogImage";
+
 
 export default function AdminBlogsPage() {
     const { user } = useAuth();
@@ -339,7 +341,7 @@ export default function AdminBlogsPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-12 h-12 rounded-lg bg-muted border border-border overflow-hidden shrink-0">
                                                         {blog.featured_image ? (
-                                                            <img
+                                                            <BlogImage
                                                                 src={blog.featured_image}
                                                                 alt={blog.title}
                                                                 className="w-full h-full object-cover"
