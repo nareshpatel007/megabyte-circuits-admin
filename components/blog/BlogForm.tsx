@@ -118,6 +118,9 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
+    const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+    const [selectedOgFile, setSelectedOgFile] = useState<File | null>(null);
+
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setTitle(val);
@@ -127,7 +130,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -143,41 +146,14 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
             return;
         }
 
-        // Instant local preview
+        // Instant local preview without uploading immediately
         const localUrl = URL.createObjectURL(file);
+        setSelectedImageFile(file);
         setPreviewUrl(localUrl);
-        setUploadingImg(true);
-
-        try {
-            const token = localStorage.getItem("admin_token");
-            const formData = new FormData();
-            formData.append("image", file);
-
-            const res = await fetch("/api/admin/blogs/upload-image", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                body: formData,
-            });
-
-            const data = await res.json();
-            if (data.status && data.url) {
-                setFeaturedImage(data.url);
-                setPreviewUrl(""); // upload complete, now using returned backend URL
-            } else {
-                alert(data.message || "Image upload failed.");
-                setPreviewUrl("");
-            }
-        } catch (err) {
-            alert("Error uploading image file.");
-            setPreviewUrl("");
-        } finally {
-            setUploadingImg(false);
-        }
     };
 
     const handleRemoveImage = () => {
+        setSelectedImageFile(null);
         setFeaturedImage("");
         setPreviewUrl("");
         if (fileInputRef.current) {
@@ -185,7 +161,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
-    const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleOgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -201,38 +177,37 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
             return;
         }
 
-        setUploadingOgImg(true);
-        try {
-            const token = localStorage.getItem("admin_token");
-            const formData = new FormData();
-            formData.append("image", file);
-
-            const res = await fetch("/api/admin/blogs/upload-image", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                body: formData,
-            });
-
-            const data = await res.json();
-            if (data.status && data.url) {
-                setOgImage(data.url);
-            } else {
-                alert(data.message || "OG Image upload failed.");
-            }
-        } catch (err) {
-            alert("Error uploading OG image file.");
-        } finally {
-            setUploadingOgImg(false);
-        }
+        // Instant local preview without uploading immediately
+        const localUrl = URL.createObjectURL(file);
+        setSelectedOgFile(file);
+        setOgImage(localUrl);
     };
 
     const handleRemoveOgImage = () => {
+        setSelectedOgFile(null);
         setOgImage("");
         if (ogFileInputRef.current) {
             ogFileInputRef.current.value = "";
         }
+    };
+
+    const uploadSingleFile = async (file: File, token: string | null): Promise<string> => {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const res = await fetch("/api/admin/blogs/upload-image", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
+            body: formData,
+        });
+
+        const data = await res.json();
+        if (data.status && data.url) {
+            return data.url;
+        }
+        throw new Error(data.message || "Image upload failed.");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -243,45 +218,65 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
 
         setLoading(true);
-        const payload = {
-            title,
-            slug,
-            excerpt,
-            content,
-            featured_image: featuredImage,
-            category_id: categoryId ? parseInt(categoryId) : null,
-            category: categoryName,
-            author_name: authorName,
-            published_at: publishedAt || null,
-            tags: tagsInput,
-            status,
-            reading_time: readingTime,
-            is_featured: isFeatured,
-            allow_comments: allowComments,
-            // SEO
-            meta_title: metaTitle,
-            meta_description: metaDescription,
-            meta_keywords: metaKeywords,
-            canonical_url: canonicalUrl,
-            og_title: ogTitle,
-            og_description: ogDescription,
-            og_image: ogImage || featuredImage,
-            twitter_title: twitterTitle || metaTitle || title,
-            twitter_description: twitterDescription || metaDescription || excerpt,
-            twitter_image: twitterImage || ogImage || featuredImage,
-            robots_index: robotsIndex,
-            robots_follow: robotsFollow,
-            schema_markup: JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "BlogPosting",
-                "headline": title,
-                "image": featuredImage,
-                "description": metaDescription || excerpt,
-            }),
-        };
-
         try {
             const token = localStorage.getItem("admin_token");
+
+            // Upload selected featured image file ONLY when clicking publish/submit button
+            let finalFeaturedImage = featuredImage;
+            if (selectedImageFile) {
+                setUploadingImg(true);
+                finalFeaturedImage = await uploadSingleFile(selectedImageFile, token);
+                setFeaturedImage(finalFeaturedImage);
+                setPreviewUrl("");
+                setSelectedImageFile(null);
+            }
+
+            // Upload selected OG image file ONLY when clicking publish/submit button
+            let finalOgImage = ogImage;
+            if (selectedOgFile) {
+                setUploadingOgImg(true);
+                finalOgImage = await uploadSingleFile(selectedOgFile, token);
+                setOgImage(finalOgImage);
+                setSelectedOgFile(null);
+            }
+
+            const payload = {
+                title,
+                slug,
+                excerpt,
+                content,
+                featured_image: finalFeaturedImage,
+                category_id: categoryId ? parseInt(categoryId) : null,
+                category: categoryName,
+                author_name: authorName,
+                published_at: publishedAt || null,
+                tags: tagsInput,
+                status,
+                reading_time: readingTime,
+                is_featured: isFeatured,
+                allow_comments: allowComments,
+                // SEO
+                meta_title: metaTitle,
+                meta_description: metaDescription,
+                meta_keywords: metaKeywords,
+                canonical_url: canonicalUrl,
+                og_title: ogTitle,
+                og_description: ogDescription,
+                og_image: finalOgImage || finalFeaturedImage,
+                twitter_title: twitterTitle || metaTitle || title,
+                twitter_description: twitterDescription || metaDescription || excerpt,
+                twitter_image: twitterImage || finalOgImage || finalFeaturedImage,
+                robots_index: robotsIndex,
+                robots_follow: robotsFollow,
+                schema_markup: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "BlogPosting",
+                    "headline": title,
+                    "image": finalFeaturedImage,
+                    "description": metaDescription || excerpt,
+                }),
+            };
+
             const url = isEdit ? `/api/admin/blogs/${initialData.id}` : "/api/admin/blogs";
             const method = isEdit ? "PUT" : "POST";
 
@@ -301,9 +296,11 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
             } else {
                 alert(data.message || "Failed to save blog post.");
             }
-        } catch (err) {
-            alert("Error saving blog post.");
+        } catch (err: any) {
+            alert(err?.message || "Error saving blog post.");
         } finally {
+            setUploadingImg(false);
+            setUploadingOgImg(false);
             setLoading(false);
         }
     };
