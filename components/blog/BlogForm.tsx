@@ -124,7 +124,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -134,18 +134,30 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
 
         setUploadingImg(true);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            if (typeof reader.result === "string") {
-                setFeaturedImage(reader.result);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const formData = new FormData();
+            formData.append("image", file);
+
+            const res = await fetch("/api/admin/blogs/upload-image", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (data.status && data.url) {
+                setFeaturedImage(data.url);
+            } else {
+                alert(data.message || "Image upload failed.");
             }
+        } catch (err) {
+            alert("Error uploading image file.");
+        } finally {
             setUploadingImg(false);
-        };
-        reader.onerror = () => {
-            alert("Error reading file.");
-            setUploadingImg(false);
-        };
-        reader.readAsDataURL(file);
+        }
     };
 
     const handleRemoveImage = () => {
@@ -155,7 +167,7 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
     };
 
-    const handleOgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -165,18 +177,30 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
         }
 
         setUploadingOgImg(true);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            if (typeof reader.result === "string") {
-                setOgImage(reader.result);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const formData = new FormData();
+            formData.append("image", file);
+
+            const res = await fetch("/api/admin/blogs/upload-image", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (data.status && data.url) {
+                setOgImage(data.url);
+            } else {
+                alert(data.message || "OG Image upload failed.");
             }
+        } catch (err) {
+            alert("Error uploading OG image file.");
+        } finally {
             setUploadingOgImg(false);
-        };
-        reader.onerror = () => {
-            alert("Error reading file.");
-            setUploadingOgImg(false);
-        };
-        reader.readAsDataURL(file);
+        }
     };
 
     const handleRemoveOgImage = () => {
@@ -464,6 +488,21 @@ export function BlogForm({ initialData, isEdit = false }: BlogFormProps) {
                                         'bold italic forecolor | alignleft aligncenter ' +
                                         'alignright alignjustify | bullist numlist outdent indent | ' +
                                         'removeformat | code fullscreen | help',
+                                    images_upload_handler: async (blobInfo: any) => {
+                                        const token = localStorage.getItem("admin_token");
+                                        const formData = new FormData();
+                                        formData.append('image', blobInfo.blob(), blobInfo.filename());
+                                        const res = await fetch('/api/admin/blogs/upload-image', {
+                                            method: 'POST',
+                                            headers: { Authorization: `Bearer ${token}` },
+                                            body: formData,
+                                        });
+                                        const data = await res.json();
+                                        if (data.status && data.url) {
+                                            return data.url;
+                                        }
+                                        throw new Error(data.message || 'Image upload failed');
+                                    },
                                     content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:15px }',
                                     skin: 'oxide',
                                     content_css: 'default',
