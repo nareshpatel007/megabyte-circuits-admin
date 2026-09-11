@@ -187,7 +187,8 @@ export default function OrderDetailPage() {
                     status: newStatus,
                     status_id: matchedStatus ? matchedStatus.id : null,
                     completed_qty: completedQty,
-                    admin_id: loggedInAdminId,
+                    admin_id: loggedInAdminId || user?.id,
+                    admin_name: user?.name,
                     remark: remark
                 })
             });
@@ -685,7 +686,7 @@ export default function OrderDetailPage() {
                                 <thead>
                                     <tr className="bg-muted/60 border-b border-border/60 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
                                         <th className="py-3 px-4">Action</th>
-                                        <th className="py-3 px-4">User / Admin</th>
+                                        <th className="py-3 px-4 whitespace-nowrap">User / Admin</th>
                                         <th className="py-3 px-4">Timestamp</th>
                                         <th className="py-3 px-4">Details / Description</th>
                                     </tr>
@@ -705,7 +706,7 @@ export default function OrderDetailPage() {
                                                         {log.action || "Order Action"}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 font-bold text-foreground">
+                                                <td className="py-3 px-4 font-bold text-foreground whitespace-nowrap">
                                                     {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
                                                 </td>
                                                 <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">

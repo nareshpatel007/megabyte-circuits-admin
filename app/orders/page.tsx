@@ -1490,7 +1490,7 @@ export default function OrdersPage() {
                                             <thead>
                                                 <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-extrabold uppercase tracking-wider text-[10px]">
                                                     <th className="py-3 px-4">Action</th>
-                                                    <th className="py-3 px-4">User / Admin</th>
+                                                    <th className="py-3 px-4 whitespace-nowrap">User / Admin</th>
                                                     <th className="py-3 px-4">Timestamp</th>
                                                     <th className="py-3 px-4">Details / Description</th>
                                                 </tr>
