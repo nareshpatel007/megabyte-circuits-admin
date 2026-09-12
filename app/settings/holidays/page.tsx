@@ -234,12 +234,7 @@ export default function HolidayManagementPage() {
     };
 
     const currentYear = new Date().getFullYear();
-    const yearsOptions = [
-        currentYear - 1,
-        currentYear,
-        currentYear + 1,
-        currentYear + 2
-    ];
+    const yearsOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
     return (
         <DashboardLayout
