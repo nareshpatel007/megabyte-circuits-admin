@@ -27,8 +27,11 @@ import { toast } from "sonner";
 interface PricingTier {
     BreakQuantity: number;
     DigiKeyUnitPrice: number;
+    MarginType?: "percentage" | "fixed";
+    MarginValue?: number;
     UnitPrice: number;
     TotalPrice: number;
+    IsCustomMargin?: boolean;
 }
 
 interface DigiKeyAdminProduct {
@@ -81,9 +84,10 @@ export default function DigiKeyProductsManagementPage() {
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [showDefaultModal, setShowDefaultModal] = useState(false);
 
-    // Single Edit Form
-    const [editMarginType, setEditMarginType] = useState<"percentage" | "fixed">("percentage");
-    const [editMarginValue, setEditMarginValue] = useState<number>(0);
+    // Per-Tier Edit Form State
+    const [editableTiers, setEditableTiers] = useState<PricingTier[]>([]);
+    const [applyAllMarginType, setApplyAllMarginType] = useState<"percentage" | "fixed">("percentage");
+    const [applyAllMarginValue, setApplyAllMarginValue] = useState<number>(10);
     const [submitting, setSubmitting] = useState(false);
 
     // Bulk Edit Form
@@ -141,11 +145,78 @@ export default function DigiKeyProductsManagementPage() {
         );
     };
 
+    const calculateTierCustomerPrice = (base: number, type: "percentage" | "fixed", val: number) => {
+        if (!base || base <= 0) return 0;
+        if (type === "fixed") return Math.max(0, base + val);
+        return Math.max(0, base * (1 + val / 100));
+    };
+
     const handleOpenEdit = (prod: DigiKeyAdminProduct) => {
         setSelectedProduct(prod);
-        setEditMarginType(prod.margin_type);
-        setEditMarginValue(prod.margin_value);
+        const tiersCopy = (prod.pricing_tiers || []).map((t) => {
+            const mType = t.MarginType || prod.margin_type || "percentage";
+            const mVal = t.MarginValue !== undefined ? t.MarginValue : (prod.margin_value || 0);
+            const customerUnitPrice = calculateTierCustomerPrice(t.DigiKeyUnitPrice, mType, mVal);
+            return {
+                ...t,
+                MarginType: mType,
+                MarginValue: mVal,
+                UnitPrice: customerUnitPrice,
+                TotalPrice: Number((customerUnitPrice * t.BreakQuantity).toFixed(2)),
+            };
+        });
+
+        setEditableTiers(tiersCopy);
+        setApplyAllMarginType(prod.margin_type || "percentage");
+        setApplyAllMarginValue(prod.margin_value || 0);
         setShowEditModal(true);
+    };
+
+    const handleUpdateTierMargin = (index: number, field: "MarginType" | "MarginValue", val: any) => {
+        setEditableTiers((prev) =>
+            prev.map((t, idx) => {
+                if (idx !== index) return t;
+                const newType = field === "MarginType" ? val : (t.MarginType || "percentage");
+                const newVal = field === "MarginValue" ? Number(val) : (t.MarginValue || 0);
+                const customerPrice = calculateTierCustomerPrice(t.DigiKeyUnitPrice, newType, newVal);
+                return {
+                    ...t,
+                    MarginType: newType,
+                    MarginValue: newVal,
+                    UnitPrice: customerPrice,
+                    TotalPrice: Number((customerPrice * t.BreakQuantity).toFixed(2)),
+                };
+            })
+        );
+    };
+
+    const handleApplySameToAllTiers = () => {
+        setEditableTiers((prev) =>
+            prev.map((t) => {
+                const customerPrice = calculateTierCustomerPrice(t.DigiKeyUnitPrice, applyAllMarginType, applyAllMarginValue);
+                return {
+                    ...t,
+                    MarginType: applyAllMarginType,
+                    MarginValue: applyAllMarginValue,
+                    UnitPrice: customerPrice,
+                    TotalPrice: Number((customerPrice * t.BreakQuantity).toFixed(2)),
+                };
+            })
+        );
+        toast.info(`Applied ${applyAllMarginType === "percentage" ? `${applyAllMarginValue}%` : `₹${applyAllMarginValue}`} to all tiers`);
+    };
+
+    const handleResetTiersToZero = () => {
+        setEditableTiers((prev) =>
+            prev.map((t) => ({
+                ...t,
+                MarginType: "percentage",
+                MarginValue: 0,
+                UnitPrice: t.DigiKeyUnitPrice,
+                TotalPrice: Number((t.DigiKeyUnitPrice * t.BreakQuantity).toFixed(2)),
+            }))
+        );
+        toast.info("Reset all tiers margin to 0%");
     };
 
     const handleOpenTiers = (prod: DigiKeyAdminProduct) => {
@@ -167,22 +238,21 @@ export default function DigiKeyProductsManagementPage() {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    margin_type: editMarginType,
-                    margin_value: Number(editMarginValue),
+                    tiers: editableTiers,
                 }),
             });
 
             const data = await res.json();
             if (data.success) {
-                toast.success("Product margin updated successfully");
+                toast.success("Product pricing tier margins updated successfully");
                 setShowEditModal(false);
                 fetchProducts();
             } else {
-                toast.error(data.message || "Failed to update margin");
+                toast.error(data.message || "Failed to update tier margins");
             }
         } catch (err) {
             console.error(err);
-            toast.error("Error updating product margin");
+            toast.error("Error updating product tier margins");
         } finally {
             setSubmitting(false);
         }
@@ -316,9 +386,9 @@ export default function DigiKeyProductsManagementPage() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                        <div className="bg-white/10 backdrop-blur-xs px-4 py-2 rounded-xl border border-white/10 text-right">
-                            <span className="text-[11px] text-slate-300 block font-medium">Default Rule</span>
-                            <span className="text-sm font-extrabold text-emerald-300 font-mono">
+                        <div className="bg-white/10 backdrop-blur-xs px-4 py-2 rounded-xl border border-white/10 flex items-center gap-2">
+                            <span className="text-xs text-slate-300 font-medium whitespace-nowrap">Default Rule:</span>
+                            <span className="text-sm font-extrabold text-emerald-300 font-mono whitespace-nowrap">
                                 {defaultMargin.margin_type === "percentage"
                                     ? `+${defaultMargin.margin_value}%`
                                     : `+₹${defaultMargin.margin_value.toFixed(2)}`}
@@ -540,90 +610,146 @@ export default function DigiKeyProductsManagementPage() {
                     )}
                 </div>
 
-                {/* EDIT SINGLE PRODUCT MARGIN MODAL */}
+                {/* EDIT PRODUCT MARGIN MODAL (PER-TIER MARGIN CONFIGURATION) */}
                 {showEditModal && selectedProduct && (
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                             <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
-                                <h3 className="font-bold text-foreground flex items-center gap-2">
-                                    <Edit2 className="w-4 h-4 text-emerald-600" />
-                                    Configure Product Margin
-                                </h3>
+                                <div>
+                                    <h3 className="font-bold text-foreground flex items-center gap-2 text-base">
+                                        <Sliders className="w-4 h-4 text-emerald-600" />
+                                        Configure DigiKey Tier Margins
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                                        Product: <span className="font-bold text-foreground">{selectedProduct.manufacturer_product_number}</span>
+                                    </p>
+                                </div>
                                 <button onClick={() => setShowEditModal(false)} className="p-1 text-muted-foreground hover:text-foreground rounded-md">
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
-                            <form onSubmit={handleSaveSingleMargin} className="p-5 space-y-4">
-                                <div className="p-3 bg-muted/40 rounded-xl border border-border space-y-1 text-xs">
-                                    <div className="font-bold text-foreground">{selectedProduct.manufacturer_product_number}</div>
-                                    <div className="text-muted-foreground">DigiKey Base Cost: <span className="font-mono font-bold text-foreground">₹{selectedProduct.base_unit_price.toFixed(2)}</span></div>
-                                </div>
 
-                                <div>
-                                    <label className="block text-xs font-semibold text-foreground mb-1.5">Margin Type</label>
-                                    <div className="grid grid-cols-2 gap-2">
+                            <form onSubmit={handleSaveSingleMargin} className="p-5 space-y-5">
+                                {/* Apply Same Margin to All Tiers Tool */}
+                                <div className="bg-muted/40 p-3.5 rounded-xl border border-border flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                                        <Sliders className="w-4 h-4 text-emerald-600" />
+                                        <span>Apply Same Margin to All Tiers:</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <select
+                                            value={applyAllMarginType}
+                                            onChange={(e) => setApplyAllMarginType(e.target.value as "percentage" | "fixed")}
+                                            className="px-2.5 py-1.5 bg-background border border-input rounded-lg text-xs font-bold text-foreground focus:outline-hidden"
+                                        >
+                                            <option value="percentage">Percentage (%)</option>
+                                            <option value="fixed">Fixed Amount (₹)</option>
+                                        </select>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={applyAllMarginValue}
+                                            onChange={(e) => setApplyAllMarginValue(parseFloat(e.target.value) || 0)}
+                                            className="w-24 px-2.5 py-1.5 bg-background border border-input rounded-lg text-xs font-mono font-bold text-foreground"
+                                        />
                                         <button
                                             type="button"
-                                            onClick={() => setEditMarginType("percentage")}
-                                            className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${editMarginType === "percentage"
-                                                ? "border-emerald-600 bg-emerald-500/10 text-emerald-600"
-                                                : "border-input bg-background text-muted-foreground hover:bg-accent"
-                                                }`}
+                                            onClick={handleApplySameToAllTiers}
+                                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                                         >
-                                            <Percent className="w-4 h-4" /> Percentage (%)
+                                            Apply to All Tiers
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setEditMarginType("fixed")}
-                                            className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${editMarginType === "fixed"
-                                                ? "border-emerald-600 bg-emerald-500/10 text-emerald-600"
-                                                : "border-input bg-background text-muted-foreground hover:bg-accent"
-                                                }`}
+                                            onClick={handleResetTiersToZero}
+                                            className="bg-muted hover:bg-accent border border-input text-foreground font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                                         >
-                                            <DollarSign className="w-4 h-4" /> Fixed Amount (₹)
+                                            Set All to 0%
                                         </button>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-semibold text-foreground mb-1">
-                                        Margin Value {editMarginType === "percentage" ? "(%)" : "(₹)"}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        required
-                                        value={editMarginValue}
-                                        onChange={(e) => setEditMarginValue(parseFloat(e.target.value) || 0)}
-                                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-mono font-bold"
-                                    />
+                                {/* Per-Tier Configuration Table */}
+                                <div className="border border-border rounded-xl overflow-hidden text-xs">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-muted/50 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
+                                                <th className="py-2.5 px-3">Tier</th>
+                                                <th className="py-2.5 px-3 text-right">DigiKey Price</th>
+                                                <th className="py-2.5 px-3 text-center">Margin Type</th>
+                                                <th className="py-2.5 px-3 text-center">Margin</th>
+                                                <th className="py-2.5 px-3 text-right">Customer Unit Price</th>
+                                                <th className="py-2.5 px-3 text-right">Customer Tier Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                            {editableTiers.map((tier, idx) => (
+                                                <tr key={idx} className="hover:bg-muted/20 font-mono">
+                                                    <td className="py-2.5 px-3 font-bold text-foreground whitespace-nowrap">
+                                                        {tier.BreakQuantity}+
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-right text-muted-foreground whitespace-nowrap">
+                                                        ₹{tier.DigiKeyUnitPrice.toFixed(2)}
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-center">
+                                                        <select
+                                                            value={tier.MarginType || "percentage"}
+                                                            onChange={(e) => handleUpdateTierMargin(idx, "MarginType", e.target.value)}
+                                                            className="px-2 py-1 bg-background border border-input rounded-md text-xs font-semibold text-foreground focus:outline-hidden"
+                                                        >
+                                                            <option value="percentage">Percentage (%)</option>
+                                                            <option value="fixed">Fixed (₹)</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            min="0"
+                                                            value={tier.MarginValue !== undefined ? tier.MarginValue : 0}
+                                                            onChange={(e) => handleUpdateTierMargin(idx, "MarginValue", e.target.value)}
+                                                            className="w-20 px-2 py-1 bg-background border border-input rounded-md text-xs font-bold text-center text-foreground font-mono"
+                                                        />
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-right font-bold text-emerald-600 whitespace-nowrap">
+                                                        ₹{tier.UnitPrice.toFixed(2)}
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-right font-semibold text-foreground whitespace-nowrap">
+                                                        ₹{tier.TotalPrice.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
 
-                                {/* Dynamic Customer Price Live Preview */}
-                                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-foreground">Calculated Customer Price:</span>
-                                    <span className="text-base font-black font-mono text-emerald-600">
-                                        ₹{calculatePreviewPrice(selectedProduct.base_unit_price, editMarginType, editMarginValue).toFixed(2)}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                                <div className="flex items-center justify-between pt-2 border-t border-border">
                                     <button
                                         type="button"
-                                        onClick={() => setShowEditModal(false)}
-                                        className="px-4 py-2 border border-input rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                        onClick={() => handleResetMargin(selectedProduct)}
+                                        className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
                                     >
-                                        Cancel
+                                        <RotateCcw className="w-3.5 h-3.5" /> Reset to Global Default
                                     </button>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-xs disabled:opacity-50"
-                                    >
-                                        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                                        Save Margin
-                                    </button>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowEditModal(false)}
+                                            className="px-4 py-2 border border-input rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={submitting}
+                                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                                        >
+                                            {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                            Save Changes
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
