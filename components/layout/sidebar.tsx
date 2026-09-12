@@ -201,6 +201,7 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                             const validChildren = item.children.filter((c) => hasPermission(c.permission));
                             const isChildActive = validChildren.some((child) => {
                                 if (!pathname) return false;
+                                if (child.href === "/settings") return pathname === "/settings";
                                 return pathname === child.href || pathname.startsWith(child.href + "/");
                             });
                             const isOpen = openMenus[item.label] ?? isChildActive;
@@ -233,7 +234,9 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
                                         <div className="pl-4 space-y-1 pt-0.5">
                                             {validChildren.map((child) => {
                                                 const childActive = pathname ? (
-                                                    pathname === child.href || pathname.startsWith(child.href + "/")
+                                                    child.href === "/settings"
+                                                        ? pathname === "/settings"
+                                                        : (pathname === child.href || pathname.startsWith(child.href + "/"))
                                                 ) : false;
                                                 const ChildIcon = child.icon;
                                                 return (
