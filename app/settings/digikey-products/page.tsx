@@ -449,9 +449,54 @@ export default function DigiKeyProductsManagementPage() {
                 {/* Table View */}
                 <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12 text-muted-foreground">
-                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                            <span>Loading DigiKey catalog & margin rules...</span>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-muted/50 border-b border-border text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
+                                        <th className="py-2 px-3 w-8 text-center"><div className="w-4 h-4 bg-muted animate-pulse rounded mx-auto" /></th>
+                                        <th className="py-2 px-3">Product Details</th>
+                                        <th className="py-2 px-3">Category / Mfg</th>
+                                        <th className="py-2 px-3 text-right">Base DigiKey Price</th>
+                                        <th className="py-2 px-3 text-center">Active Margin</th>
+                                        <th className="py-2 px-3 text-right">Final Customer Price</th>
+                                        <th className="py-2 px-3 text-center">Qty Breaks</th>
+                                        <th className="py-2 px-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {Array.from({ length: perPage > 15 ? 10 : perPage }).map((_, idx) => (
+                                        <tr key={idx} className="animate-pulse">
+                                            <td className="py-2.5 px-3 text-center">
+                                                <div className="w-4 h-4 bg-muted rounded mx-auto" />
+                                            </td>
+                                            <td className="py-2.5 px-3">
+                                                <div className="h-3.5 bg-muted rounded w-32 mb-1.5" />
+                                                <div className="h-2.5 bg-muted/60 rounded w-24 mb-1" />
+                                                <div className="h-2.5 bg-muted/40 rounded w-48" />
+                                            </td>
+                                            <td className="py-2.5 px-3">
+                                                <div className="h-3 bg-muted rounded w-24 mb-1" />
+                                                <div className="h-2.5 bg-muted/60 rounded w-16" />
+                                            </td>
+                                            <td className="py-2.5 px-3 text-right">
+                                                <div className="h-3.5 bg-muted rounded w-14 ml-auto" />
+                                            </td>
+                                            <td className="py-2.5 px-3 text-center">
+                                                <div className="h-4 bg-muted rounded-full w-16 mx-auto" />
+                                            </td>
+                                            <td className="py-2.5 px-3 text-right">
+                                                <div className="h-3.5 bg-emerald-500/20 rounded w-16 ml-auto" />
+                                            </td>
+                                            <td className="py-2.5 px-3 text-center">
+                                                <div className="h-3.5 bg-muted rounded w-12 mx-auto" />
+                                            </td>
+                                            <td className="py-2.5 px-3 text-right">
+                                                <div className="h-4 bg-muted rounded w-8 ml-auto" />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     ) : products.length === 0 ? (
                         <div className="text-center py-12 px-4">
