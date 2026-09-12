@@ -137,7 +137,6 @@ export default function SettingsPage() {
         JLCPCB_ACCESS_KEY: "",
         JLCPCB_BASE_URL: "",
         // SMTP
-        MAIL_MAILER: "",
         MAIL_HOST: "",
         MAIL_PORT: "",
         MAIL_USERNAME: "",
@@ -194,11 +193,44 @@ export default function SettingsPage() {
         fetchCredentials();
     }, []);
 
+    const getEncryptionForPort = (port: string) => {
+        const p = port.trim();
+        if (p === "465") return "ssl";
+        if (p === "587" || p === "25") return "tls";
+        return "tls";
+    };
+
     const handleChange = (key: string, value: string) => {
-        setCreds(prev => ({ ...prev, [key]: value }));
+        setCreds(prev => {
+            const updated = { ...prev, [key]: value };
+            if (key === "MAIL_PORT") {
+                updated["MAIL_ENCRYPTION"] = getEncryptionForPort(value);
+            }
+            return updated;
+        });
+    };
+
+    const validateBccEmails = (bcc: string): boolean => {
+        if (!bcc || bcc.trim() === "") return true;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emails = bcc.split(",").map(e => e.trim()).filter(Boolean);
+        for (const email of emails) {
+            if (!emailRegex.test(email)) {
+                return false;
+            }
+        }
+        return true;
     };
 
     const handleSaveGroup = async (group: string, keys: string[]) => {
+        if (group === "smtp") {
+            const bcc = creds.MAIL_BCC_ADDRESS || "";
+            if (!validateBccEmails(bcc)) {
+                toast.error("Invalid BCC email format. Please provide valid comma-separated email addresses.");
+                return;
+            }
+        }
+
         setSavingGroup(group);
         try {
             const token = localStorage.getItem("admin_token");
@@ -372,7 +404,6 @@ export default function SettingsPage() {
                         title="SMTP / Email Server"
                         isSaving={savingGroup === "smtp"}
                         onSave={() => handleSaveGroup("smtp", [
-                            "MAIL_MAILER",
                             "MAIL_HOST",
                             "MAIL_PORT",
                             "MAIL_USERNAME",
@@ -384,12 +415,6 @@ export default function SettingsPage() {
                         ])}
                     >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <PlainInput
-                                label="MAILER"
-                                placeholder="smtp"
-                                value={creds.MAIL_MAILER || ""}
-                                onChange={(val) => handleChange("MAIL_MAILER", val)}
-                            />
                             <PlainInput
                                 label="SMTP HOST"
                                 placeholder="smtp.gmail.com"
@@ -416,9 +441,9 @@ export default function SettingsPage() {
                                 onChange={(val) => handleChange("MAIL_PASSWORD", val)}
                             />
                             <PlainInput
-                                label="ENCRYPTION"
+                                label="ENCRYPTION (AUTO FROM PORT)"
                                 placeholder="tls"
-                                value={creds.MAIL_ENCRYPTION || ""}
+                                value={creds.MAIL_ENCRYPTION || (creds.MAIL_PORT === "465" ? "ssl" : "tls")}
                                 onChange={(val) => handleChange("MAIL_ENCRYPTION", val)}
                             />
                             <PlainInput
@@ -435,9 +460,8 @@ export default function SettingsPage() {
                                 onChange={(val) => handleChange("MAIL_FROM_NAME", val)}
                             />
                             <PlainInput
-                                label="BCC EMAIL"
-                                placeholder="pcb@megabytecircuit.com"
-                                type="email"
+                                label="BCC EMAIL(S)"
+                                placeholder="pcb@megabytecircuit.com, admin@megabytecircuit.com"
                                 value={creds.MAIL_BCC_ADDRESS || ""}
                                 onChange={(val) => handleChange("MAIL_BCC_ADDRESS", val)}
                             />
