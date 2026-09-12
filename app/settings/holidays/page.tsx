@@ -362,7 +362,6 @@ export default function HolidayManagementPage() {
                                         <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="py-3.5 px-4 font-semibold text-foreground">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                                                     {item.name}
                                                 </div>
                                             </td>
