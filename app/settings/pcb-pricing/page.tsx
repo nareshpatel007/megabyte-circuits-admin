@@ -242,6 +242,9 @@ export default function PcbPricingPage() {
                                             <th className="py-3 px-4">5 Days</th>
                                             <th className="py-3 px-4">7 Days</th>
                                             <th className="py-3 px-4">10 Days</th>
+                                            <th className="py-3 px-4">13 Days</th>
+                                            <th className="py-3 px-4">15 Days</th>
+                                            <th className="py-3 px-4">17 Days</th>
                                             <th className="py-3 px-4">20 Days</th>
                                         </tr>
                                     </thead>
@@ -251,16 +254,16 @@ export default function PcbPricingPage() {
                                                 <td className="py-3.5 px-4 font-bold text-foreground">
                                                     {layer} {layer === "1" ? "Layer" : "Layers"}
                                                 </td>
-                                                {[1, 3, 5, 7, 10, 20].map((day) => {
+                                                {[1, 3, 5, 7, 10, 13, 15, 17, 20].map((day) => {
                                                     const val = fixedCosts[layer]?.[day.toString()];
                                                     return (
-                                                        <td key={day} className="py-2 px-3">
+                                                        <td key={day} className="py-2 px-2">
                                                             <input
                                                                 type="number"
                                                                 value={val !== undefined ? val : ""}
                                                                 placeholder="N/A"
                                                                 onChange={(e) => handleFixedCostChange(layer, day.toString(), e.target.value)}
-                                                                className="w-24 px-3 py-2 text-xs font-semibold bg-background/60 border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                                                                className="w-20 px-2 py-1.5 text-xs font-semibold bg-background/60 border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
                                                             />
                                                         </td>
                                                     );
