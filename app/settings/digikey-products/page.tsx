@@ -64,6 +64,7 @@ export default function DigiKeyProductsManagementPage() {
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(15);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
 
@@ -100,7 +101,7 @@ export default function DigiKeyProductsManagementPage() {
             const token = localStorage.getItem("admin_token");
             const queryParams = new URLSearchParams();
             queryParams.append("page", page.toString());
-            queryParams.append("per_page", "15");
+            queryParams.append("per_page", perPage.toString());
             if (search.trim()) queryParams.append("search", search.trim());
             if (categoryFilter !== "all") queryParams.append("category", categoryFilter);
 
@@ -125,7 +126,7 @@ export default function DigiKeyProductsManagementPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, search, categoryFilter]);
+    }, [page, perPage, search, categoryFilter]);
 
     useEffect(() => {
         fetchProducts();
@@ -448,17 +449,17 @@ export default function DigiKeyProductsManagementPage() {
                 {/* Table View */}
                 <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
                     {loading ? (
-                        <div className="flex items-center justify-center py-16 text-muted-foreground">
-                            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                        <div className="flex items-center justify-center py-12 text-muted-foreground">
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
                             <span>Loading DigiKey catalog & margin rules...</span>
                         </div>
                     ) : products.length === 0 ? (
-                        <div className="text-center py-16 px-4">
-                            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto mb-3">
-                                <Package className="w-6 h-6" />
+                        <div className="text-center py-12 px-4">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                                <Package className="w-5 h-5" />
                             </div>
-                            <h3 className="text-base font-semibold text-foreground">No DigiKey products found</h3>
-                            <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1">
+                            <h3 className="text-sm font-semibold text-foreground">No DigiKey products found</h3>
+                            <p className="text-xs text-muted-foreground max-w-md mx-auto mt-0.5">
                                 No products match your search query.
                             </p>
                         </div>
@@ -466,8 +467,8 @@ export default function DigiKeyProductsManagementPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-muted/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider font-semibold">
-                                        <th className="py-3 px-4 w-10 text-center">
+                                    <tr className="bg-muted/50 border-b border-border text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
+                                        <th className="py-2 px-3 w-8 text-center">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.length === products.length && products.length > 0}
@@ -475,19 +476,19 @@ export default function DigiKeyProductsManagementPage() {
                                                 className="rounded border-input text-emerald-600 focus:ring-emerald-500"
                                             />
                                         </th>
-                                        <th className="py-3 px-4">Product Details</th>
-                                        <th className="py-3 px-4">Category / Mfg</th>
-                                        <th className="py-3 px-4 text-right">Base DigiKey Price</th>
-                                        <th className="py-3 px-4 text-center">Active Margin</th>
-                                        <th className="py-3 px-4 text-right">Final Customer Price</th>
-                                        <th className="py-3 px-4 text-center">Qty Breaks</th>
-                                        <th className="py-3 px-4 text-right">Actions</th>
+                                        <th className="py-2 px-3">Product Details</th>
+                                        <th className="py-2 px-3">Category / Mfg</th>
+                                        <th className="py-2 px-3 text-right">Base DigiKey Price</th>
+                                        <th className="py-2 px-3 text-center">Active Margin</th>
+                                        <th className="py-2 px-3 text-right">Final Customer Price</th>
+                                        <th className="py-2 px-3 text-center">Qty Breaks</th>
+                                        <th className="py-2 px-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border text-sm">
+                                <tbody className="divide-y divide-border text-xs">
                                     {products.map((item) => (
                                         <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="py-3.5 px-4 text-center">
+                                            <td className="py-2 px-3 text-center">
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedIds.includes(item.id)}
@@ -497,81 +498,81 @@ export default function DigiKeyProductsManagementPage() {
                                             </td>
 
                                             {/* Product Details */}
-                                            <td className="py-3.5 px-4 max-w-xs">
+                                            <td className="py-2 px-3 max-w-xs">
                                                 <div className="font-bold text-foreground truncate" title={item.manufacturer_product_number}>
                                                     {item.manufacturer_product_number}
                                                 </div>
                                                 {item.digikey_product_number && (
-                                                    <div className="text-xs text-muted-foreground font-mono">
+                                                    <div className="text-[11px] text-muted-foreground font-mono">
                                                         DigiKey: {item.digikey_product_number}
                                                     </div>
                                                 )}
-                                                <div className="text-xs text-muted-foreground truncate mt-0.5" title={item.product_description || ""}>
+                                                <div className="text-[11px] text-muted-foreground truncate" title={item.product_description || ""}>
                                                     {item.product_description || "No description"}
                                                 </div>
                                             </td>
 
                                             {/* Category & Manufacturer */}
-                                            <td className="py-3.5 px-4">
-                                                <div className="text-xs font-semibold text-foreground">
+                                            <td className="py-2 px-3">
+                                                <div className="text-xs font-semibold text-foreground truncate">
                                                     {item.manufacturer_name || "-"}
                                                 </div>
-                                                <div className="text-[11px] text-muted-foreground truncate">
+                                                <div className="text-[10px] text-muted-foreground truncate">
                                                     {item.category || "General"}
                                                 </div>
                                             </td>
 
                                             {/* Base Price */}
-                                            <td className="py-3.5 px-4 text-right font-mono font-medium text-foreground whitespace-nowrap">
+                                            <td className="py-2 px-3 text-right font-mono font-medium text-foreground whitespace-nowrap">
                                                 ₹{item.base_unit_price.toFixed(2)}
                                             </td>
 
                                             {/* Active Margin */}
-                                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                            <td className="py-2 px-3 text-center whitespace-nowrap">
                                                 {item.is_custom_margin ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                                                         {item.margin_type === "percentage" ? `${item.margin_value}%` : `₹${item.margin_value}`}
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border border-border">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border">
                                                         Default ({item.margin_type === "percentage" ? `${item.margin_value}%` : `₹${item.margin_value}`})
                                                     </span>
                                                 )}
                                             </td>
 
                                             {/* Final Customer Price */}
-                                            <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-600 whitespace-nowrap">
+                                            <td className="py-2 px-3 text-right font-mono font-extrabold text-emerald-600 whitespace-nowrap">
                                                 ₹{item.final_customer_price.toFixed(2)}
                                             </td>
 
                                             {/* Quantity Breaks */}
-                                            <td className="py-3.5 px-4 text-center">
+                                            <td className="py-2 px-3 text-center">
                                                 <button
                                                     onClick={() => handleOpenTiers(item)}
-                                                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+                                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline cursor-pointer"
                                                 >
-                                                    <Eye className="w-3.5 h-3.5" />
+                                                    <Eye className="w-3 h-3" />
                                                     <span>{item.pricing_tiers.length} Tiers</span>
                                                 </button>
                                             </td>
 
                                             {/* Actions */}
-                                            <td className="py-3.5 px-4 text-right">
+                                            <td className="py-2 px-3 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         onClick={() => handleOpenEdit(item)}
-                                                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+                                                        className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                                                         title="Edit Margin"
                                                     >
-                                                        <Edit2 className="w-4 h-4" />
+                                                        <Edit2 className="w-3.5 h-3.5" />
                                                     </button>
                                                     {item.is_custom_margin && (
                                                         <button
                                                             onClick={() => handleResetMargin(item)}
-                                                            className="p-1.5 text-amber-600 hover:text-amber-700 rounded-md hover:bg-amber-500/10 transition-colors"
+                                                            className="p-1 text-amber-600 hover:text-amber-700 rounded-md hover:bg-amber-500/10 transition-colors cursor-pointer"
                                                             title="Reset to Default Margin"
                                                         >
-                                                            <RotateCcw className="w-4 h-4" />
+                                                            <RotateCcw className="w-3.5 h-3.5" />
                                                         </button>
                                                     )}
                                                 </div>
@@ -583,31 +584,52 @@ export default function DigiKeyProductsManagementPage() {
                         </div>
                     )}
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
-                            <div>
+                    {/* Pagination Bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-2.5 border-t border-border bg-muted/20 text-xs text-muted-foreground gap-3">
+                        <div className="flex items-center gap-3">
+                            <span>
                                 Showing <span className="font-semibold text-foreground">{products.length}</span> of <span className="font-semibold text-foreground">{totalCount}</span> products
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                                    disabled={page === 1}
-                                    className="p-1.5 border border-input rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
+                            </span>
+                            <div className="flex items-center gap-1.5 border-l border-border pl-3">
+                                <label htmlFor="perPageSelect" className="text-muted-foreground font-medium text-[11px] whitespace-nowrap">
+                                    Items per page:
+                                </label>
+                                <select
+                                    id="perPageSelect"
+                                    value={perPage}
+                                    onChange={(e) => {
+                                        setPerPage(Number(e.target.value));
+                                        setPage(1);
+                                    }}
+                                    className="px-2 py-0.5 bg-background border border-input rounded-md text-xs font-bold text-foreground focus:outline-hidden"
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <span>Page {page} of {totalPages}</span>
-                                <button
-                                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                                    disabled={page === totalPages}
-                                    className="p-1.5 border border-input rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
+                                    <option value={10}>10</option>
+                                    <option value={15}>15</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
                             </div>
                         </div>
-                    )}
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                                disabled={page === 1}
+                                className="p-1 border border-input rounded-md hover:bg-accent disabled:opacity-50 transition-colors cursor-pointer"
+                            >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="font-medium text-foreground">Page {page} of {totalPages}</span>
+                            <button
+                                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                                disabled={page === totalPages}
+                                className="p-1 border border-input rounded-md hover:bg-accent disabled:opacity-50 transition-colors cursor-pointer"
+                            >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* EDIT PRODUCT MARGIN MODAL (PER-TIER MARGIN CONFIGURATION) */}
