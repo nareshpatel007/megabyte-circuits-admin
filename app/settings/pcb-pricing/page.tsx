@@ -34,7 +34,7 @@ const AREA_BRACKETS = [
     { key: "3.01 to 9.99", label: "3.01 to 9.99 m²" }
 ];
 
-const LEAD_TIME_INDEX_LABELS = ["1 Day", "3 Days", "5 Days", "7 Days", "10/20 Days"];
+const LEAD_TIME_INDEX_LABELS = ["1 Day", "3 Days", "5 Days", "7 Days", "10 Days", "13 Days", "15 Days", "17 Days", "20 Days"];
 
 const DEFAULT_SHIPPING_OPTIONS = [
     { key: "standard", location: "Standard", method: "Standard", rate: 0 },
@@ -119,7 +119,12 @@ export default function PcbPricingPage() {
             if (!copy[mask][copper][thickness]) copy[mask][copper][thickness] = {};
             if (!copy[mask][copper][thickness][layer]) copy[mask][copper][thickness][layer] = {};
             if (!Array.isArray(copy[mask][copper][thickness][layer][areaKey])) {
-                copy[mask][copper][thickness][layer][areaKey] = [0, 0, 0, 0, 0];
+                copy[mask][copper][thickness][layer][areaKey] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            }
+            while (copy[mask][copper][thickness][layer][areaKey].length <= index) {
+                const len = copy[mask][copper][thickness][layer][areaKey].length;
+                const lastVal = len > 0 ? copy[mask][copper][thickness][layer][areaKey][len - 1] : 0;
+                copy[mask][copper][thickness][layer][areaKey].push(lastVal);
             }
             copy[mask][copper][thickness][layer][areaKey][index] = num;
             return copy;
@@ -389,22 +394,22 @@ export default function PcbPricingPage() {
                                             </div>
 
                                             <div className="overflow-x-auto">
-                                                <table className="w-full text-left border-collapse min-w-[700px]">
+                                                <table className="w-full text-left border-collapse min-w-[950px]">
                                                     <thead>
                                                         <tr className="border-b border-border/60 bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                                             <th className="py-2.5 px-4 w-40">Total Order Area</th>
                                                             {LEAD_TIME_INDEX_LABELS.map((lbl, idx) => (
-                                                                <th key={idx} className="py-2.5 px-3">
-                                                                    {lbl} (Rate ₹/cm²)
+                                                                <th key={idx} className="py-2.5 px-2 text-center whitespace-nowrap">
+                                                                    {lbl}
                                                                 </th>
                                                             ))}
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-border/40 text-xs">
                                                         {AREA_BRACKETS.map((area) => {
-                                                            const pricesArray: number[] = Array.isArray(layerTiers[area.key])
+                                                            const rawPrices: number[] = Array.isArray(layerTiers[area.key])
                                                                 ? layerTiers[area.key]
-                                                                : [0, 0, 0, 0, 0];
+                                                                : [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
                                                             return (
                                                                 <tr key={area.key} className="hover:bg-muted/10 transition-colors">
@@ -412,14 +417,16 @@ export default function PcbPricingPage() {
                                                                         {area.label}
                                                                         <span className="block text-[10px] font-normal text-muted-foreground">{area.key}</span>
                                                                     </td>
-                                                                    {[0, 1, 2, 3, 4].map((idx) => {
-                                                                        const val = pricesArray[idx];
+                                                                    {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((idx) => {
+                                                                        const val = rawPrices[idx] !== undefined
+                                                                            ? rawPrices[idx]
+                                                                            : (rawPrices[4] !== undefined ? rawPrices[4] : rawPrices[0]);
                                                                         return (
-                                                                            <td key={idx} className="py-2 px-2.5">
+                                                                            <td key={idx} className="py-2 px-1.5 text-center">
                                                                                 <input
                                                                                     type="number"
                                                                                     step="0.001"
-                                                                                    value={val !== undefined ? val : ""}
+                                                                                    value={val !== undefined && val !== null ? val : ""}
                                                                                     placeholder="0.00"
                                                                                     onChange={(e) =>
                                                                                         handleTierPriceChange(
@@ -432,7 +439,7 @@ export default function PcbPricingPage() {
                                                                                             e.target.value
                                                                                         )
                                                                                     }
-                                                                                    className="w-24 px-2.5 py-1.5 text-xs font-semibold bg-background/80 border border-border/80 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                                                                                    className="w-full max-w-[90px] px-2 py-1.5 text-xs text-center font-semibold bg-background/80 border border-border/80 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
                                                                                 />
                                                                             </td>
                                                                         );
