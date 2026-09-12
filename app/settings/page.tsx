@@ -137,10 +137,15 @@ export default function SettingsPage() {
         JLCPCB_ACCESS_KEY: "",
         JLCPCB_BASE_URL: "",
         // SMTP
+        MAIL_MAILER: "",
         MAIL_HOST: "",
         MAIL_PORT: "",
-        MAIL_FROM_ADDRESS: "",
+        MAIL_USERNAME: "",
         MAIL_PASSWORD: "",
+        MAIL_ENCRYPTION: "",
+        MAIL_FROM_ADDRESS: "",
+        MAIL_FROM_NAME: "",
+        MAIL_BCC_ADDRESS: "",
         // DigiKey
         DIGIKEY_MODE: "live",
         DIGIKEY_TEST_CLIENT_ID: "",
@@ -367,13 +372,24 @@ export default function SettingsPage() {
                         title="SMTP / Email Server"
                         isSaving={savingGroup === "smtp"}
                         onSave={() => handleSaveGroup("smtp", [
+                            "MAIL_MAILER",
                             "MAIL_HOST",
                             "MAIL_PORT",
+                            "MAIL_USERNAME",
+                            "MAIL_PASSWORD",
+                            "MAIL_ENCRYPTION",
                             "MAIL_FROM_ADDRESS",
-                            "MAIL_PASSWORD"
+                            "MAIL_FROM_NAME",
+                            "MAIL_BCC_ADDRESS"
                         ])}
                     >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <PlainInput
+                                label="MAILER"
+                                placeholder="smtp"
+                                value={creds.MAIL_MAILER || ""}
+                                onChange={(val) => handleChange("MAIL_MAILER", val)}
+                            />
                             <PlainInput
                                 label="SMTP HOST"
                                 placeholder="smtp.gmail.com"
@@ -388,17 +404,42 @@ export default function SettingsPage() {
                                 onChange={(val) => handleChange("MAIL_PORT", val)}
                             />
                             <PlainInput
+                                label="USERNAME"
+                                placeholder="username@gmail.com"
+                                value={creds.MAIL_USERNAME || ""}
+                                onChange={(val) => handleChange("MAIL_USERNAME", val)}
+                            />
+                            <MaskedInput
+                                label="SMTP PASSWORD"
+                                placeholder="SMTP password or App Key"
+                                value={creds.MAIL_PASSWORD || ""}
+                                onChange={(val) => handleChange("MAIL_PASSWORD", val)}
+                            />
+                            <PlainInput
+                                label="ENCRYPTION"
+                                placeholder="tls"
+                                value={creds.MAIL_ENCRYPTION || ""}
+                                onChange={(val) => handleChange("MAIL_ENCRYPTION", val)}
+                            />
+                            <PlainInput
                                 label="FROM EMAIL"
-                                placeholder="noreply@pcbmfg.in"
+                                placeholder="quote@megabytecircuit.com"
                                 type="email"
                                 value={creds.MAIL_FROM_ADDRESS || ""}
                                 onChange={(val) => handleChange("MAIL_FROM_ADDRESS", val)}
                             />
-                            <MaskedInput
-                                label="SMTP PASSWORD"
-                                placeholder="SMTP password or API key"
-                                value={creds.MAIL_PASSWORD || ""}
-                                onChange={(val) => handleChange("MAIL_PASSWORD", val)}
+                            <PlainInput
+                                label="FROM NAME"
+                                placeholder="megabytecircuit.com"
+                                value={creds.MAIL_FROM_NAME || ""}
+                                onChange={(val) => handleChange("MAIL_FROM_NAME", val)}
+                            />
+                            <PlainInput
+                                label="BCC EMAIL"
+                                placeholder="pcb@megabytecircuit.com"
+                                type="email"
+                                value={creds.MAIL_BCC_ADDRESS || ""}
+                                onChange={(val) => handleChange("MAIL_BCC_ADDRESS", val)}
                             />
                         </div>
                     </SettingsSection>
