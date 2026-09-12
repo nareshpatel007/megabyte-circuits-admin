@@ -134,9 +134,8 @@ export default function SettingsPage() {
         RAZORPAY_WEBHOOK_URL: "",
         // JLC PCB
         JLCPCB_APP_ID: "",
-        JLCPCB_ACCOUNT_EMAIL: "",
+        JLCPCB_ACCESS_KEY: "",
         JLCPCB_BASE_URL: "",
-        JLCPCB_SECRET_KEY: "",
         // SMTP
         MAIL_HOST: "",
         MAIL_PORT: "",
@@ -338,36 +337,28 @@ export default function SettingsPage() {
                         isSaving={savingGroup === "jlcpcb"}
                         onSave={() => handleSaveGroup("jlcpcb", [
                             "JLCPCB_APP_ID",
-                            "JLCPCB_ACCOUNT_EMAIL",
-                            "JLCPCB_BASE_URL",
-                            "JLCPCB_SECRET_KEY"
+                            "JLCPCB_ACCESS_KEY",
+                            "JLCPCB_BASE_URL"
                         ])}
                     >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <MaskedInput
-                                label="DEVELOPER API KEY"
-                                placeholder="APP ID or API Key"
+                                label="JLCPCB APP ID"
+                                placeholder="JLCPCB App ID"
                                 value={creds.JLCPCB_APP_ID || ""}
                                 onChange={(val) => handleChange("JLCPCB_APP_ID", val)}
                             />
-                            <PlainInput
-                                label="ACCOUNT EMAIL"
-                                placeholder="api@pcbmfg.in"
-                                type="email"
-                                value={creds.JLCPCB_ACCOUNT_EMAIL || ""}
-                                onChange={(val) => handleChange("JLCPCB_ACCOUNT_EMAIL", val)}
+                            <MaskedInput
+                                label="JLCPCB ACCESS KEY"
+                                placeholder="JLCPCB Access Key"
+                                value={creds.JLCPCB_ACCESS_KEY || ""}
+                                onChange={(val) => handleChange("JLCPCB_ACCESS_KEY", val)}
                             />
                             <PlainInput
-                                label="API BASE URL"
-                                placeholder="https://api.jlcpcb.com/v2"
+                                label="JLCPCB BASE URL"
+                                placeholder="https://open.jlcpcb.com"
                                 value={creds.JLCPCB_BASE_URL || ""}
                                 onChange={(val) => handleChange("JLCPCB_BASE_URL", val)}
-                            />
-                            <MaskedInput
-                                label="CLIENT SECRET"
-                                placeholder="OAuth client secret"
-                                value={creds.JLCPCB_SECRET_KEY || ""}
-                                onChange={(val) => handleChange("JLCPCB_SECRET_KEY", val)}
                             />
                         </div>
                     </SettingsSection>
