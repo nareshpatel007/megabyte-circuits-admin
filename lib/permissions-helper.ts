@@ -18,6 +18,7 @@ export const ALL_MENU_ROUTES: MenuRoute[] = [
     { href: "/admin/blog-comments", permission: "blog_comment.view" },
     { href: "/settings", permission: ["settings.general", "settings.order_status"] },
     { href: "/settings/pcb-pricing", permission: ["settings.general"] },
+    { href: "/settings/holidays", permission: ["settings.general"] },
     { href: "/settings/statuses", permission: ["settings.order_status"] },
 ];
 
