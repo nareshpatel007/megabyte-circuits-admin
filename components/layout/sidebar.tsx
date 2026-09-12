@@ -28,6 +28,7 @@ import {
     FolderTree,
     Tag,
     MessageSquare,
+    Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,11 +64,11 @@ const navItems: NavItem[] = [
         icon: Settings,
         children: [
             { href: "/settings", label: "General Settings", icon: Sliders, permission: "settings.general" },
-            { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
-            { href: "/settings/digikey-products", label: "DigiKey Products", icon: Sliders, permission: "settings.general" },
-            { href: "/settings/shipping-options", label: "Shipping Options", icon: Truck, permission: "settings.general" },
-            { href: "/settings/holidays", label: "Holidays", icon: Calendar, permission: "settings.general" },
             { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter, permission: "settings.order_status" },
+            { href: "/settings/holidays", label: "Holidays", icon: Calendar, permission: "settings.general" },
+            { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
+            { href: "/settings/shipping-options", label: "Shipping Options", icon: Truck, permission: "settings.general" },
+            { href: "/settings/digikey-products", label: "DigiKey Products", icon: Cpu, permission: "settings.general" },
         ],
     },
 ];
