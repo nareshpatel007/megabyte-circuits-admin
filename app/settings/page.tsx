@@ -9,22 +9,23 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 function MaskedInput({
     label,
     placeholder,
-    defaultValue,
+    value,
+    onChange,
 }: {
     label: string;
     placeholder?: string;
-    defaultValue?: string;
+    value: string;
+    onChange: (val: string) => void;
 }) {
     const [show, setShow] = useState(false);
-    const [val, setVal] = useState(defaultValue || "");
     return (
         <div className="space-y-1.5">
             <label className="block text-xs font-bold text-foreground uppercase tracking-wider">{label}</label>
             <div className="relative">
                 <input
                     type={show ? "text" : "password"}
-                    value={val}
-                    onChange={(e) => setVal(e.target.value)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     className="w-full px-3.5 py-3 pr-10 text-sm bg-background/50 border border-border/85 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
                 />
@@ -43,12 +44,14 @@ function MaskedInput({
 function PlainInput({
     label,
     placeholder,
-    defaultValue,
+    value,
+    onChange,
     type = "text",
 }: {
     label: string;
     placeholder?: string;
-    defaultValue?: string;
+    value: string;
+    onChange: (val: string) => void;
     type?: string;
 }) {
     return (
@@ -56,7 +59,8 @@ function PlainInput({
             <label className="block text-xs font-bold text-foreground uppercase tracking-wider">{label}</label>
             <input
                 type={type}
-                defaultValue={defaultValue}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className="w-full px-3.5 py-3 text-sm bg-background/50 border border-border/85 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
             />
@@ -116,334 +120,463 @@ function SettingsSection({
 }
 
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<"pricing" | "integrations" | "notifications">("pricing");
-    const [loadingPricing, setLoadingPricing] = useState(true);
-    const [savingPricing, setSavingPricing] = useState(false);
-    const [fixedCosts, setFixedCosts] = useState<Record<string, Record<string, number>>>({});
-    const [priceTiersJson, setPriceTiersJson] = useState<string>("");
-    const [minPartsOrderAmount, setMinPartsOrderAmount] = useState<number>(3000);
+    const [loadingCredentials, setLoadingCredentials] = useState(true);
+    const [savingGroup, setSavingGroup] = useState<string | null>(null);
 
-    const tabs = [
-        { id: "pricing", label: "PCB Calculation & Pricing" },
-        { id: "integrations", label: "Payment & API Integrations" },
-        { id: "notifications", label: "Notifications" },
-    ];
+    const [creds, setCreds] = useState<Record<string, string>>({
+        // Razorpay
+        RAZORPAY_MODE: "sandbox",
+        RAZORPAY_TEST_KEY_ID: "",
+        RAZORPAY_TEST_KEY_SECRET: "",
+        RAZORPAY_LIVE_KEY_ID: "",
+        RAZORPAY_LIVE_KEY_SECRET: "",
+        RAZORPAY_WEBHOOK_SECRET: "",
+        RAZORPAY_WEBHOOK_URL: "",
+        // JLC PCB
+        JLCPCB_APP_ID: "",
+        JLCPCB_ACCOUNT_EMAIL: "",
+        JLCPCB_BASE_URL: "",
+        JLCPCB_SECRET_KEY: "",
+        // SMTP
+        MAIL_HOST: "",
+        MAIL_PORT: "",
+        MAIL_FROM_ADDRESS: "",
+        MAIL_PASSWORD: "",
+        // DigiKey
+        DIGIKEY_MODE: "live",
+        DIGIKEY_TEST_CLIENT_ID: "",
+        DIGIKEY_TEST_CLIENT_SECRET: "",
+        DIGIKEY_LIVE_CLIENT_ID: "",
+        DIGIKEY_LIVE_CLIENT_SECRET: "",
+        DIGIKEY_CLIENT_ID: "",
+        DIGIKEY_CLIENT_SECRET: "",
+        // ImageKit
+        IMAGEKIT_PUBLIC_KEY: "",
+        IMAGEKIT_PRIVATE_KEY: "",
+        IMAGEKIT_URL_ENDPOINT: "",
+        IMAGEKIT_STORAGE_PATH: "",
+        // Google OAuth
+        GOOGLE_CLIENT_ID: "",
+        GOOGLE_CLIENT_SECRET: "",
+        GOOGLE_REDIRECT_URI: "",
+    });
 
-    const fetchPricing = async () => {
-        setLoadingPricing(true);
+    const fetchCredentials = async () => {
+        setLoadingCredentials(true);
         try {
             const token = localStorage.getItem("admin_token");
-            const res = await fetch("/api/admin/pcb-pricing", {
+            const res = await fetch("/api/admin/credentials", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
             if (data.success && data.data) {
-                setFixedCosts(data.data.fixedCosts || {});
-                setPriceTiersJson(JSON.stringify(data.data.priceTiers || {}, null, 2));
-                if (data.data.minPartsOrderAmount !== undefined) {
-                    setMinPartsOrderAmount(Number(data.data.minPartsOrderAmount));
-                }
+                const newCreds: Record<string, string> = { ...creds };
+                Object.keys(data.data).forEach((group) => {
+                    const groupItems = data.data[group];
+                    Object.keys(groupItems).forEach((key) => {
+                        newCreds[key] = groupItems[key].masked || "";
+                    });
+                });
+                setCreds(newCreds);
             }
         } catch (err) {
-            toast.error("Failed to load PCB pricing settings.");
+            toast.error("Failed to load credentials.");
         } finally {
-            setLoadingPricing(false);
+            setLoadingCredentials(false);
         }
     };
 
     useEffect(() => {
-        if (activeTab === "pricing") {
-            fetchPricing();
-        }
-    }, [activeTab]);
+        fetchCredentials();
+    }, []);
 
-    const handleFixedCostChange = (layer: string, day: string, value: string) => {
-        const num = parseFloat(value) || 0;
-        setFixedCosts(prev => ({
-            ...prev,
-            [layer]: {
-                ...(prev[layer] || {}),
-                [day]: num
-            }
-        }));
+    const handleChange = (key: string, value: string) => {
+        setCreds(prev => ({ ...prev, [key]: value }));
     };
 
-    const handleSavePricing = async () => {
-        let parsedPriceTiers = null;
-        try {
-            parsedPriceTiers = JSON.parse(priceTiersJson);
-        } catch (e) {
-            toast.error("Invalid JSON format in Price Tier Matrix!");
-            return;
-        }
-
-        setSavingPricing(true);
+    const handleSaveGroup = async (group: string, keys: string[]) => {
+        setSavingGroup(group);
         try {
             const token = localStorage.getItem("admin_token");
-            const res = await fetch("/api/admin/pcb-pricing", {
+            const payloadGroup: Record<string, string> = {};
+            keys.forEach((key) => {
+                payloadGroup[key] = creds[key] || "";
+            });
+
+            const res = await fetch("/api/admin/credentials", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    fixedCosts,
-                    priceTiers: parsedPriceTiers,
-                    minPartsOrderAmount
+                    [group]: payloadGroup
                 })
             });
             const data = await res.json();
             if (data.success) {
-                toast.success("PCB Pricing Calculations updated successfully!");
+                toast.success(`${group.toUpperCase()} settings saved successfully!`);
+                await fetchCredentials();
             } else {
-                toast.error(data.message || "Failed to update PCB pricing settings.");
+                toast.error(data.message || "Failed to update credentials.");
             }
         } catch (err) {
-            toast.error("Error saving pricing settings.");
+            toast.error("Error saving credentials.");
         } finally {
-            setSavingPricing(false);
+            setSavingGroup(null);
         }
     };
+
+    if (loadingCredentials) {
+        return (
+            <DashboardLayout title="General Settings" subtitle="Configure system credentials, integrations, and server settings">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <LoadingSpinner />
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout title="General Settings" subtitle="Configure PCB price calculations, integrations, payment credentials, and notification rules">
             <div className="w-full space-y-6">
-                {/* Navigation Tabs */}
-                <div className="flex border-b border-border/80 gap-2 overflow-x-auto pb-px">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all border-b-2 cursor-pointer ${activeTab === tab.id
-                                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-bold"
-                                : "border-transparent text-foreground/70 hover:text-foreground hover:bg-muted/50 font-semibold"
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Tab 1: PCB Calculation & Pricing */}
-                {activeTab === "pricing" && (
-                    <div className="space-y-6 animate-in fade-in duration-150">
-                        <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl px-5 py-4 shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <Calculator className="w-5 h-5 shrink-0 text-emerald-500" />
+                <div className="space-y-5 animate-in fade-in duration-150">
+                    <SettingsSection
+                        title="Razorpay / Payment Gateway"
+                        isSaving={savingGroup === "razorpay"}
+                        onSave={() => handleSaveGroup("razorpay", [
+                            "RAZORPAY_MODE",
+                            "RAZORPAY_TEST_KEY_ID",
+                            "RAZORPAY_TEST_KEY_SECRET",
+                            "RAZORPAY_LIVE_KEY_ID",
+                            "RAZORPAY_LIVE_KEY_SECRET",
+                            "RAZORPAY_WEBHOOK_SECRET",
+                            "RAZORPAY_WEBHOOK_URL"
+                        ])}
+                    >
+                        <div className="space-y-4">
+                            {/* Environment Mode Switch */}
+                            <div className="flex items-center justify-between p-3.5 bg-muted/30 border border-border/60 rounded-xl">
                                 <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider">Dynamic Calculation Engine</h4>
-                                    <p className="text-xs font-medium opacity-90 mt-0.5">
-                                        All PCB calculations edited here are updated live on the Quote page upon save.
-                                    </p>
+                                    <p className="text-xs font-bold text-foreground uppercase tracking-wider">Gateway Environment Mode</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">Select active payment mode (Sandbox for testing, Live for real transactions)</p>
+                                </div>
+                                <div className="flex items-center bg-background border border-border/80 rounded-lg p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleChange("RAZORPAY_MODE", "sandbox")}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${(creds.RAZORPAY_MODE || "sandbox") === "sandbox"
+                                            ? "bg-amber-500 text-white shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Sandbox (Test)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleChange("RAZORPAY_MODE", "live")}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${creds.RAZORPAY_MODE === "live"
+                                            ? "bg-emerald-500 text-white shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Live (Production)
+                                    </button>
                                 </div>
                             </div>
-                            <button
-                                onClick={fetchPricing}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-background border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                            >
-                                <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                            </button>
-                        </div>
 
-                        {loadingPricing ? (
-                            <div className="py-12 text-center">
-                                <LoadingSpinner />
-                                <p className="text-xs font-medium text-muted-foreground mt-3">Loading pricing matrices...</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {/* Section 1: Lead Time Fixed Costs */}
-                                <SettingsSection
-                                    title="Layer & Lead Time Base Fixed Costs (₹)"
-                                    onSave={handleSavePricing}
-                                    isSaving={savingPricing}
-                                >
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse min-w-[600px]">
-                                            <thead>
-                                                <tr className="border-b border-border/60 bg-muted/30 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                                                    <th className="py-3 px-4">Layer Count</th>
-                                                    <th className="py-3 px-4">1 Day</th>
-                                                    <th className="py-3 px-4">3 Days</th>
-                                                    <th className="py-3 px-4">5 Days</th>
-                                                    <th className="py-3 px-4">7 Days</th>
-                                                    <th className="py-3 px-4">10 Days</th>
-                                                    <th className="py-3 px-4">20 Days</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-border/40 text-xs">
-                                                {["1", "2", "4", "6", "8", "10"].map((layer) => (
-                                                    <tr key={layer} className="hover:bg-muted/20 transition-colors">
-                                                        <td className="py-3 px-4 font-bold text-foreground">
-                                                            {layer} {layer === "1" ? "Layer" : "Layers"}
-                                                        </td>
-                                                        {[1, 3, 5, 7, 10, 20].map((day) => {
-                                                            const val = fixedCosts[layer]?.[day.toString()];
-                                                            return (
-                                                                <td key={day} className="py-2 px-3">
-                                                                    <input
-                                                                        type="number"
-                                                                        value={val !== undefined ? val : ""}
-                                                                        placeholder="N/A"
-                                                                        onChange={(e) => handleFixedCostChange(layer, day.toString(), e.target.value)}
-                                                                        className="w-24 px-2.5 py-1.5 text-xs font-semibold bg-background border border-border/80 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                                                    />
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </SettingsSection>
-
-                                {/* Section 2: Variable Tier Pricing Matrices */}
-                                <SettingsSection
-                                    title="Area & Material Variable Price Tier Matrix (JSON Configuration)"
-                                    onSave={handleSavePricing}
-                                    isSaving={savingPricing}
-                                >
-                                    <div className="space-y-3">
-                                        <p className="text-xs text-muted-foreground font-medium">
-                                            Configure area-based cost factors per cm² across Solder Mask (Green / Other), Copper Weight (1oz / 2oz), Thickness (1.6mm / Other), and Layer counts.
-                                        </p>
-                                        <textarea
-                                            value={priceTiersJson}
-                                            onChange={(e) => setPriceTiersJson(e.target.value)}
-                                            rows={18}
-                                            className="w-full font-mono text-xs p-4 bg-slate-950 text-emerald-400 border border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed shadow-inner"
-                                            placeholder="Paste or edit Price Tiers JSON matrix structure..."
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {(creds.RAZORPAY_MODE || "sandbox") === "sandbox" ? (
+                                    <>
+                                        <MaskedInput
+                                            label="SANDBOX API KEY ID"
+                                            placeholder="rzp_test_..."
+                                            value={creds.RAZORPAY_TEST_KEY_ID || ""}
+                                            onChange={(val) => handleChange("RAZORPAY_TEST_KEY_ID", val)}
                                         />
-                                    </div>
-                                </SettingsSection>
-
-                                {/* Section 3: Minimum Parts Order Amount */}
-                                <SettingsSection
-                                    title="Minimum Order Amount (Parts)"
-                                    onSave={handleSavePricing}
-                                    isSaving={savingPricing}
-                                >
-                                    <div className="space-y-3">
-                                        <p className="text-xs text-muted-foreground font-medium">
-                                            Specify the minimum cart order amount (in ₹) required to enable the Secure Checkout button for Parts orders.
-                                        </p>
-                                        <div className="max-w-xs">
-                                            <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
-                                                Minimum Order Amount (₹)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={minPartsOrderAmount}
-                                                onChange={(e) => setMinPartsOrderAmount(parseFloat(e.target.value) || 0)}
-                                                className="w-full px-3.5 py-2.5 text-sm font-semibold bg-background border border-border/85 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
-                                                placeholder="3000"
-                                            />
-                                        </div>
-                                    </div>
-                                </SettingsSection>
+                                        <MaskedInput
+                                            label="SANDBOX API KEY SECRET"
+                                            placeholder="Your Sandbox API secret"
+                                            value={creds.RAZORPAY_TEST_KEY_SECRET || ""}
+                                            onChange={(val) => handleChange("RAZORPAY_TEST_KEY_SECRET", val)}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <MaskedInput
+                                            label="LIVE API KEY ID"
+                                            placeholder="rzp_live_..."
+                                            value={creds.RAZORPAY_LIVE_KEY_ID || ""}
+                                            onChange={(val) => handleChange("RAZORPAY_LIVE_KEY_ID", val)}
+                                        />
+                                        <MaskedInput
+                                            label="LIVE API KEY SECRET"
+                                            placeholder="Your Live API secret"
+                                            value={creds.RAZORPAY_LIVE_KEY_SECRET || ""}
+                                            onChange={(val) => handleChange("RAZORPAY_LIVE_KEY_SECRET", val)}
+                                        />
+                                    </>
+                                )}
+                                <MaskedInput
+                                    label="WEBHOOK SECRET"
+                                    placeholder="Webhook signing secret"
+                                    value={creds.RAZORPAY_WEBHOOK_SECRET || ""}
+                                    onChange={(val) => handleChange("RAZORPAY_WEBHOOK_SECRET", val)}
+                                />
+                                <PlainInput
+                                    label="WEBHOOK URL"
+                                    placeholder="https://api.pcbmfg.in/webhooks/razorpay"
+                                    value={creds.RAZORPAY_WEBHOOK_URL || ""}
+                                    onChange={(val) => handleChange("RAZORPAY_WEBHOOK_URL", val)}
+                                />
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Tab 2: Payment & API Integrations */}
-                {activeTab === "integrations" && (
-                    <div className="space-y-5 animate-in fade-in duration-150">
-                        <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-xl px-4 py-3.5 shadow-sm">
-                            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                            <p className="text-xs font-semibold">
-                                API keys are sensitive. Changes take effect immediately across all production services. Please store them securely.
-                            </p>
                         </div>
+                    </SettingsSection>
 
-                        <SettingsSection
-                            title="Razorpay / Payment Gateway"
-                            onSave={() => toast.success("Razorpay settings saved.")}
-                        >
+                    <SettingsSection
+                        title="JLC PCB Developer API"
+                        isSaving={savingGroup === "jlcpcb"}
+                        onSave={() => handleSaveGroup("jlcpcb", [
+                            "JLCPCB_APP_ID",
+                            "JLCPCB_ACCOUNT_EMAIL",
+                            "JLCPCB_BASE_URL",
+                            "JLCPCB_SECRET_KEY"
+                        ])}
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <MaskedInput
+                                label="DEVELOPER API KEY"
+                                placeholder="APP ID or API Key"
+                                value={creds.JLCPCB_APP_ID || ""}
+                                onChange={(val) => handleChange("JLCPCB_APP_ID", val)}
+                            />
+                            <PlainInput
+                                label="ACCOUNT EMAIL"
+                                placeholder="api@pcbmfg.in"
+                                type="email"
+                                value={creds.JLCPCB_ACCOUNT_EMAIL || ""}
+                                onChange={(val) => handleChange("JLCPCB_ACCOUNT_EMAIL", val)}
+                            />
+                            <PlainInput
+                                label="API BASE URL"
+                                placeholder="https://api.jlcpcb.com/v2"
+                                value={creds.JLCPCB_BASE_URL || ""}
+                                onChange={(val) => handleChange("JLCPCB_BASE_URL", val)}
+                            />
+                            <MaskedInput
+                                label="CLIENT SECRET"
+                                placeholder="OAuth client secret"
+                                value={creds.JLCPCB_SECRET_KEY || ""}
+                                onChange={(val) => handleChange("JLCPCB_SECRET_KEY", val)}
+                            />
+                        </div>
+                    </SettingsSection>
+
+                    <SettingsSection
+                        title="SMTP / Email Server"
+                        isSaving={savingGroup === "smtp"}
+                        onSave={() => handleSaveGroup("smtp", [
+                            "MAIL_HOST",
+                            "MAIL_PORT",
+                            "MAIL_FROM_ADDRESS",
+                            "MAIL_PASSWORD"
+                        ])}
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <PlainInput
+                                label="SMTP HOST"
+                                placeholder="smtp.gmail.com"
+                                value={creds.MAIL_HOST || ""}
+                                onChange={(val) => handleChange("MAIL_HOST", val)}
+                            />
+                            <PlainInput
+                                label="PORT"
+                                placeholder="587"
+                                type="number"
+                                value={creds.MAIL_PORT || ""}
+                                onChange={(val) => handleChange("MAIL_PORT", val)}
+                            />
+                            <PlainInput
+                                label="FROM EMAIL"
+                                placeholder="noreply@pcbmfg.in"
+                                type="email"
+                                value={creds.MAIL_FROM_ADDRESS || ""}
+                                onChange={(val) => handleChange("MAIL_FROM_ADDRESS", val)}
+                            />
+                            <MaskedInput
+                                label="SMTP PASSWORD"
+                                placeholder="SMTP password or API key"
+                                value={creds.MAIL_PASSWORD || ""}
+                                onChange={(val) => handleChange("MAIL_PASSWORD", val)}
+                            />
+                        </div>
+                    </SettingsSection>
+
+                    <SettingsSection
+                        title="DigiKey API Configuration"
+                        isSaving={savingGroup === "digikey"}
+                        onSave={() => handleSaveGroup("digikey", [
+                            "DIGIKEY_MODE",
+                            "DIGIKEY_TEST_CLIENT_ID",
+                            "DIGIKEY_TEST_CLIENT_SECRET",
+                            "DIGIKEY_LIVE_CLIENT_ID",
+                            "DIGIKEY_LIVE_CLIENT_SECRET",
+                            "DIGIKEY_CLIENT_ID",
+                            "DIGIKEY_CLIENT_SECRET"
+                        ])}
+                    >
+                        <div className="space-y-4">
+                            {/* Environment Mode Switch */}
+                            <div className="flex items-center justify-between p-3.5 bg-muted/30 border border-border/60 rounded-xl">
+                                <div>
+                                    <p className="text-xs font-bold text-foreground uppercase tracking-wider">DigiKey Environment Mode</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">Select active environment mode (Sandbox for testing, Live for production API)</p>
+                                </div>
+                                <div className="flex items-center bg-background border border-border/80 rounded-lg p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleChange("DIGIKEY_MODE", "sandbox")}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                            (creds.DIGIKEY_MODE || "sandbox") === "sandbox"
+                                                ? "bg-amber-500 text-white shadow-xs"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        Sandbox (Test)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleChange("DIGIKEY_MODE", "live")}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                            creds.DIGIKEY_MODE === "live"
+                                                ? "bg-emerald-500 text-white shadow-xs"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        Live (Production)
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <MaskedInput label="API Key ID" placeholder="rzp_live_..." defaultValue="rzp_live_xXxXxXxX" />
-                                <MaskedInput label="API Key Secret" placeholder="Your API secret" defaultValue="secret_key_here" />
-                                <MaskedInput label="Webhook Secret" placeholder="Webhook signing secret" defaultValue="wh_secret_here" />
-                                <PlainInput label="Webhook URL" defaultValue="https://api.pcbmfg.in/webhooks/razorpay" />
+                                {(creds.DIGIKEY_MODE || "sandbox") === "sandbox" ? (
+                                    <>
+                                        <MaskedInput
+                                            label="SANDBOX CLIENT ID"
+                                            placeholder="DigiKey Sandbox Client ID"
+                                            value={creds.DIGIKEY_TEST_CLIENT_ID || creds.DIGIKEY_CLIENT_ID || ""}
+                                            onChange={(val) => {
+                                                handleChange("DIGIKEY_TEST_CLIENT_ID", val);
+                                                handleChange("DIGIKEY_CLIENT_ID", val);
+                                            }}
+                                        />
+                                        <MaskedInput
+                                            label="SANDBOX CLIENT SECRET"
+                                            placeholder="DigiKey Sandbox Client Secret"
+                                            value={creds.DIGIKEY_TEST_CLIENT_SECRET || creds.DIGIKEY_CLIENT_SECRET || ""}
+                                            onChange={(val) => {
+                                                handleChange("DIGIKEY_TEST_CLIENT_SECRET", val);
+                                                handleChange("DIGIKEY_CLIENT_SECRET", val);
+                                            }}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <MaskedInput
+                                            label="LIVE CLIENT ID"
+                                            placeholder="DigiKey Live Client ID"
+                                            value={creds.DIGIKEY_LIVE_CLIENT_ID || creds.DIGIKEY_CLIENT_ID || ""}
+                                            onChange={(val) => {
+                                                handleChange("DIGIKEY_LIVE_CLIENT_ID", val);
+                                                handleChange("DIGIKEY_CLIENT_ID", val);
+                                            }}
+                                        />
+                                        <MaskedInput
+                                            label="LIVE CLIENT SECRET"
+                                            placeholder="DigiKey Live Client Secret"
+                                            value={creds.DIGIKEY_LIVE_CLIENT_SECRET || creds.DIGIKEY_CLIENT_SECRET || ""}
+                                            onChange={(val) => {
+                                                handleChange("DIGIKEY_LIVE_CLIENT_SECRET", val);
+                                                handleChange("DIGIKEY_CLIENT_SECRET", val);
+                                            }}
+                                        />
+                                    </>
+                                )}
                             </div>
-                        </SettingsSection>
+                        </div>
+                    </SettingsSection>
 
-                        <SettingsSection
-                            title="JLC PCB Developer API"
-                            onSave={() => toast.success("JLC PCB settings saved.")}
-                        >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <MaskedInput label="Developer API Key" placeholder="jlcpcb_api_..." defaultValue="jlc_dev_apikey_prod" />
-                                <PlainInput label="Account Email" defaultValue="api@pcbmfg.in" type="email" />
-                                <PlainInput label="API Base URL" defaultValue="https://api.jlcpcb.com/v2" />
-                                <MaskedInput label="Client Secret" placeholder="OAuth client secret" defaultValue="oauth_secret_xxx" />
-                            </div>
-                        </SettingsSection>
+                    <SettingsSection
+                        title="ImageKit CDN Storage"
+                        isSaving={savingGroup === "imagekit"}
+                        onSave={() => handleSaveGroup("imagekit", [
+                            "IMAGEKIT_PUBLIC_KEY",
+                            "IMAGEKIT_PRIVATE_KEY",
+                            "IMAGEKIT_URL_ENDPOINT",
+                            "IMAGEKIT_STORAGE_PATH"
+                        ])}
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <MaskedInput
+                                label="IMAGEKIT PUBLIC KEY"
+                                placeholder="public_..."
+                                value={creds.IMAGEKIT_PUBLIC_KEY || ""}
+                                onChange={(val) => handleChange("IMAGEKIT_PUBLIC_KEY", val)}
+                            />
+                            <MaskedInput
+                                label="IMAGEKIT PRIVATE KEY"
+                                placeholder="private_..."
+                                value={creds.IMAGEKIT_PRIVATE_KEY || ""}
+                                onChange={(val) => handleChange("IMAGEKIT_PRIVATE_KEY", val)}
+                            />
+                            <PlainInput
+                                label="IMAGEKIT URL ENDPOINT"
+                                placeholder="https://ik.imagekit.io/..."
+                                value={creds.IMAGEKIT_URL_ENDPOINT || ""}
+                                onChange={(val) => handleChange("IMAGEKIT_URL_ENDPOINT", val)}
+                            />
+                            <PlainInput
+                                label="IMAGEKIT STORAGE PATH"
+                                placeholder="/Megabyte"
+                                value={creds.IMAGEKIT_STORAGE_PATH || "/Megabyte"}
+                                onChange={(val) => handleChange("IMAGEKIT_STORAGE_PATH", val)}
+                            />
+                        </div>
+                    </SettingsSection>
 
-                        <SettingsSection
-                            title="SMTP / Email Server"
-                            onSave={() => toast.success("SMTP settings saved.")}
-                        >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <PlainInput label="SMTP Host" defaultValue="smtp.sendgrid.net" />
-                                <PlainInput label="Port" defaultValue="587" type="number" />
-                                <PlainInput label="From Email" defaultValue="noreply@pcbmfg.in" type="email" />
-                                <MaskedInput label="SMTP Password" placeholder="SMTP password or API key" defaultValue="smtp_pass_here" />
-                            </div>
-                        </SettingsSection>
-
-                        <SettingsSection
-                            title="Stripe (International Payments)"
-                            onSave={() => toast.success("Stripe settings saved.")}
-                        >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <MaskedInput label="Publishable Key" placeholder="pk_live_..." defaultValue="pk_live_xxxxxxxxxxxxxxxx" />
-                                <MaskedInput label="Secret Key" placeholder="sk_live_..." defaultValue="sk_live_xxxxxxxxxxxxxxxx" />
-                                <MaskedInput label="Webhook Signing Secret" placeholder="whsec_..." defaultValue="whsec_xxxxxxxxxx" />
-                                <PlainInput label="Webhook Endpoint" defaultValue="https://api.pcbmfg.in/webhooks/stripe" />
-                            </div>
-                        </SettingsSection>
-                    </div>
-                )}
-
-                {/* Tab 3: Notifications */}
-                {activeTab === "notifications" && (
-                    <div className="space-y-5 animate-in fade-in duration-150">
-                        <SettingsSection
-                            title="Notification Settings"
-                            onSave={() => toast.success("Notification preferences saved.")}
-                        >
-                            <div>
-                                <ToggleRow
-                                    label="Email Alerts"
-                                    description="Receive email notifications for critical events"
-                                    defaultOn
-                                />
-                                <ToggleRow
-                                    label="New Order Notifications"
-                                    description="Get notified when a new order is placed"
-                                    defaultOn
-                                />
-                                <ToggleRow
-                                    label="Low Stock Alerts"
-                                    description="Alert when component inventory drops below threshold"
-                                    defaultOn
-                                />
-                                <ToggleRow
-                                    label="API Health Alerts"
-                                    description="Notify when JLCPCB or payment API becomes unavailable"
-                                    defaultOn
-                                />
-                                <ToggleRow
-                                    label="Daily Summary Report"
-                                    description="Receive a daily summary of orders and revenue"
-                                />
-                            </div>
-                        </SettingsSection>
-                    </div>
-                )}
+                    <SettingsSection
+                        title="Google OAuth Authentication"
+                        isSaving={savingGroup === "google"}
+                        onSave={() => handleSaveGroup("google", [
+                            "GOOGLE_CLIENT_ID",
+                            "GOOGLE_CLIENT_SECRET",
+                            "GOOGLE_REDIRECT_URI"
+                        ])}
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <MaskedInput
+                                label="GOOGLE CLIENT ID"
+                                placeholder="819338859898-..."
+                                value={creds.GOOGLE_CLIENT_ID || ""}
+                                onChange={(val) => handleChange("GOOGLE_CLIENT_ID", val)}
+                            />
+                            <MaskedInput
+                                label="GOOGLE CLIENT SECRET"
+                                placeholder="GOCSPX-..."
+                                value={creds.GOOGLE_CLIENT_SECRET || ""}
+                                onChange={(val) => handleChange("GOOGLE_CLIENT_SECRET", val)}
+                            />
+                            <PlainInput
+                                label="GOOGLE REDIRECT URI"
+                                placeholder="https://api.pcbmfg.in/api/auth/google/callback"
+                                value={creds.GOOGLE_REDIRECT_URI || ""}
+                                onChange={(val) => handleChange("GOOGLE_REDIRECT_URI", val)}
+                            />
+                        </div>
+                    </SettingsSection>
+                </div>
             </div>
         </DashboardLayout>
     );
 }
+
