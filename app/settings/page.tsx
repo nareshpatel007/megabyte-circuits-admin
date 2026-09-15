@@ -124,6 +124,8 @@ export default function SettingsPage() {
     const [savingGroup, setSavingGroup] = useState<string | null>(null);
 
     const [creds, setCreds] = useState<Record<string, string>>({
+        // Tax & GST
+        GST_PERCENTAGE: "18",
         // Razorpay
         RAZORPAY_MODE: "sandbox",
         RAZORPAY_TEST_KEY_ID: "",
@@ -277,6 +279,24 @@ export default function SettingsPage() {
         <DashboardLayout title="General Settings" subtitle="Configure PCB price calculations, integrations, payment credentials, and notification rules">
             <div className="w-full space-y-6">
                 <div className="space-y-5 animate-in fade-in duration-150">
+                    <SettingsSection
+                        title="Taxation & GST Settings"
+                        isSaving={savingGroup === "general"}
+                        onSave={() => handleSaveGroup("general", [
+                            "GST_PERCENTAGE"
+                        ])}
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <PlainInput
+                                label="GST PERCENTAGE (%)"
+                                placeholder="18"
+                                type="number"
+                                value={creds.GST_PERCENTAGE || "18"}
+                                onChange={(val) => handleChange("GST_PERCENTAGE", val)}
+                            />
+                        </div>
+                    </SettingsSection>
+
                     <SettingsSection
                         title="Razorpay / Payment Gateway"
                         isSaving={savingGroup === "razorpay"}
