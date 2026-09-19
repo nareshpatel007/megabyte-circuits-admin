@@ -2378,27 +2378,35 @@ export default function OrdersPage() {
                         {importPreviewData && importPreviewData.summary && (
                             <div className="space-y-4">
                                 {/* Summary Badge Cards */}
-                                <div className="grid grid-cols-4 gap-2 text-center">
-                                    <div className="bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-xl">
-                                        <div className="text-[10px] font-extrabold text-blue-500 uppercase">Total Rows</div>
-                                        <div className="text-base font-black text-foreground">{importPreviewData.summary.total_rows}</div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
+                                    <div className="bg-blue-500/10 border border-blue-500/20 p-2 rounded-xl">
+                                        <div className="text-[9px] font-extrabold text-blue-500 uppercase">Total Rows</div>
+                                        <div className="text-sm font-black text-foreground">{importPreviewData.summary.total_rows}</div>
                                     </div>
-                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
-                                        <div className="text-[10px] font-extrabold text-emerald-500 uppercase">Valid Rows</div>
-                                        <div className="text-base font-black text-emerald-600 dark:text-emerald-400">{importPreviewData.summary.valid_rows}</div>
+                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl">
+                                        <div className="text-[9px] font-extrabold text-emerald-500 uppercase">Valid Rows</div>
+                                        <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{importPreviewData.summary.valid_rows}</div>
                                     </div>
-                                    <div className="bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl">
-                                        <div className="text-[10px] font-extrabold text-rose-500 uppercase">Invalid Rows</div>
-                                        <div className="text-base font-black text-rose-500">{importPreviewData.summary.invalid_rows}</div>
+                                    <div className="bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl">
+                                        <div className="text-[9px] font-extrabold text-rose-500 uppercase">Invalid Rows</div>
+                                        <div className="text-sm font-black text-rose-500">{importPreviewData.summary.invalid_rows}</div>
                                     </div>
-                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl">
-                                        <div className="text-[10px] font-extrabold text-amber-500 uppercase">Duplicates</div>
-                                        <div className="text-base font-black text-amber-500">{importPreviewData.summary.duplicate_rows}</div>
+                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl">
+                                        <div className="text-[9px] font-extrabold text-amber-500 uppercase">Duplicates</div>
+                                        <div className="text-sm font-black text-amber-500">{importPreviewData.summary.duplicate_rows}</div>
+                                    </div>
+                                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-xl">
+                                        <div className="text-[9px] font-extrabold text-indigo-500 uppercase">Existing Cust.</div>
+                                        <div className="text-sm font-black text-indigo-600 dark:text-indigo-400">{importPreviewData.summary.existing_customers_used ?? 0}</div>
+                                    </div>
+                                    <div className="bg-purple-500/10 border border-purple-500/20 p-2 rounded-xl">
+                                        <div className="text-[9px] font-extrabold text-purple-500 uppercase">New Cust.</div>
+                                        <div className="text-sm font-black text-purple-600 dark:text-purple-400">{importPreviewData.summary.new_customers_created ?? 0}</div>
                                     </div>
                                 </div>
 
                                 {/* Duplicate Handling Radio Selection */}
-                                <div className="bg-muted/30 border border-border/60 p-3.5 rounded-xl space-y-2">
+                                <div className="bg-muted/30 border border-border/60 p-3 rounded-xl space-y-2">
                                     <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block">
                                         Duplicate Record Behavior:
                                     </label>
@@ -2438,6 +2446,58 @@ export default function OrdersPage() {
                                         </label>
                                     </div>
                                 </div>
+
+                                {/* Customer Resolution & Preview Table */}
+                                {importPreviewData.preview_items && importPreviewData.preview_items.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <div className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                            <User className="w-3.5 h-3.5 text-emerald-500" />
+                                            Customer Resolution & Preview (showing first {Math.min(10, importPreviewData.preview_items.length)} rows)
+                                        </div>
+                                        <div className="max-h-36 overflow-y-auto border border-border/80 rounded-xl bg-card text-xs">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead className="bg-muted/60 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80">
+                                                    <tr>
+                                                        <th className="p-2 pl-3">Row</th>
+                                                        <th className="p-2">Customer Name</th>
+                                                        <th className="p-2">Customer Action</th>
+                                                        <th className="p-2">P/N</th>
+                                                        <th className="p-2 text-center">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border/60 font-medium">
+                                                    {importPreviewData.preview_items.slice(0, 10).map((item: any, idx: number) => (
+                                                        <tr key={idx} className="hover:bg-muted/30">
+                                                            <td className="p-2 pl-3 font-mono font-bold text-muted-foreground">#{item.row_number}</td>
+                                                            <td className="p-2 font-bold text-foreground">{item.customer_name || 'N/A'}</td>
+                                                            <td className="p-2">
+                                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
+                                                                    item.is_new_customer
+                                                                        ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                                                                        : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                                                                }`}>
+                                                                    {item.customer_action || 'Existing Customer'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-2 font-mono text-[11px]">{item.p_n || 'N/A'}</td>
+                                                            <td className="p-2 text-center font-bold">
+                                                                {item.is_valid ? (
+                                                                    <span className="text-emerald-500 flex items-center justify-center gap-1 text-[11px]">
+                                                                        <CheckCircle className="w-3.5 h-3.5" /> Valid
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-rose-500 flex items-center justify-center gap-1 text-[11px]">
+                                                                        <AlertTriangle className="w-3.5 h-3.5" /> Error
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Validation Error List Preview */}
                                 {importPreviewData.invalid_rows && importPreviewData.invalid_rows.length > 0 && (
