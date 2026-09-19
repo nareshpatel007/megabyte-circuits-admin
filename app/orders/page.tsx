@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -108,6 +108,115 @@ export default function OrdersPage() {
     // Reorder modal state
     const [reorderModalOrder, setReorderModalOrder] = useState<ApiOrder | null>(null);
     const [reordering, setReordering] = useState(false);
+
+    // Import & Export Modal state
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importingPreview, setImportingPreview] = useState(false);
+    const [importPreviewData, setImportPreviewData] = useState<any | null>(null);
+    const [importDuplicateAction, setImportDuplicateAction] = useState<"skip" | "update" | "create_new">("skip");
+    const [executingImport, setExecutingImport] = useState(false);
+    const [exporting, setExporting] = useState(false);
+
+    const handleExportOrders = async () => {
+        setExporting(true);
+        const toastId = toast.loading("Generating manufacturer Excel file...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const queryParams = new URLSearchParams();
+            if (search) queryParams.set("search", search);
+            if (statusFilter && statusFilter !== "All") queryParams.set("status", statusFilter);
+            if (startDate) queryParams.set("start_date", startDate);
+            if (endDate) queryParams.set("end_date", endDate);
+
+            const res = await fetch(`/api/admin/orders/export?${queryParams.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error("Failed to generate export file");
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `PCB_Orders_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            toast.success("Excel file exported successfully!", { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to export orders", { id: toastId });
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handlePreviewImport = async (file: File) => {
+        setImportingPreview(true);
+        setImportPreviewData(null);
+        const toastId = toast.loading("Analyzing spreadsheet format and rows...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/admin/orders/import-preview", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+
+            const json = await res.json();
+            if (res.ok && json.success) {
+                setImportPreviewData(json);
+                toast.success(`Spreadsheet parsed: ${json.summary?.valid_rows || 0} valid rows found`, { id: toastId });
+            } else {
+                toast.error(json.message || "Failed to preview import file", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error parsing spreadsheet file", { id: toastId });
+        } finally {
+            setImportingPreview(false);
+        }
+    };
+
+    const handleExecuteImport = async () => {
+        if (!importFile) return;
+        setExecutingImport(true);
+        const toastId = toast.loading("Importing PCB orders into database...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const formData = new FormData();
+            formData.append("file", importFile);
+            formData.append("duplicate_action", importDuplicateAction);
+
+            const res = await fetch("/api/admin/orders/import", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+
+            const json = await res.json();
+            if (res.ok && json.success) {
+                toast.success(
+                    `Import completed! ${json.summary?.imported || 0} imported, ${json.summary?.updated || 0} updated, ${json.summary?.skipped || 0} skipped`,
+                    { id: toastId, duration: 5000 }
+                );
+                setImportModalOpen(false);
+                setImportFile(null);
+                setImportPreviewData(null);
+                fetchData(debouncedSearch);
+            } else {
+                toast.error(json.message || "Failed to execute import", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error executing order import", { id: toastId });
+        } finally {
+            setExecutingImport(false);
+        }
+    };
 
     const handleReorderSubmit = async () => {
         if (!reorderModalOrder) return;
@@ -597,15 +706,42 @@ export default function OrdersPage() {
         }
     };
 
-    const newOrderButton = hasCreateOrderPermission ? (
-        <Link
-            href="/orders/create"
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-        >
-            <Plus className="w-4 h-4" />
-            New Order
-        </Link>
-    ) : undefined;
+    const headerActions = (
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <Button
+                type="button"
+                variant="outline"
+                onClick={() => setImportModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
+            >
+                <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                Import Excel
+            </Button>
+            <Button
+                type="button"
+                variant="outline"
+                onClick={handleExportOrders}
+                disabled={exporting}
+                className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
+            >
+                {exporting ? (
+                    <RefreshCw className="w-3.5 h-3.5 text-emerald-500 animate-spin" />
+                ) : (
+                    <Download className="w-3.5 h-3.5 text-emerald-500" />
+                )}
+                Export Excel
+            </Button>
+            {hasCreateOrderPermission && (
+                <Link
+                    href="/orders/create"
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer h-9 sm:h-10"
+                >
+                    <Plus className="w-4 h-4" />
+                    New Order
+                </Link>
+            )}
+        </div>
+    );
 
     // Dynamic statistics based on current filtered orders
     const statsTotalOrders = filtered.length;
@@ -633,7 +769,7 @@ export default function OrdersPage() {
         <DashboardLayout
             title="Orders"
             subtitle={`${filtered.length} orders listed (${orders.length} total recorded)`}
-            action={newOrderButton}
+            action={headerActions}
         >
             {loading ? (
                 <OrdersSkeleton />
@@ -2048,6 +2184,185 @@ export default function OrdersPage() {
                                 <>
                                     <Copy className="w-3.5 h-3.5" />
                                     Confirm Reorder
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Manufacturer Excel Import Modal */}
+            <Dialog open={importModalOpen} onOpenChange={(open) => {
+                if (!open && (importingPreview || executingImport)) return;
+                setImportModalOpen(open);
+                if (!open) {
+                    setImportFile(null);
+                    setImportPreviewData(null);
+                }
+            }}>
+                <DialogContent className="max-w-2xl bg-card border-border/80 rounded-2xl shadow-xl p-6 text-foreground">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-black flex items-center gap-2">
+                            <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
+                            Import PCB Orders from Manufacturer Excel
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Upload a manufacturer Excel file (.xlsx, .xls) matching the standard 19-column layout.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        {/* File Upload Zone */}
+                        <div className="border-2 border-dashed border-border/80 hover:border-emerald-500/50 rounded-2xl p-6 text-center transition-all bg-muted/20">
+                            <input
+                                type="file"
+                                id="excel-file-input"
+                                accept=".xlsx, .xls"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const selected = e.target.files?.[0];
+                                    if (selected) {
+                                        setImportFile(selected);
+                                        setImportPreviewData(null);
+                                        handlePreviewImport(selected);
+                                    }
+                                }}
+                            />
+                            <label htmlFor="excel-file-input" className="cursor-pointer flex flex-col items-center justify-center gap-2">
+                                <Upload className="w-8 h-8 text-emerald-500" />
+                                <span className="text-xs font-bold text-foreground">
+                                    {importFile ? importFile.name : "Click to choose or drop manufacturer Excel file"}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground font-medium">
+                                    Supported formats: .xlsx, .xls (max 50MB)
+                                </span>
+                            </label>
+                        </div>
+
+                        {importingPreview && (
+                            <div className="flex items-center justify-center gap-2 py-4 text-xs font-bold text-emerald-500">
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Parsing headers & validating data rows...
+                            </div>
+                        )}
+
+                        {/* Import Preview Results */}
+                        {importPreviewData && importPreviewData.summary && (
+                            <div className="space-y-4">
+                                {/* Summary Badge Cards */}
+                                <div className="grid grid-cols-4 gap-2 text-center">
+                                    <div className="bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-xl">
+                                        <div className="text-[10px] font-extrabold text-blue-500 uppercase">Total Rows</div>
+                                        <div className="text-base font-black text-foreground">{importPreviewData.summary.total_rows}</div>
+                                    </div>
+                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
+                                        <div className="text-[10px] font-extrabold text-emerald-500 uppercase">Valid Rows</div>
+                                        <div className="text-base font-black text-emerald-600 dark:text-emerald-400">{importPreviewData.summary.valid_rows}</div>
+                                    </div>
+                                    <div className="bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl">
+                                        <div className="text-[10px] font-extrabold text-rose-500 uppercase">Invalid Rows</div>
+                                        <div className="text-base font-black text-rose-500">{importPreviewData.summary.invalid_rows}</div>
+                                    </div>
+                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl">
+                                        <div className="text-[10px] font-extrabold text-amber-500 uppercase">Duplicates</div>
+                                        <div className="text-base font-black text-amber-500">{importPreviewData.summary.duplicate_rows}</div>
+                                    </div>
+                                </div>
+
+                                {/* Duplicate Handling Radio Selection */}
+                                <div className="bg-muted/30 border border-border/60 p-3.5 rounded-xl space-y-2">
+                                    <label className="text-xs font-extrabold text-foreground uppercase tracking-wider block">
+                                        Duplicate Record Behavior:
+                                    </label>
+                                    <div className="flex flex-col sm:flex-row gap-3 text-xs font-bold text-foreground">
+                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="dupAction"
+                                                value="skip"
+                                                checked={importDuplicateAction === 'skip'}
+                                                onChange={() => setImportDuplicateAction('skip')}
+                                                className="accent-emerald-500"
+                                            />
+                                            Skip existing duplicates
+                                        </label>
+                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="dupAction"
+                                                value="update"
+                                                checked={importDuplicateAction === 'update'}
+                                                onChange={() => setImportDuplicateAction('update')}
+                                                className="accent-emerald-500"
+                                            />
+                                            Update existing records
+                                        </label>
+                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="dupAction"
+                                                value="create_new"
+                                                checked={importDuplicateAction === 'create_new'}
+                                                onChange={() => setImportDuplicateAction('create_new')}
+                                                className="accent-emerald-500"
+                                            />
+                                            Import all as new orders
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Validation Error List Preview */}
+                                {importPreviewData.invalid_rows && importPreviewData.invalid_rows.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <div className="text-xs font-extrabold text-rose-500 flex items-center gap-1.5">
+                                            <AlertTriangle className="w-4 h-4" />
+                                            Invalid Rows Summary ({importPreviewData.invalid_rows.length} rows will be skipped):
+                                        </div>
+                                        <div className="max-h-36 overflow-y-auto border border-rose-500/20 bg-rose-500/5 rounded-xl p-3 text-[11px] space-y-1">
+                                            {importPreviewData.invalid_rows.map((inv: any, i: number) => (
+                                                <div key={i} className="flex gap-2">
+                                                    <span className="font-bold text-rose-500 shrink-0">Row {inv.row}:</span>
+                                                    <span className="text-muted-foreground">
+                                                        {Object.entries(inv.errors || {}).map(([col, err]) => `${col}: ${err}`).join(" | ")}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setImportModalOpen(false);
+                                setImportFile(null);
+                                setImportPreviewData(null);
+                            }}
+                            disabled={executingImport}
+                            className="rounded-xl text-xs font-bold cursor-pointer"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleExecuteImport}
+                            disabled={!importFile || !importPreviewData || importPreviewData.summary?.valid_rows === 0 || executingImport}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-xs"
+                        >
+                            {executingImport ? (
+                                <>
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    Importing Orders...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-3.5 h-3.5" />
+                                    Import {importPreviewData?.summary?.valid_rows || 0} Valid Records
                                 </>
                             )}
                         </Button>
