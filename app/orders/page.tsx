@@ -116,20 +116,128 @@ export default function OrdersPage() {
     const [importPreviewData, setImportPreviewData] = useState<any | null>(null);
     const [importDuplicateAction, setImportDuplicateAction] = useState<"skip" | "update" | "create_new">("skip");
     const [executingImport, setExecutingImport] = useState(false);
+    
+    // Export Modal & Filter Preview state
+    const [exportModalOpen, setExportModalOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [exportStartDate, setExportStartDate] = useState("");
+    const [exportEndDate, setExportEndDate] = useState("");
+    const [exportDateField, setExportDateField] = useState("created_at");
+    const [exportStatus, setExportStatus] = useState("All");
+    const [exportCustomer, setExportCustomer] = useState("");
+    const [exportLayer, setExportLayer] = useState("All");
+    const [exportMask, setExportMask] = useState("All");
+    const [exportCg, setExportCg] = useState("All");
+    const [exportTool, setExportTool] = useState("");
+    const [exportCombo, setExportCombo] = useState("");
+    const [exportPn, setExportPn] = useState("");
+    const [exportQuoteNo, setExportQuoteNo] = useState("");
+    const [exportBillNo, setExportBillNo] = useState("");
+    const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
+    const [exportPreviewLoading, setExportPreviewLoading] = useState(false);
+    const [exportPreviewData, setExportPreviewData] = useState<{ total: number; data: any[]; current_page: number; last_page: number } | null>(null);
+    const [exportPreviewPage, setExportPreviewPage] = useState(1);
 
-    const handleExportOrders = async () => {
-        setExporting(true);
-        const toastId = toast.loading("Generating manufacturer Excel file...");
+    const handleDownloadSampleSheet = async () => {
+        const toastId = toast.loading("Downloading sample Excel template...");
         try {
             const token = localStorage.getItem("admin_token");
-            const queryParams = new URLSearchParams();
-            if (search) queryParams.set("search", search);
-            if (statusFilter && statusFilter !== "All") queryParams.set("status", statusFilter);
-            if (startDate) queryParams.set("start_date", startDate);
-            if (endDate) queryParams.set("end_date", endDate);
+            const res = await fetch("/api/admin/orders/import-sample", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error("Failed to download sample sheet");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "sample_pcb_manufacturing_orders.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success("Sample template downloaded!", { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || "Error downloading sample sheet", { id: toastId });
+        }
+    };
 
-            const res = await fetch(`/api/admin/orders/export?${queryParams.toString()}`, {
+    const fetchExportPreview = async (pageToFetch: number = 1) => {
+        setExportPreviewLoading(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const params = new URLSearchParams();
+            if (exportStartDate) params.set("start_date", exportStartDate);
+            if (exportEndDate) params.set("end_date", exportEndDate);
+            if (exportDateField) params.set("date_field", exportDateField);
+            if (exportStatus && exportStatus !== "All") params.set("status", exportStatus);
+            if (exportCustomer) params.set("customer", exportCustomer);
+            if (exportLayer && exportLayer !== "All") params.set("layer", exportLayer);
+            if (exportMask && exportMask !== "All") params.set("mask", exportMask);
+            if (exportCg && exportCg !== "All") params.set("cg", exportCg);
+            if (exportTool) params.set("tool", exportTool);
+            if (exportCombo) params.set("combo", exportCombo);
+            if (exportPn) params.set("pn", exportPn);
+            if (exportQuoteNo) params.set("quote_no", exportQuoteNo);
+            if (exportBillNo) params.set("bill_no", exportBillNo);
+            params.set("page", pageToFetch.toString());
+            params.set("per_page", "5");
+
+            const res = await fetch(`/api/admin/orders/export-preview?${params.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (res.ok && json.success) {
+                setExportPreviewData(json);
+                setExportPreviewPage(json.current_page || 1);
+            } else {
+                setExportPreviewData(null);
+            }
+        } catch (e) {
+            console.error("Export preview fetch error:", e);
+        } finally {
+            setExportPreviewLoading(false);
+        }
+    };
+
+    const handleResetExportFilters = () => {
+        setExportStartDate("");
+        setExportEndDate("");
+        setExportDateField("created_at");
+        setExportStatus("All");
+        setExportCustomer("");
+        setExportLayer("All");
+        setExportMask("All");
+        setExportCg("All");
+        setExportTool("");
+        setExportCombo("");
+        setExportPn("");
+        setExportQuoteNo("");
+        setExportBillNo("");
+        setExportPreviewPage(1);
+    };
+
+    const handleDownloadFilteredExport = async () => {
+        setExporting(true);
+        const toastId = toast.loading(`Generating ${exportFormat.toUpperCase()} file...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const params = new URLSearchParams();
+            params.set("format", exportFormat);
+            if (exportStartDate) params.set("start_date", exportStartDate);
+            if (exportEndDate) params.set("end_date", exportEndDate);
+            if (exportDateField) params.set("date_field", exportDateField);
+            if (exportStatus && exportStatus !== "All") params.set("status", exportStatus);
+            if (exportCustomer) params.set("customer", exportCustomer);
+            if (exportLayer && exportLayer !== "All") params.set("layer", exportLayer);
+            if (exportMask && exportMask !== "All") params.set("mask", exportMask);
+            if (exportCg && exportCg !== "All") params.set("cg", exportCg);
+            if (exportTool) params.set("tool", exportTool);
+            if (exportCombo) params.set("combo", exportCombo);
+            if (exportPn) params.set("pn", exportPn);
+            if (exportQuoteNo) params.set("quote_no", exportQuoteNo);
+            if (exportBillNo) params.set("bill_no", exportBillNo);
+
+            const res = await fetch(`/api/admin/orders/export?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -139,19 +247,22 @@ export default function OrdersPage() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `PCB_Orders_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            const filenameDate = new Date().toISOString().slice(0, 10);
+            a.download = `pcb-manufacturing-export-${filenameDate}.${exportFormat}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            toast.success("Excel file exported successfully!", { id: toastId });
+            toast.success(`Export file (${exportFormat.toUpperCase()}) downloaded successfully!`, { id: toastId });
+            setExportModalOpen(false);
         } catch (err: any) {
-            toast.error(err?.message || "Failed to export orders", { id: toastId });
+            toast.error(err?.message || "Failed to download export", { id: toastId });
         } finally {
             setExporting(false);
         }
     };
+
 
     const handlePreviewImport = async (file: File) => {
         setImportingPreview(true);
@@ -720,15 +831,13 @@ export default function OrdersPage() {
             <Button
                 type="button"
                 variant="outline"
-                onClick={handleExportOrders}
-                disabled={exporting}
+                onClick={() => {
+                    setExportModalOpen(true);
+                    fetchExportPreview(1);
+                }}
                 className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
             >
-                {exporting ? (
-                    <RefreshCw className="w-3.5 h-3.5 text-emerald-500 animate-spin" />
-                ) : (
-                    <Download className="w-3.5 h-3.5 text-emerald-500" />
-                )}
+                <Download className="w-3.5 h-3.5 text-emerald-500" />
                 Export Excel
             </Button>
             {hasCreateOrderPermission && (
@@ -2212,6 +2321,25 @@ export default function OrdersPage() {
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
+                        {/* Sample Sheet Download Banner */}
+                        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="space-y-0.5 text-left">
+                                <h4 className="text-xs font-black text-foreground">Import PCB Data</h4>
+                                <p className="text-[11px] text-muted-foreground">
+                                    Download the sample file, fill in your PCB manufacturing data, and upload it below.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleDownloadSampleSheet}
+                                className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs gap-1.5 cursor-pointer h-9"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                Download Sample Sheet
+                            </Button>
+                        </div>
+
                         {/* File Upload Zone */}
                         <div className="border-2 border-dashed border-border/80 hover:border-emerald-500/50 rounded-2xl p-6 text-center transition-all bg-muted/20">
                             <input
@@ -2367,6 +2495,387 @@ export default function OrdersPage() {
                             )}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Export PCB Data Modal */}
+            <Dialog open={exportModalOpen} onOpenChange={(open) => setExportModalOpen(open)}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-border/80 rounded-2xl shadow-xl p-6 text-foreground">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-black flex items-center gap-2">
+                            <Download className="w-5 h-5 text-emerald-500" />
+                            Export PCB Data
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Define filter criteria, preview matching PCB records, and select export format (XLSX / CSV).
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6 py-2">
+                        {/* Filters Form Card */}
+                        <div className="bg-muted/30 border border-border/60 p-4 rounded-2xl space-y-4">
+                            <div className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-1.5 border-b border-border/50 pb-2">
+                                <Search className="w-3.5 h-3.5 text-emerald-500" />
+                                Export Filters
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                                {/* Date Type Selector */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Date Field</label>
+                                    <Select value={exportDateField} onValueChange={setExportDateField}>
+                                        <SelectTrigger className="h-9 text-xs rounded-xl border-border/80 bg-card">
+                                            <SelectValue placeholder="Date Field" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="created_at">Order Date</SelectItem>
+                                            <SelectItem value="launch_date">Launch Date</SelectItem>
+                                            <SelectItem value="delivery_date">Delivery Date</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* From Date */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">From Date</label>
+                                    <Input
+                                        type="date"
+                                        value={exportStartDate}
+                                        onChange={(e) => setExportStartDate(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+
+                                {/* To Date */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">To Date</label>
+                                    <Input
+                                        type="date"
+                                        value={exportEndDate}
+                                        onChange={(e) => setExportEndDate(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+
+                                {/* Status */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Status</label>
+                                    <Select value={exportStatus} onValueChange={setExportStatus}>
+                                        <SelectTrigger className="h-9 text-xs rounded-xl border-border/80 bg-card">
+                                            <SelectValue placeholder="All Statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="All">All Statuses</SelectItem>
+                                            {statuses.map((st) => (
+                                                <SelectItem key={st.id} value={st.slug || st.name}>
+                                                    {st.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Customer */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Customer Name</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="All Customers"
+                                        value={exportCustomer}
+                                        onChange={(e) => setExportCustomer(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+
+                                {/* Layer */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Layer</label>
+                                    <Select value={exportLayer} onValueChange={setExportLayer}>
+                                        <SelectTrigger className="h-9 text-xs rounded-xl border-border/80 bg-card">
+                                            <SelectValue placeholder="All Layers" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="All">All Layers</SelectItem>
+                                            <SelectItem value="1">1 Layer</SelectItem>
+                                            <SelectItem value="2">2 Layer</SelectItem>
+                                            <SelectItem value="4">4 Layer</SelectItem>
+                                            <SelectItem value="6">6 Layer</SelectItem>
+                                            <SelectItem value="8">8 Layer</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Mask */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Mask Colour</label>
+                                    <Select value={exportMask} onValueChange={setExportMask}>
+                                        <SelectTrigger className="h-9 text-xs rounded-xl border-border/80 bg-card">
+                                            <SelectValue placeholder="All Masks" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="All">All Masks</SelectItem>
+                                            <SelectItem value="Green">Green</SelectItem>
+                                            <SelectItem value="Red">Red</SelectItem>
+                                            <SelectItem value="Blue">Blue</SelectItem>
+                                            <SelectItem value="Black">Black</SelectItem>
+                                            <SelectItem value="White">White</SelectItem>
+                                            <SelectItem value="Yellow">Yellow</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* C/G */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">C/G</label>
+                                    <Select value={exportCg} onValueChange={setExportCg}>
+                                        <SelectTrigger className="h-9 text-xs rounded-xl border-border/80 bg-card">
+                                            <SelectValue placeholder="All C/G" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="All">All</SelectItem>
+                                            <SelectItem value="Cash">Cash</SelectItem>
+                                            <SelectItem value="GST">GST</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Part Number (P/N) */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">P/N (Part Number)</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Search Part Number"
+                                        value={exportPn}
+                                        onChange={(e) => setExportPn(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+
+                                {/* Quote # (Q# No.) */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Q# No. (Quote Number)</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Search Quote Number"
+                                        value={exportQuoteNo}
+                                        onChange={(e) => setExportQuoteNo(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+
+                                {/* Tool */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Tool</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="All Tools"
+                                        value={exportTool}
+                                        onChange={(e) => setExportTool(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+
+                                {/* Bill Number */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Bill Number</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Search Bill Number"
+                                        value={exportBillNo}
+                                        onChange={(e) => setExportBillNo(e.target.value)}
+                                        className="h-9 text-xs rounded-xl border-border/80 bg-card"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        handleResetExportFilters();
+                                        fetchExportPreview(1);
+                                    }}
+                                    className="rounded-xl text-xs font-bold h-8 px-3 cursor-pointer"
+                                >
+                                    Reset Filters
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => fetchExportPreview(1)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold h-8 px-4 gap-1.5 cursor-pointer"
+                                >
+                                    <Search className="w-3.5 h-3.5" />
+                                    Apply Filters
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Filter Preview Section */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2">
+                                    Preview
+                                    <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[11px] font-extrabold lowercase">
+                                        {exportPreviewLoading ? "counting..." : `${exportPreviewData?.total || 0} records found`}
+                                    </span>
+                                </div>
+                                {exportPreviewData && exportPreviewData.last_page > 1 && (
+                                    <div className="flex items-center gap-1.5 text-xs">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={exportPreviewPage <= 1 || exportPreviewLoading}
+                                            onClick={() => fetchExportPreview(exportPreviewPage - 1)}
+                                            className="h-7 w-7 p-0 rounded-lg"
+                                        >
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <span className="text-[11px] font-bold text-muted-foreground">
+                                            Page {exportPreviewPage} of {exportPreviewData.last_page}
+                                        </span>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={exportPreviewPage >= exportPreviewData.last_page || exportPreviewLoading}
+                                            onClick={() => fetchExportPreview(exportPreviewPage + 1)}
+                                            className="h-7 w-7 p-0 rounded-lg"
+                                        >
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Preview Table */}
+                            <div className="border border-border/80 rounded-2xl overflow-hidden bg-card text-xs">
+                                {exportPreviewLoading ? (
+                                    <div className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+                                        <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+                                        Loading filter preview...
+                                    </div>
+                                ) : exportPreviewData && exportPreviewData.data && exportPreviewData.data.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-muted/50 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80">
+                                                <tr>
+                                                    <th className="p-2.5 pl-4">Order Date</th>
+                                                    <th className="p-2.5">Q# No.</th>
+                                                    <th className="p-2.5">Customer</th>
+                                                    <th className="p-2.5">P/N</th>
+                                                    <th className="p-2.5 text-center">Layer</th>
+                                                    <th className="p-2.5 text-center">Qty</th>
+                                                    <th className="p-2.5 text-center">Final Qty</th>
+                                                    <th className="p-2.5 text-center">Status</th>
+                                                    <th className="p-2.5 pr-4">Bill #</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/60 text-xs font-medium">
+                                                {exportPreviewData.data.map((row: any) => (
+                                                    <tr key={row.id} className="hover:bg-muted/30 transition-all">
+                                                        <td className="p-2.5 pl-4 font-mono text-[11px] font-semibold">{row.order_date || 'N/A'}</td>
+                                                        <td className="p-2.5 font-mono text-emerald-600 font-bold">{row.quote_number || 'N/A'}</td>
+                                                        <td className="p-2.5 font-bold truncate max-w-[140px]">{row.customer_name || 'N/A'}</td>
+                                                        <td className="p-2.5 font-semibold text-foreground/80 truncate max-w-[120px]">{row.p_n || row.board_name || 'N/A'}</td>
+                                                        <td className="p-2.5 text-center font-bold">{row.layer || '1'}</td>
+                                                        <td className="p-2.5 text-center font-mono font-bold">{row.qty || '0'}</td>
+                                                        <td className="p-2.5 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">{row.completed_qty || row.final_qty || '0'}</td>
+                                                        <td className="p-2.5 text-center">
+                                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/10 text-blue-500 uppercase">
+                                                                {row.status || 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-2.5 pr-4 font-mono text-muted-foreground">{row.bill_number || 'N/A'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center text-muted-foreground space-y-1">
+                                        <Info className="w-6 h-6 text-amber-500 mx-auto mb-1" />
+                                        <p className="font-bold text-xs">No records found for the selected filters.</p>
+                                        <p className="text-[11px]">Please adjust your filter criteria and try again.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Selected Filters Summary & Download Controls */}
+                        <div className="bg-muted/20 border border-border/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                            {/* Active Filters Summary */}
+                            <div className="space-y-1 text-xs">
+                                <div className="font-extrabold text-foreground uppercase tracking-wider text-[10px]">Export Summary:</div>
+                                <div className="flex flex-wrap gap-2 text-[11px] font-medium text-muted-foreground">
+                                    <span className="bg-card border border-border/80 px-2.5 py-1 rounded-lg">
+                                        <strong className="text-foreground">Records:</strong> {exportPreviewData?.total || 0}
+                                    </span>
+                                    <span className="bg-card border border-border/80 px-2.5 py-1 rounded-lg">
+                                        <strong className="text-foreground">Status:</strong> {exportStatus}
+                                    </span>
+                                    {exportCustomer && (
+                                        <span className="bg-card border border-border/80 px-2.5 py-1 rounded-lg">
+                                            <strong className="text-foreground">Customer:</strong> {exportCustomer}
+                                        </span>
+                                    )}
+                                    {(exportStartDate || exportEndDate) && (
+                                        <span className="bg-card border border-border/80 px-2.5 py-1 rounded-lg">
+                                            <strong className="text-foreground">Date:</strong> {exportStartDate || 'Start'} → {exportEndDate || 'End'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Export Format Selector & Action */}
+                            <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-2 bg-card border border-border/80 p-1.5 rounded-xl text-xs font-bold">
+                                    <label className="flex items-center gap-1.5 px-2 py-1 rounded-lg cursor-pointer hover:bg-muted/50">
+                                        <input
+                                            type="radio"
+                                            name="exportFormat"
+                                            value="xlsx"
+                                            checked={exportFormat === 'xlsx'}
+                                            onChange={() => setExportFormat('xlsx')}
+                                            className="accent-emerald-500"
+                                        />
+                                        XLSX
+                                    </label>
+                                    <label className="flex items-center gap-1.5 px-2 py-1 rounded-lg cursor-pointer hover:bg-muted/50">
+                                        <input
+                                            type="radio"
+                                            name="exportFormat"
+                                            value="csv"
+                                            checked={exportFormat === 'csv'}
+                                            onChange={() => setExportFormat('csv')}
+                                            className="accent-emerald-500"
+                                        />
+                                        CSV
+                                    </label>
+                                </div>
+
+                                <Button
+                                    type="button"
+                                    onClick={handleDownloadFilteredExport}
+                                    disabled={exporting || !exportPreviewData || exportPreviewData.total === 0}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs gap-2 px-5 h-10 cursor-pointer"
+                                >
+                                    {exporting ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Generating Export...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4" />
+                                            Download {exportFormat.toUpperCase()} ({exportPreviewData?.total || 0})
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
         </DashboardLayout>
