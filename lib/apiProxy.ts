@@ -99,7 +99,7 @@ export async function handleApiProxy(
         const buffer = await apiRes.arrayBuffer();
 
         const responseHeaders = new Headers();
-        const passHeaders = ["content-type", "content-disposition", "content-length", "cache-control"];
+        const passHeaders = ["content-type", "content-disposition", "cache-control"];
         passHeaders.forEach(h => {
             const val = apiRes.headers.get(h);
             if (val) {
@@ -110,6 +110,8 @@ export async function handleApiProxy(
         if (!responseHeaders.has("content-type")) {
             responseHeaders.set("content-type", "application/json");
         }
+
+        responseHeaders.set("content-length", buffer.byteLength.toString());
 
         return new NextResponse(buffer, {
             status: apiRes.status,
