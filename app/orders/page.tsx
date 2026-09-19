@@ -269,25 +269,52 @@ export default function OrdersPage() {
             if (exportEndDate) params.set("end_date", exportEndDate);
             if (exportDateField) params.set("date_field", exportDateField);
             if (exportStatus && exportStatus !== "All") params.set("status", exportStatus);
-            if (exportCustomer) params.set("customer", exportCustomer);
+            if (exportCustomer) {
+                params.set("customer", exportCustomer);
+                params.set("customer_name", exportCustomer);
+            }
             if (exportLayer && exportLayer !== "All") params.set("layer", exportLayer);
             if (exportMask && exportMask !== "All") params.set("mask", exportMask);
-            if (exportCg && exportCg !== "All") params.set("cg", exportCg);
+            if (exportCg && exportCg !== "All") {
+                params.set("cg", exportCg);
+                params.set("c_g", exportCg);
+            }
             if (exportTool) params.set("tool", exportTool);
             if (exportCombo) params.set("combo", exportCombo);
-            if (exportPn) params.set("pn", exportPn);
-            if (exportQuoteNo) params.set("quote_no", exportQuoteNo);
-            if (exportBillNo) params.set("bill_no", exportBillNo);
+            if (exportPn) {
+                params.set("pn", exportPn);
+                params.set("p_n", exportPn);
+            }
+            if (exportQuoteNo) {
+                params.set("quote_no", exportQuoteNo);
+                params.set("quote_number", exportQuoteNo);
+            }
+            if (exportBillNo) {
+                params.set("bill_no", exportBillNo);
+                params.set("bill_number", exportBillNo);
+            }
             params.set("page", pageToFetch.toString());
-            params.set("per_page", "5");
+            params.set("per_page", "10");
 
             const res = await fetch(`/api/admin/orders/export-preview?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const json = await res.json();
             if (res.ok && json.success) {
-                setExportPreviewData(json);
-                setExportPreviewPage(json.current_page || 1);
+                const totalCount = json.total_count ?? json.total ?? (json.data ? json.data.length : 0);
+                const lastPage = json.last_page ?? json.total_pages ?? 1;
+                const currentPage = json.current_page ?? json.page ?? pageToFetch;
+
+                setExportPreviewData({
+                    ...json,
+                    total: totalCount,
+                    total_count: totalCount,
+                    last_page: lastPage,
+                    total_pages: lastPage,
+                    current_page: currentPage,
+                    page: currentPage,
+                });
+                setExportPreviewPage(currentPage);
             } else {
                 setExportPreviewData(null);
             }
@@ -326,15 +353,30 @@ export default function OrdersPage() {
             if (exportEndDate) params.set("end_date", exportEndDate);
             if (exportDateField) params.set("date_field", exportDateField);
             if (exportStatus && exportStatus !== "All") params.set("status", exportStatus);
-            if (exportCustomer) params.set("customer", exportCustomer);
+            if (exportCustomer) {
+                params.set("customer", exportCustomer);
+                params.set("customer_name", exportCustomer);
+            }
             if (exportLayer && exportLayer !== "All") params.set("layer", exportLayer);
             if (exportMask && exportMask !== "All") params.set("mask", exportMask);
-            if (exportCg && exportCg !== "All") params.set("cg", exportCg);
+            if (exportCg && exportCg !== "All") {
+                params.set("cg", exportCg);
+                params.set("c_g", exportCg);
+            }
             if (exportTool) params.set("tool", exportTool);
             if (exportCombo) params.set("combo", exportCombo);
-            if (exportPn) params.set("pn", exportPn);
-            if (exportQuoteNo) params.set("quote_no", exportQuoteNo);
-            if (exportBillNo) params.set("bill_no", exportBillNo);
+            if (exportPn) {
+                params.set("pn", exportPn);
+                params.set("p_n", exportPn);
+            }
+            if (exportQuoteNo) {
+                params.set("quote_no", exportQuoteNo);
+                params.set("quote_number", exportQuoteNo);
+            }
+            if (exportBillNo) {
+                params.set("bill_no", exportBillNo);
+                params.set("bill_number", exportBillNo);
+            }
 
             const res = await fetch(`/api/admin/orders/export?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -2409,7 +2451,7 @@ export default function OrdersPage() {
                     setImportPreviewData(null);
                 }
             }}>
-                <DialogContent className="max-w-2xl bg-card border-border/80 rounded-2xl shadow-xl p-6 text-foreground">
+                <DialogContent className="sm:max-w-7xl w-[95vw] max-h-[92vh] overflow-y-auto bg-card border-border/80 rounded-2xl shadow-2xl p-6 text-foreground">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-black flex items-center gap-2">
                             <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
@@ -2547,30 +2589,38 @@ export default function OrdersPage() {
                                     </div>
                                 </div>
 
-                                {/* Customer Resolution & Preview Table */}
+                                {/* Customer Resolution & All Preview Rows Table */}
                                 {importPreviewData.preview_items && importPreviewData.preview_items.length > 0 && (
                                     <div className="space-y-1.5">
-                                        <div className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                                            <User className="w-3.5 h-3.5 text-emerald-500" />
-                                            Customer Resolution & Preview (showing first {Math.min(10, importPreviewData.preview_items.length)} rows)
+                                        <div className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <User className="w-3.5 h-3.5 text-emerald-500" />
+                                                Customer Resolution & Preview (All {importPreviewData.preview_items.length} Rows Data)
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground font-semibold">
+                                                Showing {importPreviewData.preview_items.length} of {importPreviewData.summary?.total_rows ?? importPreviewData.preview_items.length} total rows
+                                            </span>
                                         </div>
-                                        <div className="max-h-36 overflow-y-auto border border-border/80 rounded-xl bg-card text-xs">
+                                        <div className="max-h-[500px] overflow-y-auto border border-border/80 rounded-xl bg-card text-xs">
                                             <table className="w-full text-left border-collapse">
-                                                <thead className="bg-muted/60 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80">
+                                                <thead className="bg-muted/80 backdrop-blur-xs text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80 sticky top-0 z-10">
                                                     <tr>
-                                                        <th className="p-2 pl-3">Row</th>
-                                                        <th className="p-2">Customer Name</th>
-                                                        <th className="p-2">Customer Action</th>
-                                                        <th className="p-2">P/N</th>
-                                                        <th className="p-2 text-center">Status</th>
+                                                        <th className="p-2.5 pl-3">Row</th>
+                                                        <th className="p-2.5">Customer Name</th>
+                                                        <th className="p-2.5">Customer Action</th>
+                                                        <th className="p-2.5">P/N (Part Name)</th>
+                                                        <th className="p-2.5">Qty</th>
+                                                        <th className="p-2.5">Order Date</th>
+                                                        <th className="p-2.5">Record Type</th>
+                                                        <th className="p-2.5 text-center">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-border/60 font-medium">
-                                                    {importPreviewData.preview_items.slice(0, 10).map((item: any, idx: number) => (
+                                                    {importPreviewData.preview_items.map((item: any, idx: number) => (
                                                         <tr key={idx} className="hover:bg-muted/30">
-                                                            <td className="p-2 pl-3 font-mono font-bold text-muted-foreground">#{item.row_number}</td>
-                                                            <td className="p-2 font-bold text-foreground">{item.customer_name || 'N/A'}</td>
-                                                            <td className="p-2">
+                                                            <td className="p-2.5 pl-3 font-mono font-bold text-muted-foreground">#{item.row_number}</td>
+                                                            <td className="p-2.5 font-bold text-foreground">{item.customer_name || 'N/A'}</td>
+                                                            <td className="p-2.5">
                                                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
                                                                     item.is_new_customer
                                                                         ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
@@ -2579,8 +2629,21 @@ export default function OrdersPage() {
                                                                     {item.customer_action || 'Existing Customer'}
                                                                 </span>
                                                             </td>
-                                                            <td className="p-2 font-mono text-[11px]">{item.p_n || 'N/A'}</td>
-                                                            <td className="p-2 text-center font-bold">
+                                                            <td className="p-2.5 font-mono text-[11px] font-bold">{item.p_n || 'N/A'}</td>
+                                                            <td className="p-2.5 font-mono text-[11px]">{item.quantity ? `${item.quantity} pcs` : '-'}</td>
+                                                            <td className="p-2.5 text-[11px] whitespace-nowrap">{item.order_date || '-'}</td>
+                                                            <td className="p-2.5">
+                                                                {item.is_duplicate ? (
+                                                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                                        Duplicate ({item.matched_order_number || 'Tool Match'})
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                        New Record
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2.5 text-center font-bold">
                                                                 {item.is_valid ? (
                                                                     <span className="text-emerald-500 flex items-center justify-center gap-1 text-[11px]">
                                                                         <CheckCircle className="w-3.5 h-3.5" /> Valid
@@ -2877,7 +2940,7 @@ export default function OrdersPage() {
 
             {/* Export PCB Data Modal */}
             <Dialog open={exportModalOpen} onOpenChange={(open) => setExportModalOpen(open)}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-border/80 rounded-2xl shadow-xl p-6 text-foreground">
+                <DialogContent className="sm:max-w-7xl w-[95vw] max-h-[92vh] overflow-y-auto bg-card border-border/80 rounded-2xl shadow-2xl p-6 text-foreground">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-black flex items-center gap-2">
                             <Download className="w-5 h-5 text-emerald-500" />
@@ -3093,11 +3156,11 @@ export default function OrdersPage() {
                             <div className="flex items-center justify-between">
                                 <div className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2">
                                     Preview
-                                    <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[11px] font-extrabold lowercase">
-                                        {exportPreviewLoading ? "counting..." : `${exportPreviewData?.total || 0} records found`}
+                                    <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold lowercase">
+                                        {exportPreviewLoading ? "counting..." : `${exportPreviewData?.total_count ?? exportPreviewData?.total ?? exportPreviewData?.data?.length ?? 0} records found`}
                                     </span>
                                 </div>
-                                {exportPreviewData && exportPreviewData.last_page > 1 && (
+                                {exportPreviewData && (exportPreviewData.last_page > 1 || exportPreviewData.total_pages > 1) && (
                                     <div className="flex items-center gap-1.5 text-xs">
                                         <Button
                                             type="button"
@@ -3105,20 +3168,20 @@ export default function OrdersPage() {
                                             size="sm"
                                             disabled={exportPreviewPage <= 1 || exportPreviewLoading}
                                             onClick={() => fetchExportPreview(exportPreviewPage - 1)}
-                                            className="h-7 w-7 p-0 rounded-lg"
+                                            className="h-7 w-7 p-0 rounded-lg cursor-pointer"
                                         >
                                             <ChevronLeft className="w-3.5 h-3.5" />
                                         </Button>
                                         <span className="text-[11px] font-bold text-muted-foreground">
-                                            Page {exportPreviewPage} of {exportPreviewData.last_page}
+                                            Page {exportPreviewPage} of {exportPreviewData.last_page ?? exportPreviewData.total_pages ?? 1}
                                         </span>
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            disabled={exportPreviewPage >= exportPreviewData.last_page || exportPreviewLoading}
+                                            disabled={exportPreviewPage >= (exportPreviewData.last_page ?? exportPreviewData.total_pages ?? 1) || exportPreviewLoading}
                                             onClick={() => fetchExportPreview(exportPreviewPage + 1)}
-                                            className="h-7 w-7 p-0 rounded-lg"
+                                            className="h-7 w-7 p-0 rounded-lg cursor-pointer"
                                         >
                                             <ChevronRight className="w-3.5 h-3.5" />
                                         </Button>
@@ -3134,9 +3197,9 @@ export default function OrdersPage() {
                                         Loading filter preview...
                                     </div>
                                 ) : exportPreviewData && exportPreviewData.data && exportPreviewData.data.length > 0 ? (
-                                    <div className="overflow-x-auto">
+                                    <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
-                                            <thead className="bg-muted/50 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80">
+                                            <thead className="bg-muted/80 backdrop-blur-xs text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80 sticky top-0 z-10">
                                                 <tr>
                                                     <th className="p-2.5 pl-4">Order Date</th>
                                                     <th className="p-2.5">Q# No.</th>
@@ -3187,7 +3250,7 @@ export default function OrdersPage() {
                                 <div className="font-extrabold text-foreground uppercase tracking-wider text-[10px]">Export Summary:</div>
                                 <div className="flex flex-wrap gap-2 text-[11px] font-medium text-muted-foreground">
                                     <span className="bg-card border border-border/80 px-2.5 py-1 rounded-lg">
-                                        <strong className="text-foreground">Records:</strong> {exportPreviewData?.total || 0}
+                                        <strong className="text-foreground">Records:</strong> {exportPreviewData?.total_count ?? exportPreviewData?.total ?? exportPreviewData?.data?.length ?? 0}
                                     </span>
                                     <span className="bg-card border border-border/80 px-2.5 py-1 rounded-lg">
                                         <strong className="text-foreground">Status:</strong> {exportStatus}
@@ -3235,7 +3298,7 @@ export default function OrdersPage() {
                                 <Button
                                     type="button"
                                     onClick={handleDownloadFilteredExport}
-                                    disabled={exporting || !exportPreviewData || exportPreviewData.total === 0}
+                                    disabled={exporting || !exportPreviewData || ((exportPreviewData.total_count ?? exportPreviewData.total ?? 0) === 0 && (!exportPreviewData.data || exportPreviewData.data.length === 0))}
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs gap-2 px-5 h-10 cursor-pointer"
                                 >
                                     {exporting ? (
@@ -3246,7 +3309,7 @@ export default function OrdersPage() {
                                     ) : (
                                         <>
                                             <Download className="w-4 h-4" />
-                                            Download {exportFormat.toUpperCase()} ({exportPreviewData?.total || 0})
+                                            Download {exportFormat.toUpperCase()} ({exportPreviewData?.total_count ?? exportPreviewData?.total ?? exportPreviewData?.data?.length ?? 0})
                                         </>
                                     )}
                                 </Button>
