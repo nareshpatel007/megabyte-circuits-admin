@@ -199,22 +199,23 @@ export default function OrdersPage() {
         }
     };
 
-    // Auto-poll active background imports every 3 seconds
+    // Fetch import history on mount
     useEffect(() => {
         fetchImportHistory();
     }, []);
 
+    // Poll import history only if modal is open and has active background jobs
     useEffect(() => {
+        if (!importModalOpen) return;
         const hasActive = importHistory.some(imp => imp.status === "queued" || imp.status === "processing");
-        if (!hasActive && !importModalOpen) return;
+        if (!hasActive) return;
 
         const interval = setInterval(() => {
             fetchImportHistory();
-            fetchData(debouncedSearch);
-        }, 3000);
+        }, 5000);
 
         return () => clearInterval(interval);
-    }, [importHistory, importModalOpen]);
+    }, [importModalOpen]);
 
     // Export Modal & Filter Preview state
     const [exportModalOpen, setExportModalOpen] = useState(false);

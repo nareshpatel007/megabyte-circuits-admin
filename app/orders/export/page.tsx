@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { 
     Download, 
@@ -30,12 +30,13 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 interface StatusItem {
     id: number;
     name: string;
-    slug: string;
-    color: string;
+    slug?: string;
+    color?: string;
 }
 
 interface PreviewRow {
     id: number;
+    tool_number?: string;
     order_number: string;
     order_date: string;
     quote_number: string;
@@ -104,6 +105,30 @@ export default function ExportOrdersPage() {
 
         fetchStatuses();
     }, []);
+
+    // Unique deduplicated status options
+    const statusOptions = useMemo(() => {
+        const staticDefaults = [
+            { value: "move", label: "Move" },
+            { value: "Traveler", label: "Traveler" },
+            { value: "Drilling", label: "Drilling" },
+            { value: "Etching", label: "Etching" },
+            { value: "Ready to ship", label: "Ready to Ship" },
+            { value: "In Production", label: "In Production" },
+        ];
+
+        const seen = new Set(staticDefaults.map((s) => s.value.toLowerCase()));
+        const options = [...staticDefaults];
+
+        statusesList.forEach((st) => {
+            if (st.name && !seen.has(st.name.toLowerCase())) {
+                seen.add(st.name.toLowerCase());
+                options.push({ value: st.name, label: st.name });
+            }
+        });
+
+        return options;
+    }, [statusesList]);
 
     // Construct filter params payload
     const getFilterParams = useCallback((page: number = 1) => {
@@ -338,15 +363,9 @@ export default function ExportOrdersPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Statuses</SelectItem>
-                                        <SelectItem value="move">Move</SelectItem>
-                                        <SelectItem value="Traveler">Traveler</SelectItem>
-                                        <SelectItem value="Drilling">Drilling</SelectItem>
-                                        <SelectItem value="Etching">Etching</SelectItem>
-                                        <SelectItem value="Ready to ship">Ready to Ship</SelectItem>
-                                        <SelectItem value="In Production">In Production</SelectItem>
-                                        {statusesList.map((st) => (
-                                            <SelectItem key={st.id} value={st.name}>
-                                                {st.name}
+                                        {statusOptions.map((st) => (
+                                            <SelectItem key={st.value} value={st.value}>
+                                                {st.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

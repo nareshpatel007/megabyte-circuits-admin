@@ -13,8 +13,8 @@ import {
     Clock, 
     Trash2,
     PlusCircle,
-    ChevronRight,
-    ListFilter
+    Play,
+    AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -24,6 +24,8 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
 
     const [importSession, setImportSession] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [resuming, setResuming] = useState(false);
+    const [actionMessage, setActionMessage] = useState<string | null>(null);
 
     const fetchImportStatus = async () => {
         try {
@@ -42,36 +44,72 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
         }
     };
 
+    const currentStatus = importSession?.status ?? "queued";
+
     useEffect(() => {
         fetchImportStatus();
+
+        if (currentStatus === "completed" || currentStatus === "failed" || currentStatus === "cancelled") {
+            return;
+        }
+
         const interval = setInterval(() => {
             fetchImportStatus();
-        }, 3000);
+        }, 2000);
 
         return () => clearInterval(interval);
-    }, [importId]);
+    }, [importId, currentStatus]);
+
+    const handleContinueImport = async () => {
+        setResuming(true);
+        setActionMessage(null);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/imports/${importId}/retry`, {
+                method: "POST",
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            const json = await res.json();
+            if (res.ok && json.status) {
+                setActionMessage("Import resumed! Processing remaining 100-record batches...");
+                fetchImportStatus();
+            } else {
+                setActionMessage(json.message || "Failed to resume import execution.");
+            }
+        } catch (e: any) {
+            setActionMessage("Network error trying to resume import.");
+        } finally {
+            setResuming(false);
+        }
+    };
 
     const totalRows = importSession?.total_rows ?? 0;
     const processedRows = importSession?.processed_rows ?? 0;
     const successfulRows = importSession?.successful_rows ?? 0;
     const failedRows = importSession?.failed_rows ?? 0;
     const progressPercent = totalRows > 0 ? Math.min(100, Math.round((processedRows / totalRows) * 100)) : 0;
-    const status = importSession?.status ?? "queued";
+    const status = currentStatus;
+
+    const isFailed = status === "failed" || (status !== "processing" && status !== "queued" && status !== "completed" && processedRows < totalRows);
+    const canResume = isFailed || (status === "failed" && processedRows < totalRows);
 
     const getStatusBadge = (st: string) => {
         switch (st) {
             case "queued":
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Queued for Worker</span>;
+                return <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Processing Orders...</span>;
             case "processing":
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Processing Orders...</span>;
+                return <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Processing Orders...</span>;
             case "completed":
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Completed Successfully</span>;
+                return <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Completed Successfully</span>;
             case "failed":
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Failed</span>;
+                return <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Failed</span>;
             case "cancelled":
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Cancelled</span>;
+                return <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Cancelled</span>;
             default:
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground uppercase">{st}</span>;
+                return <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-muted text-muted-foreground uppercase">{st}</span>;
         }
     };
 
@@ -94,32 +132,32 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
     return (
         <DashboardLayout
             title={`Import Progress — Session #${importId}`}
-            subtitle={`File: ${importSession?.original_file_name || "Spreadsheet"} — Background queue execution status and live metrics.`}
+            subtitle={`File: ${importSession?.original_file_name || "Jobs.xlsx"} — Background queue execution status and live metrics.`}
             action={headerAction}
         >
             <div className="w-full space-y-6 pb-24">
                 {/* Stepper Header */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-muted/40 border border-border/80 p-3.5 rounded-2xl flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center justify-center shrink-0">✓</div>
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center justify-center shrink-0">✓</div>
                         <div>
-                            <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Step 1 — Upload & Stage</h4>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-foreground">STEP 1 — UPLOAD & STAGE</h4>
                             <p className="text-[11px] text-muted-foreground font-medium">Excel parsed into staging</p>
                         </div>
                     </div>
 
                     <div className="bg-muted/40 border border-border/80 p-3.5 rounded-2xl flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center justify-center shrink-0">✓</div>
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center justify-center shrink-0">✓</div>
                         <div>
-                            <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Step 2 — Review & Fix</h4>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-foreground">STEP 2 — REVIEW & FIX</h4>
                             <p className="text-[11px] text-muted-foreground font-medium">Staged data validated & confirmed</p>
                         </div>
                     </div>
 
                     <div className="bg-emerald-500/10 border-2 border-emerald-500 p-3.5 rounded-2xl flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white font-black text-xs flex items-center justify-center shrink-0">3</div>
+                        <div className="w-8 h-8 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center shrink-0">3</div>
                         <div>
-                            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Step 3 — Queue & Process</h4>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">STEP 3 — QUEUE & PROCESS</h4>
                             <p className="text-[11px] text-muted-foreground font-medium">Background creation active</p>
                         </div>
                     </div>
@@ -129,7 +167,7 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
                 <div className="bg-card border border-border/80 p-6 rounded-3xl space-y-6 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
                         <div className="space-y-1">
-                            <div className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">Execution Status</div>
+                            <div className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">EXECUTION STATUS</div>
                             <div className="flex items-center gap-3">
                                 {getStatusBadge(status)}
                                 <span className="text-xs font-bold text-muted-foreground">
@@ -150,7 +188,7 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
                     <div className="space-y-2">
                         <div className="w-full h-4 bg-muted/60 rounded-full overflow-hidden p-0.5 border border-border/80">
                             <div
-                                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 ease-out"
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out"
                                 style={{ width: `${progressPercent}%` }}
                             />
                         </div>
@@ -158,24 +196,67 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
 
                     {/* Metrics Breakdown Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl">
-                            <div className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Successful</div>
-                            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{successfulRows}</div>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
+                            <div className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">SUCCESSFUL</div>
+                            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{successfulRows}</div>
                         </div>
-                        <div className="bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-2xl">
-                            <div className="text-[10px] font-extrabold text-rose-500 uppercase tracking-wider">Failed</div>
-                            <div className="text-xl font-black text-rose-500">{failedRows}</div>
+                        <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl">
+                            <div className="text-[10px] font-extrabold text-rose-500 uppercase tracking-wider">FAILED</div>
+                            <div className="text-2xl font-black text-rose-500 mt-1">{failedRows}</div>
                         </div>
-                        <div className="bg-indigo-500/10 border border-indigo-500/20 p-3.5 rounded-2xl">
-                            <div className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider">Existing Customers</div>
-                            <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{importSession?.existing_customers ?? 0}</div>
+                        <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-2xl">
+                            <div className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider">EXISTING CUSTOMERS</div>
+                            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{importSession?.existing_customers ?? 0}</div>
                         </div>
-                        <div className="bg-purple-500/10 border border-purple-500/20 p-3.5 rounded-2xl">
-                            <div className="text-[10px] font-extrabold text-purple-500 uppercase tracking-wider">New Customers</div>
-                            <div className="text-xl font-black text-purple-600 dark:text-purple-400">{importSession?.new_customers ?? 0}</div>
+                        <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-2xl">
+                            <div className="text-[10px] font-extrabold text-purple-500 uppercase tracking-wider">NEW CUSTOMERS</div>
+                            <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{importSession?.new_customers ?? 0}</div>
                         </div>
                     </div>
                 </div>
+
+                {/* Continue / Resume Process Card (If Process Failed or Interrupted) */}
+                {(status === "failed" || (status !== "processing" && status !== "queued" && status !== "completed" && processedRows < totalRows)) && (
+                    <div className="bg-rose-500/10 border-2 border-rose-500/30 p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                                <AlertCircle className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-foreground">Import Execution Interrupted / Failed</h4>
+                                <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                                    {importSession?.error_message 
+                                        ? `Error: ${importSession.error_message}` 
+                                        : `Processed ${processedRows} of ${totalRows} records. Click below to continue processing remaining batches.`}
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={handleContinueImport}
+                            disabled={resuming}
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl h-11 px-6 shadow-lg shadow-rose-600/20 gap-2 shrink-0"
+                        >
+                            {resuming ? (
+                                <>
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                    Resuming Batch...
+                                </>
+                            ) : (
+                                <>
+                                    <Play className="w-4 h-4 fill-current" />
+                                    Continue Import
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
+
+                {actionMessage && (
+                    <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold">
+                        {actionMessage}
+                    </div>
+                )}
 
                 {/* Temporary Storage File Cleanup Notice */}
                 <div className="bg-muted/30 border border-border/80 p-4 rounded-2xl flex items-center justify-between gap-4 text-xs">
