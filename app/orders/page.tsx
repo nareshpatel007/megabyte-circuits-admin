@@ -234,7 +234,7 @@ export default function OrdersPage() {
     const [exportBillNo, setExportBillNo] = useState("");
     const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
     const [exportPreviewLoading, setExportPreviewLoading] = useState(false);
-    const [exportPreviewData, setExportPreviewData] = useState<{ total: number; data: any[]; current_page: number; last_page: number } | null>(null);
+    const [exportPreviewData, setExportPreviewData] = useState<{ total: number; total_count?: number; data: any[]; current_page: number; last_page: number; total_pages?: number } | null>(null);
     const [exportPreviewPage, setExportPreviewPage] = useState(1);
 
     const handleDownloadSampleSheet = async () => {
@@ -961,15 +961,16 @@ export default function OrdersPage() {
 
     const headerActions = (
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <Button
-                type="button"
-                variant="outline"
-                onClick={() => setImportModalOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
-            >
-                <Upload className="w-3.5 h-3.5 text-emerald-500" />
-                Import Excel
-            </Button>
+            <Link href="/orders/import">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
+                >
+                    <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                    Import Excel
+                </Button>
+            </Link>
             <Button
                 type="button"
                 variant="outline"
@@ -3160,7 +3161,7 @@ export default function OrdersPage() {
                                         {exportPreviewLoading ? "counting..." : `${exportPreviewData?.total_count ?? exportPreviewData?.total ?? exportPreviewData?.data?.length ?? 0} records found`}
                                     </span>
                                 </div>
-                                {exportPreviewData && (exportPreviewData.last_page > 1 || exportPreviewData.total_pages > 1) && (
+                                {exportPreviewData && (exportPreviewData.last_page > 1 || (exportPreviewData.total_pages && exportPreviewData.total_pages > 1)) && (
                                     <div className="flex items-center gap-1.5 text-xs">
                                         <Button
                                             type="button"
