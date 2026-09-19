@@ -63,6 +63,7 @@ interface ApiOrder {
     user_id: number | null;
     status_id: number | null;
     order_number: string;
+    bill_number?: string | null;
     board_name: string;
     gerber_preview_data?: string;
     customer_name: string | null;
@@ -370,13 +371,19 @@ export default function OrderDetailPage() {
         <DashboardLayout title={pageHeaderTitle as any} action={backActionButton}>
             <div className="space-y-6 w-full">
                 {/* Primary Highlights Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Value</p>
                         <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
                             {hasPaymentPermission
                                 ? `₹${Number(order.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
                                 : "XXXX"}
+                        </p>
+                    </div>
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bill Number</p>
+                        <p className="text-lg font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">
+                            {order.bill_number || getMetaValue('bill_number', getMetaValue('bill', 'N/A'))}
                         </p>
                     </div>
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
@@ -535,6 +542,12 @@ export default function OrderDetailPage() {
                                 <div className="flex justify-between py-1">
                                     <span className="text-muted-foreground font-medium">Mobile Number</span>
                                     <span className="font-bold text-foreground">{order.shipping_mobile || order.user_mobile || (order as any).user?.mobile || getMetaValue('user_mobile', getMetaValue('mobile', 'N/A'))}</span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <span className="text-muted-foreground font-medium">Bill Number</span>
+                                    <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
+                                        {order.bill_number || getMetaValue('bill_number', getMetaValue('bill', 'N/A'))}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between py-1">
                                     <span className="text-muted-foreground font-medium">GST Number</span>

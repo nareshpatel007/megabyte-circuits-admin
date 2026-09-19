@@ -215,7 +215,7 @@ export default function OrdersPage() {
 
         return () => clearInterval(interval);
     }, [importHistory, importModalOpen]);
-    
+
     // Export Modal & Filter Preview state
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
@@ -968,21 +968,19 @@ export default function OrdersPage() {
                     className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
                 >
                     <Upload className="w-3.5 h-3.5 text-emerald-500" />
-                    Import Excel
+                    Import
                 </Button>
             </Link>
-            <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                    setExportModalOpen(true);
-                    fetchExportPreview(1);
-                }}
-                className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
-            >
-                <Download className="w-3.5 h-3.5 text-emerald-500" />
-                Export Excel
-            </Button>
+            <Link href="/orders/export">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-accent/60 border-border/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer text-foreground h-9 sm:h-10"
+                >
+                    <Download className="w-3.5 h-3.5 text-emerald-500" />
+                    Export
+                </Button>
+            </Link>
             {hasCreateOrderPermission && (
                 <Link
                     href="/orders/create"
@@ -1509,11 +1507,10 @@ export default function OrdersPage() {
                                                                             onClick={() => openFilmModal(order)}
                                                                             title={hasFilm ? `Edit Film (${existingFilm})` : "Add Film"}
                                                                             aria-label="Add Film"
-                                                                            className={`p-1.5 rounded-lg border transition-all cursor-pointer shadow-2xs ${
-                                                                                hasFilm
-                                                                                    ? "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/40 hover:bg-purple-500 hover:text-white"
-                                                                                    : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 hover:bg-purple-500 hover:text-white"
-                                                                            }`}
+                                                                            className={`p-1.5 rounded-lg border transition-all cursor-pointer shadow-2xs ${hasFilm
+                                                                                ? "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/40 hover:bg-purple-500 hover:text-white"
+                                                                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 hover:bg-purple-500 hover:text-white"
+                                                                                }`}
                                                                         >
                                                                             <Film className="w-3.5 h-3.5" />
                                                                         </button>
@@ -2020,36 +2017,36 @@ export default function OrdersPage() {
                     const order = jobCardModalOrder;
                     const layersStr = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
                     const isSingleSide = layersStr === "1" || layersStr.toLowerCase().includes("1-side") || layersStr.toLowerCase().includes("single");
-                    
+
                     const createdDate = formatDate(order.created_at);
                     const launchDate = formatDate(getMetaValue(order, 'launch_date', order.created_at));
                     const shippingDate = formatDate(order.delivery_date);
-                    
+
                     const orderQty = getMetaValue(order, 'qty', getMetaValue(order, 'quantity', 'N/A'));
                     const launchedQty = getMetaValue(order, 'launched_qty', getMetaValue(order, 'launched', orderQty));
                     const ups = getMetaValue(order, 'ups', '1');
                     const panels = getMetaValue(order, 'panels', '1');
                     const minHole = getMetaValue(order, 'min_hole', getMetaValue(order, 'min_hole_size', '0.8 MM'));
-                    
+
                     const panelSize = getMetaValue(order, 'panel_size', getMetaValue(order, 'dimensions', ''));
                     const cuttingSize = getMetaValue(order, 'cutting_size', '');
-                    
+
                     const material = getMetaValue(order, 'material', getMetaValue(order, 'base_material', 'FR4'));
                     const thickness = getMetaValue(order, 'board_thickness', getMetaValue(order, 'thickness', '1.6'));
                     const copperThickness = getMetaValue(order, 'copper_thickness', getMetaValue(order, 'copper_weight', '1 Oz'));
                     const surfaceFinish = getMetaValue(order, 'surface_finish', getMetaValue(order, 'finish', 'HAL Finish'));
-                    
+
                     const maskColour = getMetaValue(order, 'pcb_color', getMetaValue(order, 'solder_mask', 'Green'));
                     const lpColor = getMetaValue(order, 'legend_color', getMetaValue(order, 'silkscreen', 'White'));
                     const lpSide = getMetaValue(order, 'silkscreen_side', getMetaValue(order, 'legend_side', 'Top'));
-                    
+
                     const route = getMetaValue(order, 'route', getMetaValue(order, 'routing', 'CNC Routing'));
                     const vCut = getMetaValue(order, 'v_cut', 'Yes');
                     const fptProgram = getMetaValue(order, 'fpt_program', 'MNF-1 / MNF-2');
                     const secondStage = getMetaValue(order, 'second_stage', 'Yes');
                     const copperArea = getMetaValue(order, 'copper_area', '');
                     const internalCutouts = getMetaValue(order, 'internal_cutouts', 'No');
-                    
+
                     const productionNote = getMetaValue(order, 'production_note', '');
                     const customerNote = getMetaValue(order, 'customer_note', getMetaValue(order, 'special_instructions', ''));
 
@@ -2385,10 +2382,10 @@ export default function OrdersPage() {
                     </DialogHeader>
 
                     {reorderModalOrder && (() => {
-                        const custName = reorderModalOrder.customer_name 
+                        const custName = reorderModalOrder.customer_name
                             || getMetaValue(reorderModalOrder, 'customer_name', getMetaValue(reorderModalOrder, 'name', ''))
-                            || reorderModalOrder.user_email 
-                            || reorderModalOrder.user_mobile 
+                            || reorderModalOrder.user_email
+                            || reorderModalOrder.user_mobile
                             || 'N/A';
 
                         return (
@@ -2622,11 +2619,10 @@ export default function OrdersPage() {
                                                             <td className="p-2.5 pl-3 font-mono font-bold text-muted-foreground">#{item.row_number}</td>
                                                             <td className="p-2.5 font-bold text-foreground">{item.customer_name || 'N/A'}</td>
                                                             <td className="p-2.5">
-                                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
-                                                                    item.is_new_customer
-                                                                        ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                                                                        : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
-                                                                }`}>
+                                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${item.is_new_customer
+                                                                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                                                                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                                                                    }`}>
                                                                     {item.customer_action || 'Existing Customer'}
                                                                 </span>
                                                             </td>
@@ -2729,13 +2725,12 @@ export default function OrdersPage() {
                                                             <div className="text-[10px] text-muted-foreground">{formatDate(imp.created_at)}</div>
                                                         </td>
                                                         <td className="p-2.5">
-                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold capitalize inline-flex items-center gap-1 ${
-                                                                imp.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold capitalize inline-flex items-center gap-1 ${imp.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
                                                                 imp.status === 'processing' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 animate-pulse' :
-                                                                imp.status === 'queued' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
-                                                                imp.status === 'failed' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' :
-                                                                'bg-muted text-muted-foreground'
-                                                            }`}>
+                                                                    imp.status === 'queued' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                                                        imp.status === 'failed' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' :
+                                                                            'bg-muted text-muted-foreground'
+                                                                }`}>
                                                                 {imp.status === 'processing' && <RefreshCw className="w-2.5 h-2.5 animate-spin" />}
                                                                 {imp.status}
                                                             </span>
@@ -2748,10 +2743,9 @@ export default function OrdersPage() {
                                                                 </div>
                                                                 <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                                                                     <div
-                                                                        className={`h-full transition-all duration-300 ${
-                                                                            imp.status === 'completed' ? 'bg-emerald-500' :
+                                                                        className={`h-full transition-all duration-300 ${imp.status === 'completed' ? 'bg-emerald-500' :
                                                                             imp.status === 'failed' ? 'bg-rose-500' : 'bg-blue-500'
-                                                                        }`}
+                                                                            }`}
                                                                         style={{ width: `${pct}%` }}
                                                                     />
                                                                 </div>

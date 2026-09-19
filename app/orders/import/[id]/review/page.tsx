@@ -28,6 +28,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
@@ -43,19 +44,25 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRowsCount, setTotalRowsCount] = useState(0);
+    const [perPage, setPerPage] = useState<number>(50);
 
     const [duplicateAction, setDuplicateAction] = useState<"skip" | "update" | "create_new">("skip");
     const [savingCellId, setSavingCellId] = useState<string | null>(null);
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [startingImport, setStartingImport] = useState(false);
 
-    const fetchStagedData = async (page: number = 1, statusFilter: string = filterStatus, search: string = searchQuery) => {
+    const fetchStagedData = async (
+        page: number = currentPage,
+        statusFilter: string = filterStatus,
+        search: string = searchQuery,
+        perPageVal: number = perPage
+    ) => {
         setLoading(true);
         try {
             const token = localStorage.getItem("admin_token");
             const queryParams = new URLSearchParams({
                 page: page.toString(),
-                per_page: "50",
+                per_page: perPageVal.toString(),
             });
             if (statusFilter !== "all") queryParams.set("validation_status", statusFilter);
             if (search.trim()) queryParams.set("search", search.trim());
@@ -81,8 +88,14 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
         }
     };
 
+    const handlePerPageChange = (val: string) => {
+        const num = parseInt(val, 10) || 50;
+        setPerPage(num);
+        fetchStagedData(1, filterStatus, searchQuery, num);
+    };
+
     useEffect(() => {
-        fetchStagedData(1, filterStatus, searchQuery);
+        fetchStagedData(1, filterStatus, searchQuery, perPage);
     }, [importId, filterStatus]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -299,22 +312,41 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                         </button>
                     </div>
 
-                    {/* Search Bar */}
-                    <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 flex-1 max-w-sm">
-                        <div className="relative w-full">
-                            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
-                            <Input
-                                type="text"
-                                placeholder="Search Customer / P/N / Quote #"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-9 text-xs rounded-xl border-border/80 bg-card"
-                            />
+                    {/* Search Bar & Per Page selector */}
+                    <div className="flex items-center gap-3 flex-1 justify-end">
+                        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 flex-1 max-w-xs">
+                            <div className="relative w-full">
+                                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search Customer / P/N / Quote #"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 h-9 text-xs rounded-xl border-border/80 bg-card"
+                                />
+                            </div>
+                            <Button type="submit" variant="outline" size="sm" className="h-9 px-3 text-xs font-bold rounded-xl">
+                                Search
+                            </Button>
+                        </form>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">Show:</span>
+                            <Select value={perPage.toString()} onValueChange={handlePerPageChange}>
+                                <SelectTrigger className="w-32 h-9 text-xs font-bold rounded-xl border-border bg-card">
+                                    <SelectValue placeholder="50 rows" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="25">25 per page</SelectItem>
+                                    <SelectItem value="50">50 per page</SelectItem>
+                                    <SelectItem value="100">100 per page</SelectItem>
+                                    <SelectItem value="250">250 per page</SelectItem>
+                                    <SelectItem value="500">500 per page (All)</SelectItem>
+                                    <SelectItem value="1000">1000 per page</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <Button type="submit" variant="outline" size="sm" className="h-9 px-3 text-xs font-bold rounded-xl">
-                            Search
-                        </Button>
-                    </form>
+                    </div>
                 </div>
 
                 {/* Duplicate Record Handling Radio Option */}
@@ -392,178 +424,291 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                     const errors = row.validation_errors || {};
                                     const isRowValid = row.validation_status === "valid";
 
+                                    const getFieldError = (fieldKeys: string[]): string | null => {
+                                        if (!errors || typeof errors !== "object") return null;
+                                        for (const key of fieldKeys) {
+                                            if (errors[key]) return String(errors[key]);
+                                        }
+                                        const allKeys = Object.keys(errors);
+                                        for (const errKey of allKeys) {
+                                            const cleanErrKey = errKey.toLowerCase().replace(/[\s\_\-\/]/g, "");
+                                            for (const targetKey of fieldKeys) {
+                                                const cleanTargetKey = targetKey.toLowerCase().replace(/[\s\_\-\/]/g, "");
+                                                if (cleanErrKey === cleanTargetKey || cleanErrKey.includes(cleanTargetKey) || cleanTargetKey.includes(cleanErrKey)) {
+                                                    return String(errors[errKey]);
+                                                }
+                                            }
+                                        }
+                                        return null;
+                                    };
+
+                                    const orderDateErr = getFieldError(["order_date", "orderdate", "order date", "date"]);
+                                    const customerErr = getFieldError(["customer_name", "customername", "customer name", "customer"]);
+                                    const pnErr = getFieldError(["p_n", "pn", "part_name", "part number", "p/n"]);
+                                    const qtyErr = getFieldError(["qty", "quantity", "order qty"]);
+                                    const launchErr = getFieldError(["launch_qty", "launchqty", "launch"]);
+                                    const panelErr = getFieldError(["panel_qty", "panelqty", "panel"]);
+                                    const finalQtyErr = getFieldError(["final_qty", "finalqty", "final"]);
+                                    const statusErr = getFieldError(["status"]);
+                                    const billErr = getFieldError(["bill_number", "billnumber", "bill #", "bill"]);
+
                                     return (
-                                        <tr key={row.id} className={`transition-all ${isRowValid ? "hover:bg-muted/30" : "bg-rose-500/5 hover:bg-rose-500/10"}`}>
-                                            {/* Row # */}
-                                            <td className="p-3 pl-4 font-mono font-bold text-muted-foreground">
-                                                #{row.row_number}
-                                            </td>
+                                        <React.Fragment key={row.id}>
+                                            <tr className={`transition-all ${isRowValid ? "hover:bg-muted/30" : "bg-rose-500/10 hover:bg-rose-500/15 border-l-4 border-l-rose-500"}`}>
+                                                {/* Row # */}
+                                                <td className="p-3 pl-4 font-mono font-bold text-muted-foreground">
+                                                    #{row.row_number}
+                                                </td>
 
-                                            {/* Order Date */}
-                                            <td className="p-2">
-                                                <div className="space-y-0.5">
-                                                    <Input
-                                                        type="date"
-                                                        defaultValue={data.order_date || ""}
-                                                        onBlur={(e) => handleCellChange(row.id, "order_date", e.target.value)}
-                                                        className={`h-8 text-xs font-mono rounded-lg border bg-card ${
-                                                            errors["Order Date"]
-                                                                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-500/10 font-bold text-rose-600 dark:text-rose-400"
-                                                                : "border-border/80"
-                                                        }`}
-                                                    />
-                                                    {errors["Order Date"] && (
-                                                        <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                                                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                            {errors["Order Date"]}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
+                                                {/* Order Date */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="date"
+                                                            defaultValue={data.order_date || ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "order_date", e.target.value)}
+                                                            className={`h-8 text-xs font-mono rounded-lg border bg-card ${
+                                                                orderDateErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {orderDateErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {orderDateErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
 
-                                            {/* Customer Name */}
-                                            <td className="p-2">
-                                                <div className="space-y-0.5">
-                                                    <Input
-                                                        type="text"
-                                                        defaultValue={data.customer_name || ""}
-                                                        onBlur={(e) => handleCellChange(row.id, "customer_name", e.target.value)}
-                                                        placeholder="Customer Name"
-                                                        className={`h-8 text-xs font-bold rounded-lg border bg-card ${
-                                                            errors["Customer name"]
-                                                                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                                                                : "border-border/80"
-                                                        }`}
-                                                    />
-                                                    {errors["Customer name"] && (
-                                                        <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                                                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                            {errors["Customer name"]}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
+                                                {/* Customer Name */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.customer_name || ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "customer_name", e.target.value)}
+                                                            placeholder="Customer Name"
+                                                            className={`h-8 text-xs font-bold rounded-lg border bg-card ${
+                                                                customerErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {customerErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {customerErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
 
-                                            {/* Customer Action Badge */}
-                                            <td className="p-3">
-                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold whitespace-nowrap ${
-                                                    row.is_new_customer
-                                                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-                                                        : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                                                }`}>
-                                                    {row.customer_action || "Existing Customer"}
-                                                </span>
-                                            </td>
-
-                                            {/* P/N */}
-                                            <td className="p-2">
-                                                <div className="space-y-0.5">
-                                                    <Input
-                                                        type="text"
-                                                        defaultValue={data.p_n || ""}
-                                                        onBlur={(e) => handleCellChange(row.id, "p_n", e.target.value)}
-                                                        placeholder="Part Number"
-                                                        className={`h-8 text-xs font-mono font-bold rounded-lg border bg-card ${
-                                                            errors["P/N"]
-                                                                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                                                                : "border-border/80"
-                                                        }`}
-                                                    />
-                                                    {errors["P/N"] && (
-                                                        <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                                                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                            {errors["P/N"]}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-
-                                            {/* Qty */}
-                                            <td className="p-2 text-center">
-                                                <div className="space-y-0.5">
-                                                    <Input
-                                                        type="text"
-                                                        defaultValue={data.qty ?? ""}
-                                                        onBlur={(e) => handleCellChange(row.id, "qty", e.target.value)}
-                                                        placeholder="Qty"
-                                                        className={`h-8 text-xs font-mono text-center font-bold rounded-lg border bg-card ${
-                                                            errors["Qty"]
-                                                                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                                                                : "border-border/80"
-                                                        }`}
-                                                    />
-                                                    {errors["Qty"] && (
-                                                        <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                                                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                            {errors["Qty"]}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-
-                                            {/* Launch Qty */}
-                                            <td className="p-2 text-center">
-                                                <Input
-                                                    type="text"
-                                                    defaultValue={data.launch_qty ?? ""}
-                                                    onBlur={(e) => handleCellChange(row.id, "launch_qty", e.target.value)}
-                                                    className="h-8 text-xs font-mono text-center rounded-lg border border-border/80 bg-card"
-                                                />
-                                            </td>
-
-                                            {/* Panel Qty */}
-                                            <td className="p-2 text-center">
-                                                <Input
-                                                    type="text"
-                                                    defaultValue={data.panel_qty ?? ""}
-                                                    onBlur={(e) => handleCellChange(row.id, "panel_qty", e.target.value)}
-                                                    className="h-8 text-xs font-mono text-center rounded-lg border border-border/80 bg-card"
-                                                />
-                                            </td>
-
-                                            {/* Final Qty */}
-                                            <td className="p-2 text-center">
-                                                <Input
-                                                    type="text"
-                                                    defaultValue={data.final_qty ?? ""}
-                                                    onBlur={(e) => handleCellChange(row.id, "final_qty", e.target.value)}
-                                                    className="h-8 text-xs font-mono text-center text-emerald-600 font-bold rounded-lg border border-border/80 bg-card"
-                                                />
-                                            </td>
-
-                                            {/* Status */}
-                                            <td className="p-2">
-                                                <Input
-                                                    type="text"
-                                                    defaultValue={data.status || "move"}
-                                                    onBlur={(e) => handleCellChange(row.id, "status", e.target.value)}
-                                                    className="h-8 text-xs font-semibold rounded-lg border border-border/80 bg-card"
-                                                />
-                                            </td>
-
-                                            {/* Bill # */}
-                                            <td className="p-2">
-                                                <Input
-                                                    type="text"
-                                                    defaultValue={data.bill_number || ""}
-                                                    onBlur={(e) => handleCellChange(row.id, "bill_number", e.target.value)}
-                                                    className="h-8 text-xs font-mono rounded-lg border border-border/80 bg-card"
-                                                />
-                                            </td>
-
-                                            {/* Validation Status Badge */}
-                                            <td className="p-3 pr-4 text-center font-bold">
-                                                {isRowValid ? (
-                                                    <span className="text-emerald-500 flex items-center justify-center gap-1 text-[11px] font-extrabold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                                                        <CheckCircle className="w-3.5 h-3.5" /> Valid
+                                                {/* Customer Action Badge */}
+                                                <td className="p-3">
+                                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold whitespace-nowrap ${
+                                                        row.is_new_customer
+                                                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                                                            : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                                                    }`}>
+                                                        {row.customer_action || "Existing Customer"}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-rose-500 flex items-center justify-center gap-1 text-[11px] font-extrabold bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full animate-pulse">
-                                                        <AlertTriangle className="w-3.5 h-3.5" /> Invalid
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
+                                                </td>
+
+                                                {/* P/N */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.p_n || ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "p_n", e.target.value)}
+                                                            placeholder="Part Number"
+                                                            className={`h-8 text-xs font-mono font-bold rounded-lg border bg-card ${
+                                                                pnErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {pnErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {pnErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Qty */}
+                                                <td className="p-2 text-center">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.qty ?? ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "qty", e.target.value)}
+                                                            placeholder="Qty"
+                                                            className={`h-8 text-xs font-mono text-center font-bold rounded-lg border bg-card ${
+                                                                qtyErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {qtyErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {qtyErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Launch Qty */}
+                                                <td className="p-2 text-center">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.launch_qty ?? ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "launch_qty", e.target.value)}
+                                                            className={`h-8 text-xs font-mono text-center rounded-lg border bg-card ${
+                                                                launchErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {launchErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {launchErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Panel Qty */}
+                                                <td className="p-2 text-center">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.panel_qty ?? ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "panel_qty", e.target.value)}
+                                                            className={`h-8 text-xs font-mono text-center rounded-lg border bg-card ${
+                                                                panelErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {panelErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {panelErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Final Qty */}
+                                                <td className="p-2 text-center">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.final_qty ?? ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "final_qty", e.target.value)}
+                                                            className={`h-8 text-xs font-mono text-center font-bold rounded-lg border bg-card ${
+                                                                finalQtyErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80 text-emerald-600"
+                                                            }`}
+                                                        />
+                                                        {finalQtyErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {finalQtyErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Status */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.status || "move"}
+                                                            onBlur={(e) => handleCellChange(row.id, "status", e.target.value)}
+                                                            className={`h-8 text-xs font-semibold rounded-lg border bg-card ${
+                                                                statusErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {statusErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {statusErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Bill # */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="text"
+                                                            defaultValue={data.bill_number || ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "bill_number", e.target.value)}
+                                                            className={`h-8 text-xs font-mono rounded-lg border bg-card ${
+                                                                billErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {billErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {billErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Validation Status Badge */}
+                                                <td className="p-3 pr-4 text-center font-bold">
+                                                    {isRowValid ? (
+                                                        <span className="text-emerald-500 flex items-center justify-center gap-1 text-[11px] font-extrabold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                                            <CheckCircle className="w-3.5 h-3.5" /> Valid
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-rose-500 flex items-center justify-center gap-1 text-[11px] font-extrabold bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full animate-pulse">
+                                                            <AlertTriangle className="w-3.5 h-3.5" /> Invalid
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+
+                                            {/* Detailed Error Row Banner for Invalid Rows */}
+                                            {!isRowValid && (
+                                                <tr className="bg-rose-500/10 border-b-2 border-rose-500/30">
+                                                    <td colSpan={12} className="px-4 py-2 text-[11px] text-rose-600 dark:text-rose-400 font-bold">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                                                            <span className="uppercase tracking-wider font-extrabold text-[10px] bg-rose-500 text-white px-1.5 py-0.5 rounded">Row #{row.row_number} Errors:</span>
+                                                            {Object.keys(errors).length > 0 ? (
+                                                                Object.entries(errors).map(([key, msg]) => (
+                                                                    <span key={key} className="bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md text-[10px] flex items-center gap-1 font-mono">
+                                                                        <strong className="text-rose-700 dark:text-rose-300">{key}:</strong> {String(msg)}
+                                                                    </span>
+                                                                ))
+                                                            ) : (
+                                                                <span className="bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md text-[10px] font-mono">
+                                                                    Row is marked invalid. Check required values (Order Date, Customer Name, P/N, Qty).
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
@@ -578,17 +723,35 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                 )}
 
                 {/* Table Pagination */}
-                {totalPages > 1 && (
-                    <div className="p-4 border-t border-border/80 flex items-center justify-between text-xs bg-muted/20">
-                        <span className="text-muted-foreground font-semibold">
-                            Showing page {currentPage} of {totalPages} ({totalRowsCount} total rows)
-                        </span>
+                {totalRowsCount > 0 && (
+                    <div className="p-4 border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs bg-muted/20">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <span className="text-muted-foreground font-semibold">
+                                Showing {stagedRows.length} of {totalRowsCount} total rows (Page {currentPage} of {totalPages})
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground font-bold whitespace-nowrap">Per page:</span>
+                                <Select value={perPage.toString()} onValueChange={handlePerPageChange}>
+                                    <SelectTrigger className="w-28 h-8 text-xs font-bold rounded-xl border-border bg-card">
+                                        <SelectValue placeholder="50" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="25">25 per page</SelectItem>
+                                        <SelectItem value="50">50 per page</SelectItem>
+                                        <SelectItem value="100">100 per page</SelectItem>
+                                        <SelectItem value="250">250 per page</SelectItem>
+                                        <SelectItem value="500">500 per page (All)</SelectItem>
+                                        <SelectItem value="1000">1000 per page</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
                         <div className="flex items-center gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                disabled={currentPage <= 1}
+                                disabled={currentPage <= 1 || loading}
                                 onClick={() => fetchStagedData(currentPage - 1)}
                                 className="h-8 rounded-xl gap-1 text-xs font-bold"
                             >
@@ -598,7 +761,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                disabled={currentPage >= totalPages}
+                                disabled={currentPage >= totalPages || loading}
                                 onClick={() => fetchStagedData(currentPage + 1)}
                                 className="h-8 rounded-xl gap-1 text-xs font-bold"
                             >

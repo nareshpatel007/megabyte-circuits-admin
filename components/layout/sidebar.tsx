@@ -29,6 +29,8 @@ import {
     Tag,
     MessageSquare,
     Cpu,
+    FileSpreadsheet,
+    Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
