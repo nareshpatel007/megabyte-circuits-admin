@@ -82,9 +82,6 @@ export async function handleApiProxy(
 
         // Call backend API
         let apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-        if (apiUrl.includes("localhost/megabyte-circuits-api")) {
-            apiUrl = "http://127.0.0.1:8000/api";
-        }
         if (apiUrl.endsWith("/")) {
             apiUrl = apiUrl.slice(0, -1);
         }
@@ -99,14 +96,24 @@ export async function handleApiProxy(
         const targetUrl = `${apiUrl}${path}${searchParams ? searchParams : ""}`;
 
         const apiRes = await fetch(targetUrl, fetchOptions);
-        const text = await apiRes.text();
+        const buffer = await apiRes.arrayBuffer();
 
-        return new NextResponse(text, {
+        const responseHeaders = new Headers();
+        const passHeaders = ["content-type", "content-disposition", "content-length", "cache-control"];
+        passHeaders.forEach(h => {
+            const val = apiRes.headers.get(h);
+            if (val) {
+                responseHeaders.set(h, val);
+            }
+        });
+
+        if (!responseHeaders.has("content-type")) {
+            responseHeaders.set("content-type", "application/json");
+        }
+
+        return new NextResponse(buffer, {
             status: apiRes.status,
-            headers: {
-                "Content-Type":
-                    apiRes.headers.get("content-type") || "application/json",
-            },
+            headers: responseHeaders,
         });
     } catch (error) {
         console.error('API Proxy error:', error);

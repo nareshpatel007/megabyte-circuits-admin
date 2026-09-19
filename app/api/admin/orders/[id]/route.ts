@@ -9,7 +9,17 @@ export async function GET(req: NextRequest, context: any) {
     return handleApiProxy(req, `/admin/orders/${params?.id}`, "GET");
 }
 
+export async function POST(req: NextRequest, context: any) {
+    const params = await context.params;
+    return handleApiProxy(req, `/admin/orders/${params?.id}`, "POST");
+}
+
 export async function PUT(req: NextRequest, context: any) {
     const params = await context.params;
     return handleApiProxy(req, `/admin/orders/${params?.id}`, "PUT");
+}
+
+export async function DELETE(req: NextRequest, context: any) {
+    const params = await context.params;
+    return handleApiProxy(req, `/admin/orders/${params?.id}`, "DELETE");
 }
