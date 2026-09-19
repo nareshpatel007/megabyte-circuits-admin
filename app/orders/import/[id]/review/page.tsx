@@ -29,6 +29,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 
 export default function ImportReviewPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: importId } = use(params);
@@ -161,59 +162,45 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
     const validRowsCount = importSession?.valid_rows ?? 0;
     const isImportDisabled = invalidRowsCount > 0;
 
-    return (
-        <div className="max-w-7xl mx-auto space-y-6 p-6 pb-24">
-            {/* Top Header & Breadcrumb */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-                <div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground mb-1">
-                        <Link href="/orders/import" className="hover:text-foreground transition-colors flex items-center gap-1">
-                            <ArrowLeft className="w-3.5 h-3.5" /> Step 1: Upload
-                        </Link>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                        <span className="text-foreground">Step 2: Review & Fix Staged Data</span>
-                    </div>
-                    <h1 className="text-2xl font-black flex items-center gap-2 text-foreground tracking-tight">
-                        <FileSpreadsheet className="w-7 h-7 text-emerald-500" />
-                        Review & Edit Staged Import #{importId}
-                    </h1>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                        File: <strong className="text-foreground">{importSession?.original_file_name || "Spreadsheet"}</strong> — Edit data directly in the table below. Invalid cells are highlighted in red and revalidate automatically on change.
-                    </p>
-                </div>
+    const headerAction = (
+        <Button
+            type="button"
+            onClick={() => {
+                if (isImportDisabled) {
+                    toast.error(`Cannot start import: ${invalidRowsCount} invalid rows need attention.`);
+                } else {
+                    setConfirmModalOpen(true);
+                }
+            }}
+            disabled={isImportDisabled}
+            className={`font-bold text-xs rounded-2xl shadow-lg h-11 px-6 gap-2 cursor-pointer transition-all ${
+                isImportDisabled
+                    ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+            }`}
+        >
+            {isImportDisabled ? (
+                <>
+                    <ShieldAlert className="w-4 h-4 text-rose-500" />
+                    Fix {invalidRowsCount} Error{invalidRowsCount > 1 ? "s" : ""} Before Import
+                </>
+            ) : (
+                <>
+                    <CheckCircle className="w-4 h-4" />
+                    Start Background Import
+                    <ArrowRight className="w-4 h-4" />
+                </>
+            )}
+        </Button>
+    );
 
-                <div className="flex items-center gap-3">
-                    <Button
-                        type="button"
-                        onClick={() => {
-                            if (isImportDisabled) {
-                                toast.error(`Cannot start import: ${invalidRowsCount} invalid rows need attention.`);
-                            } else {
-                                setConfirmModalOpen(true);
-                            }
-                        }}
-                        disabled={isImportDisabled}
-                        className={`font-bold text-xs rounded-2xl shadow-lg h-11 px-6 gap-2 cursor-pointer transition-all ${
-                            isImportDisabled
-                                ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70"
-                                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
-                        }`}
-                    >
-                        {isImportDisabled ? (
-                            <>
-                                <ShieldAlert className="w-4 h-4 text-rose-500" />
-                                Fix {invalidRowsCount} Error{invalidRowsCount > 1 ? "s" : ""} Before Import
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle className="w-4 h-4" />
-                                Start Background Import
-                                <ArrowRight className="w-4 h-4" />
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </div>
+    return (
+        <DashboardLayout
+            title={`Review & Edit Staged Import #${importId}`}
+            subtitle={`File: ${importSession?.original_file_name || "Spreadsheet"} — Edit data directly in the table below. Invalid cells are highlighted in red and revalidate automatically.`}
+            action={headerAction}
+        >
+            <div className="w-full space-y-6 pb-24">
 
             {/* Stepper Header */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -704,5 +691,6 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                 </DialogContent>
             </Dialog>
         </div>
+        </DashboardLayout>
     );
 }
