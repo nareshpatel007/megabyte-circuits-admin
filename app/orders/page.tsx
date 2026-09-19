@@ -116,6 +116,105 @@ export default function OrdersPage() {
     const [importPreviewData, setImportPreviewData] = useState<any | null>(null);
     const [importDuplicateAction, setImportDuplicateAction] = useState<"skip" | "update" | "create_new">("skip");
     const [executingImport, setExecutingImport] = useState(false);
+
+    // Import Queue & History Tracking state
+    const [importHistory, setImportHistory] = useState<any[]>([]);
+    const [importHistoryLoading, setImportHistoryLoading] = useState(false);
+    const [selectedImportDetail, setSelectedImportDetail] = useState<any | null>(null);
+    const [importDetailOpen, setImportDetailOpen] = useState(false);
+
+    const fetchImportHistory = async () => {
+        setImportHistoryLoading(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch("/api/admin/orders/imports", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (res.ok && json.status && json.data) {
+                setImportHistory(json.data.data || json.data || []);
+            }
+        } catch (err) {
+            console.error("Error fetching import history:", err);
+        } finally {
+            setImportHistoryLoading(false);
+        }
+    };
+
+    const fetchImportDetail = async (id: number) => {
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/imports/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (res.ok && json.status && json.data) {
+                setSelectedImportDetail(json.data);
+                setImportDetailOpen(true);
+            } else {
+                toast.error(json.message || "Failed to fetch import details");
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error fetching import details");
+        }
+    };
+
+    const handleRetryImport = async (id: number) => {
+        const toastId = toast.loading("Re-queueing import...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/imports/${id}/retry`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (res.ok && json.status) {
+                toast.success("Import re-queued successfully!", { id: toastId });
+                fetchImportHistory();
+            } else {
+                toast.error(json.message || "Failed to retry import", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error retrying import", { id: toastId });
+        }
+    };
+
+    const handleCancelImport = async (id: number) => {
+        const toastId = toast.loading("Cancelling import...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/imports/${id}/cancel`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (res.ok && json.status) {
+                toast.success("Import cancelled.", { id: toastId });
+                fetchImportHistory();
+            } else {
+                toast.error(json.message || "Failed to cancel import", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error cancelling import", { id: toastId });
+        }
+    };
+
+    // Auto-poll active background imports every 3 seconds
+    useEffect(() => {
+        fetchImportHistory();
+    }, []);
+
+    useEffect(() => {
+        const hasActive = importHistory.some(imp => imp.status === "queued" || imp.status === "processing");
+        if (!hasActive && !importModalOpen) return;
+
+        const interval = setInterval(() => {
+            fetchImportHistory();
+            fetchData(debouncedSearch);
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [importHistory, importModalOpen]);
     
     // Export Modal & Filter Preview state
     const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -296,34 +395,35 @@ export default function OrdersPage() {
     const handleExecuteImport = async () => {
         if (!importFile) return;
         setExecutingImport(true);
-        const toastId = toast.loading("Importing PCB orders into database...");
+        const toastId = toast.loading("Uploading and queueing import file...");
         try {
             const token = localStorage.getItem("admin_token");
             const formData = new FormData();
             formData.append("file", importFile);
             formData.append("duplicate_action", importDuplicateAction);
 
-            const res = await fetch("/api/admin/orders/import", {
+            const res = await fetch("/api/admin/orders/import-upload", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
 
             const json = await res.json();
-            if (res.ok && json.success) {
+            if (res.ok && (json.success || json.status)) {
                 toast.success(
-                    `Import completed! ${json.summary?.imported || 0} imported, ${json.summary?.updated || 0} updated, ${json.summary?.skipped || 0} skipped`,
+                    `Import Queued! Processing file in background.`,
                     { id: toastId, duration: 5000 }
                 );
                 setImportModalOpen(false);
                 setImportFile(null);
                 setImportPreviewData(null);
+                fetchImportHistory();
                 fetchData(debouncedSearch);
             } else {
-                toast.error(json.message || "Failed to execute import", { id: toastId });
+                toast.error(json.message || "Failed to queue import file", { id: toastId });
             }
         } catch (err: any) {
-            toast.error(err?.message || "Error executing order import", { id: toastId });
+            toast.error(err?.message || "Error queueing order import", { id: toastId });
         } finally {
             setExecutingImport(false);
         }
@@ -2520,6 +2620,128 @@ export default function OrdersPage() {
                                 )}
                             </div>
                         )}
+                        {/* Background Import Operations & History */}
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 text-emerald-500" />
+                                    Recent Background Imports ({importHistory.length})
+                                </h4>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={fetchImportHistory}
+                                    className="h-7 text-[11px] font-bold text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+                                >
+                                    <RefreshCw className={`w-3 h-3 ${importHistoryLoading ? 'animate-spin' : ''}`} />
+                                    Refresh Status
+                                </Button>
+                            </div>
+
+                            {importHistory.length === 0 ? (
+                                <div className="text-center py-6 border border-dashed border-border/60 rounded-xl text-xs text-muted-foreground">
+                                    No background imports recorded yet. Upload a file above to start.
+                                </div>
+                            ) : (
+                                <div className="max-h-60 overflow-y-auto border border-border/80 rounded-xl bg-card text-xs">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-muted/60 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80 sticky top-0 bg-muted/80 backdrop-blur-xs">
+                                            <tr>
+                                                <th className="p-2.5 pl-3">File Name</th>
+                                                <th className="p-2.5">Status</th>
+                                                <th className="p-2.5">Progress</th>
+                                                <th className="p-2.5">Records</th>
+                                                <th className="p-2.5 text-right pr-3">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/60 font-medium">
+                                            {importHistory.map((imp: any) => {
+                                                const pct = imp.total_rows > 0 ? Math.min(100, Math.round((imp.processed_rows / imp.total_rows) * 100)) : 0;
+                                                return (
+                                                    <tr key={imp.id} className="hover:bg-muted/30">
+                                                        <td className="p-2.5 pl-3">
+                                                            <div className="font-bold text-foreground text-xs truncate max-w-[160px]">{imp.original_file_name}</div>
+                                                            <div className="text-[10px] text-muted-foreground">{formatDate(imp.created_at)}</div>
+                                                        </td>
+                                                        <td className="p-2.5">
+                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold capitalize inline-flex items-center gap-1 ${
+                                                                imp.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                                                imp.status === 'processing' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 animate-pulse' :
+                                                                imp.status === 'queued' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                                                imp.status === 'failed' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' :
+                                                                'bg-muted text-muted-foreground'
+                                                            }`}>
+                                                                {imp.status === 'processing' && <RefreshCw className="w-2.5 h-2.5 animate-spin" />}
+                                                                {imp.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-2.5">
+                                                            <div className="w-28 space-y-1">
+                                                                <div className="flex justify-between text-[10px] font-bold">
+                                                                    <span>{imp.processed_rows} / {imp.total_rows}</span>
+                                                                    <span>{pct}%</span>
+                                                                </div>
+                                                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full transition-all duration-300 ${
+                                                                            imp.status === 'completed' ? 'bg-emerald-500' :
+                                                                            imp.status === 'failed' ? 'bg-rose-500' : 'bg-blue-500'
+                                                                        }`}
+                                                                        style={{ width: `${pct}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-2.5 text-[11px]">
+                                                            <span className="text-emerald-600 font-bold">{imp.successful_rows || 0} OK</span>
+                                                            {imp.failed_rows > 0 && <span className="text-rose-500 font-bold ml-1.5">{imp.failed_rows} Failed</span>}
+                                                        </td>
+                                                        <td className="p-2.5 text-right pr-3">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => fetchImportDetail(imp.id)}
+                                                                    className="h-7 text-[11px] font-bold px-2 cursor-pointer"
+                                                                >
+                                                                    <Eye className="w-3.5 h-3.5 text-blue-500" />
+                                                                </Button>
+                                                                {imp.status === 'failed' && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => handleRetryImport(imp.id)}
+                                                                        className="h-7 text-[11px] font-bold text-amber-500 hover:text-amber-600 px-2 cursor-pointer"
+                                                                        title="Retry Import"
+                                                                    >
+                                                                        <RefreshCw className="w-3.5 h-3.5" />
+                                                                    </Button>
+                                                                )}
+                                                                {imp.status === 'queued' && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => handleCancelImport(imp.id)}
+                                                                        className="h-7 text-[11px] font-bold text-rose-500 hover:text-rose-600 px-2 cursor-pointer"
+                                                                        title="Cancel Queue"
+                                                                    >
+                                                                        <X className="w-3.5 h-3.5" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <DialogFooter className="flex items-center justify-end gap-2 pt-2">
@@ -2534,7 +2756,7 @@ export default function OrdersPage() {
                             disabled={executingImport}
                             className="rounded-xl text-xs font-bold cursor-pointer"
                         >
-                            Cancel
+                            Close
                         </Button>
                         <Button
                             type="button"
@@ -2545,14 +2767,109 @@ export default function OrdersPage() {
                             {executingImport ? (
                                 <>
                                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    Importing Orders...
+                                    Queueing Import...
                                 </>
                             ) : (
                                 <>
                                     <Upload className="w-3.5 h-3.5" />
-                                    Import {importPreviewData?.summary?.valid_rows || 0} Valid Records
+                                    Upload & Queue Import
                                 </>
                             )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Import Detail & Error Log Dialog */}
+            <Dialog open={importDetailOpen} onOpenChange={(open) => setImportDetailOpen(open)}>
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-card border-border/80 rounded-2xl shadow-xl p-6 text-foreground">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-black flex items-center gap-2">
+                            <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
+                            Import #{selectedImportDetail?.id} — {selectedImportDetail?.original_file_name}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Complete background processing lifecycle and row validation results.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedImportDetail && (
+                        <div className="space-y-4 py-2 text-xs">
+                            {/* Stats Summary */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                                <div className="bg-muted/40 p-2.5 rounded-xl border border-border/60">
+                                    <div className="text-[10px] font-extrabold text-muted-foreground uppercase">Status</div>
+                                    <div className="text-sm font-black capitalize text-foreground">{selectedImportDetail.status}</div>
+                                </div>
+                                <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                                    <div className="text-[10px] font-extrabold text-emerald-500 uppercase">Successful Rows</div>
+                                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{selectedImportDetail.successful_rows} / {selectedImportDetail.total_rows}</div>
+                                </div>
+                                <div className="bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
+                                    <div className="text-[10px] font-extrabold text-rose-500 uppercase">Failed Rows</div>
+                                    <div className="text-sm font-black text-rose-500">{selectedImportDetail.failed_rows}</div>
+                                </div>
+                                <div className="bg-purple-500/10 p-2.5 rounded-xl border border-purple-500/20">
+                                    <div className="text-[10px] font-extrabold text-purple-500 uppercase">New Customers</div>
+                                    <div className="text-sm font-black text-purple-600 dark:text-purple-400">{selectedImportDetail.new_customers}</div>
+                                </div>
+                            </div>
+
+                            {selectedImportDetail.error_message && (
+                                <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-rose-500 space-y-1">
+                                    <div className="font-bold flex items-center gap-1.5 text-xs">
+                                        <AlertTriangle className="w-4 h-4" /> Global Error:
+                                    </div>
+                                    <div className="text-[11px] font-mono">{selectedImportDetail.error_message}</div>
+                                </div>
+                            )}
+
+                            {/* Error Log Table */}
+                            <div className="space-y-1.5">
+                                <h4 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                                    Row Validation Error Logs ({selectedImportDetail.errors?.length || 0})
+                                </h4>
+                                {selectedImportDetail.errors && selectedImportDetail.errors.length > 0 ? (
+                                    <div className="max-h-60 overflow-y-auto border border-border/80 rounded-xl bg-card">
+                                        <table className="w-full text-left border-collapse text-xs">
+                                            <thead className="bg-muted/60 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80 sticky top-0 bg-muted/80 backdrop-blur-xs">
+                                                <tr>
+                                                    <th className="p-2 pl-3">Row</th>
+                                                    <th className="p-2">Column</th>
+                                                    <th className="p-2">Value</th>
+                                                    <th className="p-2">Error Message</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/60 font-medium">
+                                                {selectedImportDetail.errors.map((err: any) => (
+                                                    <tr key={err.id} className="hover:bg-muted/30">
+                                                        <td className="p-2 pl-3 font-mono font-bold text-muted-foreground">#{err.row_number}</td>
+                                                        <td className="p-2 font-bold text-foreground">{err.column_name || 'N/A'}</td>
+                                                        <td className="p-2 font-mono text-[11px] text-muted-foreground">{err.value || 'N/A'}</td>
+                                                        <td className="p-2 text-rose-500 font-medium">{err.error_message}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 text-xs text-muted-foreground border border-dashed border-border/60 rounded-xl">
+                                        No row errors logged for this import.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setImportDetailOpen(false)}
+                            className="rounded-xl text-xs font-bold cursor-pointer"
+                        >
+                            Close
                         </Button>
                     </DialogFooter>
                 </DialogContent>
