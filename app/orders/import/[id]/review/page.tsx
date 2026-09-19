@@ -431,10 +431,10 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                         }
                                         const allKeys = Object.keys(errors);
                                         for (const errKey of allKeys) {
-                                            const cleanErrKey = errKey.toLowerCase().replace(/[\s\_\-\/]/g, "");
+                                            const cleanErrKey = errKey.toLowerCase().replace(/[^a-z0-9]/g, "");
                                             for (const targetKey of fieldKeys) {
-                                                const cleanTargetKey = targetKey.toLowerCase().replace(/[\s\_\-\/]/g, "");
-                                                if (cleanErrKey === cleanTargetKey || cleanErrKey.includes(cleanTargetKey) || cleanTargetKey.includes(cleanErrKey)) {
+                                                const cleanTargetKey = targetKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+                                                if (cleanErrKey === cleanTargetKey) {
                                                     return String(errors[errKey]);
                                                 }
                                             }
@@ -442,15 +442,15 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                         return null;
                                     };
 
-                                    const orderDateErr = getFieldError(["order_date", "orderdate", "order date", "date"]);
-                                    const customerErr = getFieldError(["customer_name", "customername", "customer name", "customer"]);
-                                    const pnErr = getFieldError(["p_n", "pn", "part_name", "part number", "p/n"]);
-                                    const qtyErr = getFieldError(["qty", "quantity", "order qty"]);
-                                    const launchErr = getFieldError(["launch_qty", "launchqty", "launch"]);
-                                    const panelErr = getFieldError(["panel_qty", "panelqty", "panel"]);
-                                    const finalQtyErr = getFieldError(["final_qty", "finalqty", "final"]);
-                                    const statusErr = getFieldError(["status"]);
-                                    const billErr = getFieldError(["bill_number", "billnumber", "bill #", "bill"]);
+                                    const orderDateErr = getFieldError(["Order Date", "order_date", "orderdate"]);
+                                    const customerErr = getFieldError(["Customer name", "customer_name", "customername", "customer"]);
+                                    const pnErr = getFieldError(["P/N", "p_n", "pn", "part_name", "partnumber"]);
+                                    const qtyErr = getFieldError(["Qty", "qty", "quantity", "orderqty"]);
+                                    const launchErr = getFieldError(["Launch", "launch_qty", "launchqty"]);
+                                    const panelErr = getFieldError(["Panel", "panel_qty", "panelqty"]);
+                                    const finalQtyErr = getFieldError(["Final qty", "final_qty", "finalqty"]);
+                                    const statusErr = getFieldError(["Status", "status"]);
+                                    const billErr = getFieldError(["Bill number", "bill_number", "billnumber"]);
 
                                     return (
                                         <React.Fragment key={row.id}>
