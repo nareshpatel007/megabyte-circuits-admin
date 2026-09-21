@@ -405,17 +405,25 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                             <thead className="bg-muted/80 backdrop-blur-xs text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80 sticky top-0 z-10">
                                 <tr>
                                     <th className="p-3 pl-4">Row</th>
-                                    <th className="p-3 min-w-[140px]">Order Date</th>
-                                    <th className="p-3 min-w-[140px]">Launch Date</th>
-                                    <th className="p-3 min-w-[140px]">Delivery Date</th>
-                                    <th className="p-3 min-w-[200px]">Customer Name</th>
-                                    <th className="p-3 min-w-[160px]">P/N (Part Name)</th>
-                                    <th className="p-3 min-w-[90px] text-center">Qty</th>
-                                    <th className="p-3 min-w-[90px] text-center">Launch Qty</th>
-                                    <th className="p-3 min-w-[90px] text-center">Panel Qty</th>
-                                    <th className="p-3 min-w-[90px] text-center">Final Qty</th>
-                                    <th className="p-3 min-w-[110px]">Status</th>
-                                    <th className="p-3 min-w-[110px]">Bill #</th>
+                                    <th className="p-3 min-w-[130px]">Order Date</th>
+                                    <th className="p-3 min-w-[130px]">Launch Date</th>
+                                    <th className="p-3 min-w-[130px]">Delivery Date</th>
+                                    <th className="p-3 min-w-[110px]">Q# No.</th>
+                                    <th className="p-3 min-w-[90px]">C/G</th>
+                                    <th className="p-3 min-w-[100px]">Tool</th>
+                                    <th className="p-3 min-w-[100px]">Combo</th>
+                                    <th className="p-3 min-w-[180px]">Customer Name</th>
+                                    <th className="p-3 min-w-[80px]">Layer</th>
+                                    <th className="p-3 min-w-[100px]">Mask</th>
+                                    <th className="p-3 min-w-[150px]">P/N (Part Name)</th>
+                                    <th className="p-3 min-w-[160px]">Production Noted</th>
+                                    <th className="p-3 min-w-[80px] text-center">Qty</th>
+                                    <th className="p-3 min-w-[80px] text-center">Launch</th>
+                                    <th className="p-3 min-w-[80px] text-center">Panel</th>
+                                    <th className="p-3 min-w-[80px] text-center">ups</th>
+                                    <th className="p-3 min-w-[80px] text-center">Final Qty</th>
+                                    <th className="p-3 min-w-[100px]">Status</th>
+                                    <th className="p-3 min-w-[100px]">Bill #</th>
                                     <th className="p-3 pr-4 text-center min-w-[100px]">Validation</th>
                                 </tr>
                             </thead>
@@ -529,6 +537,50 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                                     </div>
                                                 </td>
 
+                                                {/* Q# No. */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.quote_number || data.q_no || ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "quote_number", e.target.value)}
+                                                        placeholder="Q# No."
+                                                        className="h-8 text-xs rounded-lg border-border/80 bg-card"
+                                                    />
+                                                </td>
+
+                                                {/* C/G */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.c_g || ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "c_g", e.target.value)}
+                                                        placeholder="C/G"
+                                                        className="h-8 text-xs rounded-lg border-border/80 bg-card"
+                                                    />
+                                                </td>
+
+                                                {/* Tool */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.tool || ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "tool", e.target.value)}
+                                                        placeholder="Tool"
+                                                        className="h-8 text-xs font-mono font-bold rounded-lg border-border/80 bg-card"
+                                                    />
+                                                </td>
+
+                                                {/* Combo */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.combo || ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "combo", e.target.value)}
+                                                        placeholder="Combo"
+                                                        className="h-8 text-xs rounded-lg border-border/80 bg-card"
+                                                    />
+                                                </td>
+
                                                 {/* Customer Name */}
                                                 <td className="p-2">
                                                     <div className="space-y-0.5">
@@ -552,7 +604,27 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                                     </div>
                                                 </td>
 
+                                                {/* Layer */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.layer ?? ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "layer", e.target.value)}
+                                                        placeholder="Layer"
+                                                        className="h-8 text-xs font-mono text-center rounded-lg border-border/80 bg-card"
+                                                    />
+                                                </td>
 
+                                                {/* Mask */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.mask || ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "mask", e.target.value)}
+                                                        placeholder="Mask"
+                                                        className="h-8 text-xs rounded-lg border-border/80 bg-card"
+                                                    />
+                                                </td>
 
                                                 {/* P/N */}
                                                 <td className="p-2">
@@ -575,6 +647,17 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                                             </div>
                                                         )}
                                                     </div>
+                                                </td>
+
+                                                {/* Production Noted */}
+                                                <td className="p-2">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.production_noted || ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "production_noted", e.target.value)}
+                                                        placeholder="Production Note"
+                                                        className="h-8 text-xs rounded-lg border-border/80 bg-card"
+                                                    />
                                                 </td>
 
                                                 {/* Qty */}
@@ -642,6 +725,17 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                                             </div>
                                                         )}
                                                     </div>
+                                                </td>
+
+                                                {/* ups */}
+                                                <td className="p-2 text-center">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={data.ups ?? ""}
+                                                        onBlur={(e) => handleCellChange(row.id, "ups", e.target.value)}
+                                                        placeholder="ups"
+                                                        className="h-8 text-xs font-mono text-center rounded-lg border-border/80 bg-card"
+                                                    />
                                                 </td>
 
                                                 {/* Final Qty */}
@@ -727,7 +821,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                             {/* Detailed Error Row Banner for Invalid Rows */}
                                             {!isRowValid && (
                                                 <tr className="bg-rose-500/10 border-b-2 border-rose-500/30">
-                                                    <td colSpan={12} className="px-4 py-2 text-[11px] text-rose-600 dark:text-rose-400 font-bold">
+                                                    <td colSpan={21} className="px-4 py-2 text-[11px] text-rose-600 dark:text-rose-400 font-bold">
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
                                                             <span className="uppercase tracking-wider font-extrabold text-[10px] bg-rose-500 text-white px-1.5 py-0.5 rounded">Row #{row.row_number} Errors:</span>
