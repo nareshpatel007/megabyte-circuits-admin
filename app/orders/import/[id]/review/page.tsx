@@ -46,10 +46,11 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
     const [totalRowsCount, setTotalRowsCount] = useState(0);
     const [perPage, setPerPage] = useState<number>(50);
 
-    const [duplicateAction, setDuplicateAction] = useState<"skip" | "update" | "create_new">("skip");
+    const [duplicateAction, setDuplicateAction] = useState<"skip" | "update" | "create_new">("update");
     const [savingCellId, setSavingCellId] = useState<string | null>(null);
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [startingImport, setStartingImport] = useState(false);
+    const [importValidOnlyMode, setImportValidOnlyMode] = useState(false);
 
     const fetchStagedData = async (
         page: number = currentPage,
@@ -121,11 +122,9 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
             });
             const json = await res.json();
             if (res.ok && json.success) {
-                // Update specific row locally in state
                 setStagedRows((prev) =>
                     prev.map((r) => (r.id === rowId ? json.row : r))
                 );
-                // Update session totals
                 if (json.import) {
                     setImportSession(json.import);
                 }
@@ -153,6 +152,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                 },
                 body: JSON.stringify({
                     duplicate_action: duplicateAction,
+                    import_valid_only: importValidOnlyMode,
                 }),
             });
 
@@ -173,38 +173,48 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
 
     const invalidRowsCount = importSession?.invalid_rows ?? 0;
     const validRowsCount = importSession?.valid_rows ?? 0;
-    const isImportDisabled = invalidRowsCount > 0;
 
     const headerAction = (
-        <Button
-            type="button"
-            onClick={() => {
-                if (isImportDisabled) {
-                    toast.error(`Cannot start import: ${invalidRowsCount} invalid rows need attention.`);
-                } else {
-                    setConfirmModalOpen(true);
-                }
-            }}
-            disabled={isImportDisabled}
-            className={`font-bold text-xs rounded-2xl shadow-lg h-11 px-6 gap-2 cursor-pointer transition-all ${
-                isImportDisabled
-                    ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70"
-                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
-            }`}
-        >
-            {isImportDisabled ? (
+        <div className="flex flex-wrap items-center gap-2">
+            {invalidRowsCount > 0 ? (
                 <>
-                    <ShieldAlert className="w-4 h-4 text-rose-500" />
-                    Fix {invalidRowsCount} Error{invalidRowsCount > 1 ? "s" : ""} Before Import
+                    <Button
+                        type="button"
+                        onClick={() => {
+                            setImportValidOnlyMode(true);
+                            setConfirmModalOpen(true);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-lg h-11 px-5 gap-2 cursor-pointer transition-all shadow-emerald-600/20"
+                    >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Import Validated Data Only ({validRowsCount})
+                    </Button>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setFilterStatus("invalid")}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold text-xs rounded-2xl h-11 px-4 gap-1.5 cursor-pointer"
+                    >
+                        <AlertTriangle className="w-4 h-4 text-rose-500" />
+                        Fix {invalidRowsCount} Error{invalidRowsCount > 1 ? "s" : ""}
+                    </Button>
                 </>
             ) : (
-                <>
+                <Button
+                    type="button"
+                    onClick={() => {
+                        setImportValidOnlyMode(false);
+                        setConfirmModalOpen(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-lg h-11 px-6 gap-2 cursor-pointer transition-all shadow-emerald-600/20"
+                >
                     <CheckCircle className="w-4 h-4" />
-                    Start Background Import
+                    Start Background Import ({validRowsCount})
                     <ArrowRight className="w-4 h-4" />
-                </>
+                </Button>
             )}
-        </Button>
+        </div>
     );
 
     return (
@@ -923,19 +933,29 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                     <DialogHeader>
                         <DialogTitle className="text-lg font-black flex items-center gap-2">
                             <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                            Confirm Background Import
+                            {importValidOnlyMode
+                                ? `Import ${validRowsCount} Validated Rows Only`
+                                : "Confirm Background Import"}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
-                            All {validRowsCount} staged records have passed validation checks and are ready for background database creation.
+                            {importValidOnlyMode
+                                ? `You are about to queue ${validRowsCount} validated records. The ${invalidRowsCount} invalid records will be skipped.`
+                                : `All ${validRowsCount} staged records have passed validation checks and are ready for background database creation.`}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-3 py-2 text-xs">
                         <div className="bg-muted/40 p-4 rounded-2xl space-y-2 border border-border/60">
-                            <div className="flex justify-between font-bold">
-                                <span>Total Orders to Import:</span>
+                            <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400">
+                                <span>Validated Orders to Import:</span>
                                 <span className="font-mono">{validRowsCount}</span>
                             </div>
+                            {importValidOnlyMode && invalidRowsCount > 0 && (
+                                <div className="flex justify-between font-bold text-rose-500">
+                                    <span>Invalid Orders Skipped:</span>
+                                    <span className="font-mono">{invalidRowsCount}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between font-bold text-indigo-600 dark:text-indigo-400">
                                 <span>Existing Customers Reused:</span>
                                 <span className="font-mono">{importSession?.existing_customers ?? 0}</span>
