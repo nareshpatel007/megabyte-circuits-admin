@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Info, Layers, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -1012,6 +1012,11 @@ export default function OrdersPage() {
     // Quantity calculations excluding Part orders
     const nonPartFilteredOrders = filtered.filter((o) => getMetaValue(o, 'product_type', 'pcb').toLowerCase() !== 'part');
     const statsTotalQty = nonPartFilteredOrders.reduce((sum, o) => sum + (parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0), 0);
+    const statsLaunchQty = nonPartFilteredOrders.reduce((sum, o) => {
+        const totalQ = parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0;
+        const launch = typeof o.launch_qty === 'number' ? o.launch_qty : (parseInt(getMetaValue(o, 'launch_qty', String(totalQ))) || totalQ);
+        return sum + launch;
+    }, 0);
     const statsCompletedQty = nonPartFilteredOrders.reduce((sum, o) => {
         const orderStatusStr = (o.status || '').toString().toLowerCase();
         const totalQ = parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0;
@@ -1023,7 +1028,6 @@ export default function OrdersPage() {
         const fail = typeof o.failed_qty === 'number' ? o.failed_qty : (parseInt(getMetaValue(o, 'failed_qty', '0')) || 0);
         return sum + fail;
     }, 0);
-    const statsPendingQty = Math.max(0, statsTotalQty - statsCompletedQty - statsFailedQty);
 
     return (
         <DashboardLayout
@@ -1088,12 +1092,22 @@ export default function OrdersPage() {
                             {/* Row 2: PCB Quantity Breakdown (Excludes Part Orders) */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
                                 <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 font-extrabold text-xs">
-                                        QTY
+                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                                        <Layers className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Quantity</p>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ordered Qty</p>
                                         <h3 className="text-lg font-black text-foreground leading-tight mt-0.5">{statsTotalQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                    </div>
+                                </div>
+
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                        <Rocket className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Launch Qty</p>
+                                        <h3 className="text-lg font-black text-blue-600 dark:text-blue-400 leading-tight mt-0.5">{statsLaunchQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
                                     </div>
                                 </div>
 
@@ -1102,7 +1116,7 @@ export default function OrdersPage() {
                                         <CheckCircle2 className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed Qty</p>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Final Qty</p>
                                         <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5">{statsCompletedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
                                     </div>
                                 </div>
@@ -1114,16 +1128,6 @@ export default function OrdersPage() {
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Failed Qty</p>
                                         <h3 className="text-lg font-black text-rose-500 leading-tight mt-0.5">{statsFailedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
-                                    </div>
-                                </div>
-
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                                        <Clock className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Qty</p>
-                                        <h3 className="text-lg font-black text-amber-500 leading-tight mt-0.5">{statsPendingQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
                                     </div>
                                 </div>
                             </div>
@@ -1344,7 +1348,7 @@ export default function OrdersPage() {
                                             <th className="py-2 px-3.5">Layers</th>
                                             <th className="py-2 px-3.5">Film</th>
                                             <th className="py-2 px-3.5">
-                                                Qty (Total / Completed / Failed / Pending)
+                                                Qty (Launch / Final / Fail)
                                             </th>
                                             <th className="py-2 px-3.5">Order Date</th>
                                             <th className="py-2 px-3.5">Delivery Date</th>
@@ -1368,6 +1372,7 @@ export default function OrdersPage() {
                                                 const layerCount = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
 
                                                 const totalQty = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
+                                                const launchQty = typeof order.launch_qty === 'number' ? order.launch_qty : (parseInt(getMetaValue(order, 'launch_qty', String(totalQty))) || totalQty);
                                                 const isCompleted = ['completed', 'shipped', 'delivered'].includes(orderStatusStr);
                                                 const completedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQty : 0);
                                                 const failedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
@@ -1462,24 +1467,25 @@ export default function OrdersPage() {
                                                             })()}
                                                         </td>
 
-                                                        {/* 5. Qty (Total / Completed / Failed / Pending) */}
+                                                        {/* 5. Qty (Ordered / Launch / Final / Fail) */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
-                                                            <div className="flex items-center gap-1.5 font-bold text-xs">
-                                                                <span className="text-foreground font-extrabold" title="Total Order Quantity">
+                                                            <div className="flex items-center gap-1 font-bold text-xs">
+                                                                <span className="text-foreground font-extrabold" title="Ordered Quantity">
                                                                     {totalQty} Pcs
                                                                 </span>
-                                                                <span className="text-muted-foreground">·</span>
-                                                                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold" title="Completed Quantity">
+                                                                <span className="text-muted-foreground ml-0.5">(</span>
+                                                                <span className="text-blue-600 dark:text-blue-400 font-extrabold" title="Launch Quantity">
+                                                                    {launchQty} Lnc
+                                                                </span>
+                                                                <span className="text-muted-foreground">/</span>
+                                                                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold" title="Final / Completed Quantity">
                                                                     {completedQty} Done
                                                                 </span>
                                                                 <span className="text-muted-foreground">/</span>
                                                                 <span className="text-rose-600 dark:text-rose-400 font-extrabold" title="Failed Quantity">
                                                                     {failedQty} Fail
                                                                 </span>
-                                                                <span className="text-muted-foreground">/</span>
-                                                                <span className="text-amber-600 dark:text-amber-400 font-extrabold" title="Pending Quantity">
-                                                                    {pendingQty} Pend
-                                                                </span>
+                                                                <span className="text-muted-foreground">)</span>
                                                             </div>
                                                         </td>
 

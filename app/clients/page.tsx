@@ -182,8 +182,16 @@ export default function ClientsPage() {
             (u.company_name && u.company_name.toLowerCase().includes(query)) ||
             (u.phone_number && u.phone_number.toLowerCase().includes(query));
 
-        const userStatus = u.status || 'Active';
-        const matchStatus = statusFilter === "All" || userStatus.toLowerCase() === statusFilter.toLowerCase();
+        const userStatus = (u.status || 'Active').toLowerCase();
+
+        let matchStatus = false;
+        if (statusFilter === "All") {
+            // "All Statuses" excludes soft deleted clients
+            matchStatus = userStatus !== "deleted";
+        } else {
+            matchStatus = userStatus === statusFilter.toLowerCase();
+        }
+
         return matchSearch && matchStatus;
     });
 
@@ -286,6 +294,7 @@ export default function ClientsPage() {
                                 <option value="Pending">Pending</option>
                                 <option value="Suspended">Suspended</option>
                                 <option value="On Hold">On Hold</option>
+                                <option value="Deleted">Deleted</option>
                             </select>
                         </div>
                     </div>
