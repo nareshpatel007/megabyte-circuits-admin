@@ -25,7 +25,73 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
     const [importSession, setImportSession] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [resuming, setResuming] = useState(false);
+    const [isProcessingChunk, setIsProcessingChunk] = useState(false);
     const [actionMessage, setActionMessage] = useState<string | null>(null);
+    const [completedSummary, setCompletedSummary] = useState<any>(null);
+
+    const processNextChunk = async () => {
+        if (isProcessingChunk || completedSummary) return;
+
+        setIsProcessingChunk(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/import/${importId}/process-chunk`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ batch_size: 100 }),
+            });
+
+            const contentType = res.headers.get("content-type") || "";
+            if (!res.ok || !contentType.includes("application/json")) {
+                const text = await res.text();
+                // If 404, import session finished and was auto-purged
+                if (res.status === 404 && importSession) {
+                    setCompletedSummary({
+                        total_rows: importSession.total_rows || importSession.processed_rows,
+                        successful_rows: importSession.valid_rows || importSession.successful_rows,
+                        existing_customers: importSession.existing_customers || 0,
+                        new_customers: importSession.new_customers || 0
+                    });
+                    setImportSession((prev: any) => ({
+                        ...prev,
+                        status: "completed",
+                        processed_rows: prev?.total_rows || prev?.processed_rows || 0,
+                        successful_rows: prev?.valid_rows || prev?.successful_rows || 0,
+                    }));
+                }
+                return;
+            }
+
+            const json = await res.json();
+            if (res.ok && json.status && json.data) {
+                const chunkResult = json.data;
+                if (chunkResult.is_completed || chunkResult.status === "completed") {
+                    setCompletedSummary({
+                        total_rows: chunkResult.total_rows || importSession?.total_rows,
+                        successful_rows: chunkResult.successful_rows || importSession?.valid_rows,
+                        existing_customers: chunkResult.import?.existing_customers || importSession?.existing_customers || 0,
+                        new_customers: chunkResult.import?.new_customers || importSession?.new_customers || 0,
+                    });
+                    setImportSession({
+                        status: "completed",
+                        total_rows: chunkResult.total_rows || importSession?.total_rows,
+                        processed_rows: chunkResult.total_rows || importSession?.total_rows,
+                        successful_rows: chunkResult.successful_rows || importSession?.valid_rows,
+                        failed_rows: chunkResult.failed_rows || 0,
+                    });
+                } else if (chunkResult.import) {
+                    setImportSession(chunkResult.import);
+                }
+            }
+        } catch (e) {
+            console.error("Error processing chunk:", e);
+        } finally {
+            setIsProcessingChunk(false);
+        }
+    };
 
     const fetchImportStatus = async () => {
         try {
@@ -36,29 +102,61 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
             const json = await res.json();
             if (res.ok && json.status && json.data) {
                 setImportSession(json.data);
+            } else if (res.status === 404 && importSession) {
+                // Import completed & cleaned up from server
+                setCompletedSummary({
+                    total_rows: importSession.total_rows || importSession.processed_rows,
+                    successful_rows: importSession.valid_rows || importSession.successful_rows,
+                    existing_customers: importSession.existing_customers || 0,
+                    new_customers: importSession.new_customers || 0
+                });
+                setImportSession((prev: any) => ({
+                    ...prev,
+                    status: "completed",
+                    processed_rows: prev?.total_rows || prev?.processed_rows || 0,
+                    successful_rows: prev?.valid_rows || prev?.successful_rows || 0,
+                }));
             }
         } catch (e) {
-            console.error("Error polling import status:", e);
+            console.error("Error fetching import status:", e);
         } finally {
             setLoading(false);
         }
     };
 
     const currentStatus = importSession?.status ?? "queued";
+    const isCompleted = currentStatus === "completed" || Boolean(completedSummary);
+
+    // Prompt warning if user tries to close page before completion
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (!isCompleted && currentStatus !== "failed" && currentStatus !== "cancelled") {
+                e.preventDefault();
+                e.returnValue = "Import is in progress! Closing this page will pause the import execution. Please do not close or refresh until complete.";
+                return e.returnValue;
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isCompleted, currentStatus]);
 
     useEffect(() => {
         fetchImportStatus();
+    }, [importId]);
 
-        if (currentStatus === "completed" || currentStatus === "failed" || currentStatus === "cancelled") {
+    // Active Chunk Processing Loop
+    useEffect(() => {
+        if (isCompleted || currentStatus === "failed" || currentStatus === "cancelled" || isProcessingChunk) {
             return;
         }
 
-        const interval = setInterval(() => {
-            fetchImportStatus();
-        }, 2000);
+        const timer = setTimeout(() => {
+            processNextChunk();
+        }, 100);
 
-        return () => clearInterval(interval);
-    }, [importId, currentStatus]);
+        return () => clearTimeout(timer);
+    }, [importId, currentStatus, isProcessingChunk, isCompleted]);
 
     const handleContinueImport = async () => {
         setResuming(true);
@@ -163,6 +261,19 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
                     </div>
                 </div>
 
+                {/* DO NOT CLOSE PAGE WARNING BANNER */}
+                {!isCompleted && currentStatus !== "failed" && currentStatus !== "cancelled" && (
+                    <div className="bg-amber-500/10 border-2 border-amber-500/40 p-4 rounded-2xl flex items-center gap-3 animate-pulse">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                        <div>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Import Processing in Progress — DO NOT CLOSE THIS PAGE</h4>
+                            <p className="text-[11px] text-amber-700 dark:text-amber-300 font-bold">
+                                Records are being created in real-time chunks (100 rows per batch). Please keep this page open until 100% complete.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Real-time Progress Bar Card */}
                 <div className="bg-card border border-border/80 p-6 rounded-3xl space-y-6 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
@@ -170,6 +281,11 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
                             <div className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">EXECUTION STATUS</div>
                             <div className="flex items-center gap-3">
                                 {getStatusBadge(status)}
+                                {isProcessingChunk && (
+                                    <span className="text-[11px] font-bold text-amber-500 animate-pulse flex items-center gap-1">
+                                        <RefreshCw className="w-3 h-3 animate-spin" /> Processing Chunk...
+                                    </span>
+                                )}
                                 <span className="text-xs font-bold text-muted-foreground">
                                     Started: {importSession?.started_at ? new Date(importSession.started_at).toLocaleTimeString() : "Pending"}
                                 </span>
@@ -259,11 +375,11 @@ export default function ImportProgressPage({ params }: { params: Promise<{ id: s
                 )}
 
                 {/* Temporary Storage File Cleanup Notice */}
-                <div className="bg-muted/30 border border-border/80 p-4 rounded-2xl flex items-center justify-between gap-4 text-xs">
-                    <div className="flex items-center gap-2.5 text-muted-foreground font-medium">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-center justify-between gap-4 text-xs">
+                    <div className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-medium">
                         <Trash2 className="w-4 h-4 text-emerald-500 shrink-0" />
                         <span>
-                            <strong className="text-foreground">Temporary File Lifecycle:</strong> Physical uploaded file is automatically removed from local disk after background completion, while session history and row logs remain safely archived.
+                            <strong className="text-foreground">Automatic Cleanup Policy:</strong> Upon 100% completion of the import, all temporary data (uploaded file, staged rows, errors, and import session entry) are automatically removed from disk and database.
                         </span>
                     </div>
                 </div>
