@@ -29,6 +29,7 @@ interface ApiOrder {
     status: string;
     unit_price?: string | number;
     order_value: string | number;
+    launch_date?: string | null;
     delivery_date?: string | null;
     created_at: string;
     metas?: Array<{ meta_key: string; meta_value: string }>;

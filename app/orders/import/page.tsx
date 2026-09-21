@@ -73,18 +73,15 @@ export default function ImportPage() {
         }
     };
 
-    const handleUploadAndStage = async () => {
-        if (!file) {
-            toast.error("Please select an Excel file (.xlsx or .xls) to continue.");
-            return;
-        }
+    const [isDragging, setIsDragging] = useState(false);
 
+    const uploadAndStage = async (fileToUpload: File) => {
         setUploading(true);
-        const toastId = toast.loading("Uploading & staging spreadsheet rows for review...");
+        const toastId = toast.loading("Extracting spreadsheet data for review...");
         try {
             const token = localStorage.getItem("admin_token");
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", fileToUpload);
 
             const res = await fetch("/api/admin/orders/import/upload", {
                 method: "POST",
@@ -94,7 +91,7 @@ export default function ImportPage() {
 
             const json = await res.json();
             if (res.ok && json.status && json.data?.id) {
-                toast.success("File uploaded & staged successfully!", { id: toastId });
+                toast.success("File extracted & staged successfully!", { id: toastId });
                 router.push(`/orders/import/${json.data.id}/review`);
             } else {
                 throw new Error(json.message || "Failed to stage import file.");
@@ -103,6 +100,34 @@ export default function ImportPage() {
             toast.error(err.message || "An error occurred while uploading file.", { id: toastId });
         } finally {
             setUploading(false);
+        }
+    };
+
+    const processFile = (selectedFile: File) => {
+        if (!selectedFile) return;
+        setFile(selectedFile);
+        uploadAndStage(selectedFile);
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isDragging) setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const droppedFile = e.dataTransfer.files?.[0];
+        if (droppedFile) {
+            processFile(droppedFile);
         }
     };
 
@@ -172,16 +197,31 @@ export default function ImportPage() {
                     </div>
                 </div>
 
-                {/* File Upload Zone */}
-                <div className="bg-card border-2 border-dashed border-border/80 hover:border-emerald-500/60 rounded-3xl p-8 text-center transition-all shadow-sm space-y-6">
+                {/* File Upload & Drag-and-Drop Zone */}
+                <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`bg-card border-2 border-dashed rounded-3xl p-8 text-center transition-all shadow-sm space-y-6 ${
+                        isDragging
+                            ? "border-emerald-500 bg-emerald-500/10 ring-4 ring-emerald-500/20 scale-[1.01]"
+                            : "border-border/80 hover:border-emerald-500/60"
+                    }`}
+                >
                     <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto">
-                        <Upload className="w-8 h-8" />
+                        {uploading ? (
+                            <RefreshCw className="w-8 h-8 animate-spin" />
+                        ) : (
+                            <Upload className="w-8 h-8" />
+                        )}
                     </div>
 
                     <div className="space-y-1 max-w-md mx-auto">
-                        <h3 className="text-base font-black text-foreground">Upload Manufacturer Excel Spreadsheet</h3>
+                        <h3 className="text-base font-black text-foreground">
+                            {uploading ? "Extracting Spreadsheet Data..." : "Upload or Drag Manufacturer Excel Spreadsheet"}
+                        </h3>
                         <p className="text-xs text-muted-foreground">
-                            Supports standard 19-column layout (.xlsx, .xls max 50MB). Data is stored in staging for review before affecting production records.
+                            Drag & drop your Excel file here or click below to select. Data is automatically extracted into staging for review.
                         </p>
                     </div>
 
@@ -190,47 +230,37 @@ export default function ImportPage() {
                         id="import-file-input"
                         accept=".xlsx, .xls"
                         className="hidden"
+                        disabled={uploading}
                         onChange={(e) => {
                             const selected = e.target.files?.[0];
-                            if (selected) setFile(selected);
+                            if (selected) {
+                                processFile(selected);
+                            }
+                            e.target.value = "";
                         }}
                     />
 
                     <div className="flex flex-col items-center gap-3">
                         <label
                             htmlFor="import-file-input"
-                            className="px-6 py-3 rounded-2xl bg-muted/50 hover:bg-muted border border-border/80 font-bold text-xs text-foreground cursor-pointer transition-all flex items-center gap-2"
+                            className={`px-6 py-3 rounded-2xl bg-muted/50 hover:bg-muted border border-border/80 font-bold text-xs text-foreground cursor-pointer transition-all flex items-center gap-2 ${
+                                uploading ? "pointer-events-none opacity-50" : ""
+                            }`}
                         >
                             <FileText className="w-4 h-4 text-emerald-500" />
-                            {file ? file.name : "Choose Manufacturer Excel File"}
+                            {uploading
+                                ? "Extracting Data..."
+                                : file
+                                ? file.name
+                                : "Choose or Drag Manufacturer Excel File"}
                         </label>
 
                         {file && (
-                            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                                Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-2">
+                                {uploading && <RefreshCw className="w-3 h-3 animate-spin" />}
+                                {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
                             </div>
                         )}
-                    </div>
-
-                    <div className="pt-2">
-                        <Button
-                            type="button"
-                            disabled={!file || uploading}
-                            onClick={handleUploadAndStage}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-lg shadow-emerald-600/20 h-11 px-8 gap-2 cursor-pointer"
-                        >
-                            {uploading ? (
-                                <>
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                    Staging Data Rows...
-                                </>
-                            ) : (
-                                <>
-                                    Upload & Continue to Review
-                                    <ArrowRight className="w-4 h-4" />
-                                </>
-                            )}
-                        </Button>
                     </div>
                 </div>
 

@@ -406,8 +406,9 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                 <tr>
                                     <th className="p-3 pl-4">Row</th>
                                     <th className="p-3 min-w-[140px]">Order Date</th>
+                                    <th className="p-3 min-w-[140px]">Launch Date</th>
+                                    <th className="p-3 min-w-[140px]">Delivery Date</th>
                                     <th className="p-3 min-w-[200px]">Customer Name</th>
-                                    <th className="p-3 min-w-[150px]">Customer Action</th>
                                     <th className="p-3 min-w-[160px]">P/N (Part Name)</th>
                                     <th className="p-3 min-w-[90px] text-center">Qty</th>
                                     <th className="p-3 min-w-[90px] text-center">Launch Qty</th>
@@ -443,6 +444,8 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                     };
 
                                     const orderDateErr = getFieldError(["Order Date", "order_date", "orderdate"]);
+                                    const launchDateErr = getFieldError(["Launch Date", "launch_date", "launchdate"]);
+                                    const deliveryDateErr = getFieldError(["Delivery Date", "delivery_date", "deliverydate", "delivery"]);
                                     const customerErr = getFieldError(["Customer name", "customer_name", "customername", "customer"]);
                                     const pnErr = getFieldError(["P/N", "p_n", "pn", "part_name", "partnumber"]);
                                     const qtyErr = getFieldError(["Qty", "qty", "quantity", "orderqty"]);
@@ -482,6 +485,50 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                                     </div>
                                                 </td>
 
+                                                {/* Launch Date */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="date"
+                                                            defaultValue={data.launch_date || ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "launch_date", e.target.value)}
+                                                            className={`h-8 text-xs font-mono rounded-lg border bg-card ${
+                                                                launchDateErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {launchDateErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {launchDateErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Delivery Date */}
+                                                <td className="p-2">
+                                                    <div className="space-y-0.5">
+                                                        <Input
+                                                            type="date"
+                                                            defaultValue={data.delivery_date || ""}
+                                                            onBlur={(e) => handleCellChange(row.id, "delivery_date", e.target.value)}
+                                                            className={`h-8 text-xs font-mono rounded-lg border bg-card ${
+                                                                deliveryDateErr
+                                                                    ? "border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/15 font-bold text-rose-600 dark:text-rose-400"
+                                                                    : "border-border/80"
+                                                            }`}
+                                                        />
+                                                        {deliveryDateErr && (
+                                                            <div className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                                {deliveryDateErr}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
                                                 {/* Customer Name */}
                                                 <td className="p-2">
                                                     <div className="space-y-0.5">
@@ -505,16 +552,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                                     </div>
                                                 </td>
 
-                                                {/* Customer Action Badge */}
-                                                <td className="p-3">
-                                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold whitespace-nowrap ${
-                                                        row.is_new_customer
-                                                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-                                                            : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                                                    }`}>
-                                                        {row.customer_action || "Existing Customer"}
-                                                    </span>
-                                                </td>
+
 
                                                 {/* P/N */}
                                                 <td className="p-2">

@@ -53,6 +53,7 @@ interface ApiOrder {
     failed_qty?: number;
     unit_price: string | number;
     order_value: string | number;
+    launch_date?: string | null;
     delivery_date: string | null;
     created_at: string;
     metas?: OrderMeta[];
@@ -2020,7 +2021,7 @@ export default function OrdersPage() {
                     const isSingleSide = layersStr === "1" || layersStr.toLowerCase().includes("1-side") || layersStr.toLowerCase().includes("single");
 
                     const createdDate = formatDate(order.created_at);
-                    const launchDate = formatDate(getMetaValue(order, 'launch_date', order.created_at));
+                    const launchDate = formatDate(order.launch_date || getMetaValue(order, 'launch_date', order.created_at));
                     const shippingDate = formatDate(order.delivery_date);
 
                     const orderQty = getMetaValue(order, 'qty', getMetaValue(order, 'quantity', 'N/A'));
@@ -2606,10 +2607,11 @@ export default function OrdersPage() {
                                                     <tr>
                                                         <th className="p-2.5 pl-3">Row</th>
                                                         <th className="p-2.5">Customer Name</th>
-                                                        <th className="p-2.5">Customer Action</th>
                                                         <th className="p-2.5">P/N (Part Name)</th>
                                                         <th className="p-2.5">Qty</th>
                                                         <th className="p-2.5">Order Date</th>
+                                                        <th className="p-2.5">Launch Date</th>
+                                                        <th className="p-2.5">Delivery Date</th>
                                                         <th className="p-2.5">Record Type</th>
                                                         <th className="p-2.5 text-center">Status</th>
                                                     </tr>
@@ -2619,17 +2621,11 @@ export default function OrdersPage() {
                                                         <tr key={idx} className="hover:bg-muted/30">
                                                             <td className="p-2.5 pl-3 font-mono font-bold text-muted-foreground">#{item.row_number}</td>
                                                             <td className="p-2.5 font-bold text-foreground">{item.customer_name || 'N/A'}</td>
-                                                            <td className="p-2.5">
-                                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${item.is_new_customer
-                                                                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                                                                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
-                                                                    }`}>
-                                                                    {item.customer_action || 'Existing Customer'}
-                                                                </span>
-                                                            </td>
                                                             <td className="p-2.5 font-mono text-[11px] font-bold">{item.p_n || 'N/A'}</td>
                                                             <td className="p-2.5 font-mono text-[11px]">{item.quantity ? `${item.quantity} pcs` : '-'}</td>
                                                             <td className="p-2.5 text-[11px] whitespace-nowrap">{item.order_date || '-'}</td>
+                                                            <td className="p-2.5 text-[11px] whitespace-nowrap">{item.launch_date || '-'}</td>
+                                                            <td className="p-2.5 text-[11px] whitespace-nowrap">{item.delivery_date || '-'}</td>
                                                             <td className="p-2.5">
                                                                 {item.is_duplicate ? (
                                                                     <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">

@@ -73,6 +73,7 @@ interface ApiOrder {
     completed_qty?: number;
     unit_price: string | number;
     order_value: string | number;
+    launch_date?: string | null;
     delivery_date: string | null;
     created_at: string;
     shipping_first_name?: string;
