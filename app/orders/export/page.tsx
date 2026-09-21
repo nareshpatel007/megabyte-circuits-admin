@@ -36,15 +36,22 @@ interface StatusItem {
 
 interface PreviewRow {
     id: number;
-    tool_number?: string;
-    order_number: string;
     order_date: string;
+    launch_date: string;
+    delivery_date: string;
     quote_number: string;
+    c_g: string;
+    tool: string;
+    combo: string;
     customer_name: string;
-    board_name: string;
     layer: string;
     mask: string;
+    board_name: string;
+    production_noted: string;
     qty: number;
+    launch_qty: number;
+    panel_qty: number;
+    ups: number;
     completed_qty: number;
     status: string;
     bill_number: string;
@@ -593,60 +600,92 @@ export default function ExportOrdersPage() {
                             </div>
                         ) : previewRows.length > 0 ? (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                                <table className="w-full text-left border-collapse min-w-[1400px]">
                                     <thead className="bg-muted/60 text-[10px] font-extrabold uppercase text-muted-foreground border-b border-border/80">
                                         <tr>
-                                            <th className="p-3 pl-4">Order Date</th>
-                                            <th className="p-3">Tool / Order #</th>
-                                            <th className="p-3">Q# No.</th>
-                                            <th className="p-3">Customer Name</th>
-                                            <th className="p-3">P/N (Board)</th>
-                                            <th className="p-3 text-center">Layer</th>
-                                            <th className="p-3 text-center">Mask</th>
-                                            <th className="p-3 text-center">Qty</th>
-                                            <th className="p-3 text-center">Final Qty</th>
-                                            <th className="p-3 text-center">Status</th>
-                                            <th className="p-3 pr-4 text-center">Bill #</th>
+                                            <th className="p-3 pl-4 whitespace-nowrap">Order Date</th>
+                                            <th className="p-3 whitespace-nowrap">Launch Date</th>
+                                            <th className="p-3 whitespace-nowrap">Delivery Date</th>
+                                            <th className="p-3 whitespace-nowrap">Q# No.</th>
+                                            <th className="p-3 whitespace-nowrap text-center">C/G</th>
+                                            <th className="p-3 whitespace-nowrap">Tool</th>
+                                            <th className="p-3 whitespace-nowrap">Combo</th>
+                                            <th className="p-3 whitespace-nowrap">Customer Name</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Layer</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Mask</th>
+                                            <th className="p-3 whitespace-nowrap">P/N</th>
+                                            <th className="p-3 whitespace-nowrap">Production Noted</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Qty</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Launch</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Panel</th>
+                                            <th className="p-3 whitespace-nowrap text-center">UPS</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Final Qty</th>
+                                            <th className="p-3 whitespace-nowrap text-center">Status</th>
+                                            <th className="p-3 pr-4 whitespace-nowrap text-center">Bill #</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-border/60 font-medium">
+                                    <tbody className="divide-y divide-border/60 font-medium text-xs">
                                         {previewRows.map((row) => (
                                             <tr key={row.id} className="hover:bg-muted/30 transition-all">
                                                 <td className="p-3 pl-4 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
                                                     {row.order_date}
                                                 </td>
-                                                <td className="p-3 font-bold text-foreground">
-                                                    {row.order_number}
+                                                <td className="p-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                                                    {row.launch_date}
                                                 </td>
-                                                <td className="p-3 font-mono text-muted-foreground">
+                                                <td className="p-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                                                    {row.delivery_date}
+                                                </td>
+                                                <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">
                                                     {row.quote_number || "-"}
                                                 </td>
-                                                <td className="p-3 font-semibold text-foreground">
+                                                <td className="p-3 text-center font-mono font-bold whitespace-nowrap">
+                                                    {row.c_g || "-"}
+                                                </td>
+                                                <td className="p-3 font-bold text-foreground whitespace-nowrap">
+                                                    {row.tool}
+                                                </td>
+                                                <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">
+                                                    {row.combo || "-"}
+                                                </td>
+                                                <td className="p-3 font-semibold text-foreground whitespace-nowrap">
                                                     {row.customer_name || "N/A"}
                                                 </td>
-                                                <td className="p-3 font-semibold text-foreground">
-                                                    {row.board_name || "-"}
-                                                </td>
-                                                <td className="p-3 text-center font-mono font-bold">
+                                                <td className="p-3 text-center font-mono font-bold whitespace-nowrap">
                                                     {row.layer}
                                                 </td>
-                                                <td className="p-3 text-center">
+                                                <td className="p-3 text-center whitespace-nowrap">
                                                     <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-muted border border-border/60">
                                                         {row.mask}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 text-center font-mono font-bold">
+                                                <td className="p-3 font-semibold text-foreground whitespace-nowrap">
+                                                    {row.board_name || "-"}
+                                                </td>
+                                                <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">
+                                                    {row.production_noted || "-"}
+                                                </td>
+                                                <td className="p-3 text-center font-mono font-bold whitespace-nowrap">
                                                     {row.qty}
                                                 </td>
-                                                <td className="p-3 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                                <td className="p-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                                                    {row.launch_qty}
+                                                </td>
+                                                <td className="p-3 text-center font-mono font-bold whitespace-nowrap">
+                                                    {row.panel_qty}
+                                                </td>
+                                                <td className="p-3 text-center font-mono font-bold whitespace-nowrap">
+                                                    {row.ups}
+                                                </td>
+                                                <td className="p-3 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                                     {row.completed_qty}
                                                 </td>
-                                                <td className="p-3 text-center">
+                                                <td className="p-3 text-center whitespace-nowrap">
                                                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 capitalize">
                                                         {row.status}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 pr-4 text-center font-mono text-muted-foreground">
+                                                <td className="p-3 pr-4 text-center font-mono text-muted-foreground whitespace-nowrap">
                                                     {row.bill_number || "-"}
                                                 </td>
                                             </tr>

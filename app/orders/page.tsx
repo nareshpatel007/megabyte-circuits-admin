@@ -110,6 +110,7 @@ export default function OrdersPage() {
     const [tempEndDate, setTempEndDate] = useState("");
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState<number>(10);
 
     // Quick preview modal state
     const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
@@ -736,7 +737,7 @@ export default function OrdersPage() {
             const token = localStorage.getItem("admin_token");
             const headers = { Authorization: `Bearer ${token}` };
 
-            let url = "/api/admin/orders?sort_by=delivery_date&sort_order=desc";
+            let url = `/api/admin/orders?sort_by=delivery_date&sort_order=desc&per_page=${pageSize}&limit=${pageSize}`;
             if (startDate) url += `&start_date=${startDate}`;
             if (endDate) url += `&end_date=${endDate}`;
             if (searchQuery.trim()) {
@@ -776,7 +777,7 @@ export default function OrdersPage() {
 
     useEffect(() => {
         fetchData(debouncedSearch);
-    }, [debouncedSearch, startDate, endDate, statusFilter]);
+    }, [debouncedSearch, startDate, endDate, statusFilter, pageSize]);
 
     const handleResetFilter = () => {
         setSearch("");
@@ -881,7 +882,6 @@ export default function OrdersPage() {
         return matchSearch && matchStatus;
     });
 
-    const [pageSize, setPageSize] = useState<number>(10);
     const totalPages = Math.ceil(filtered.length / pageSize);
     const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
