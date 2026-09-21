@@ -171,6 +171,8 @@ export default function ClientsPage() {
         }
     };
 
+    const [pageSize, setPageSize] = useState<number>(10);
+
     const filtered = users.filter((u) => {
         const query = search.toLowerCase();
         const fullName = `${u.first_name || ''} ${u.last_name || ''} ${u.name || ''}`.toLowerCase();
@@ -185,8 +187,8 @@ export default function ClientsPage() {
         return matchSearch && matchStatus;
     });
 
-    const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
-    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+    const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
     const addClientButton = (
         <Link

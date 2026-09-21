@@ -46,7 +46,11 @@ interface DashboardStats {
 
 const DONUT_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#ef4444", "#06b6d4"];
 
-const formatRevenue = (value: number) => `₹${(value / 1000).toFixed(0)}k`;
+const formatRevenue = (value: number) => {
+    if (value >= 1000000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(1)}k`;
+    return `₹${value}`;
+};
 
 interface PaymentTransaction {
     id: number;
@@ -124,7 +128,7 @@ export default function DashboardPage() {
     useEffect(() => {
         if (!allOrders.length) return;
 
-        const trendMap: Record<string, { timeMs: number; revenue: number }> = {};
+        const trendMap: Record<string, { timeMs: number; revenue: number; orders: number }> = {};
 
         allOrders.forEach(o => {
             const dateObj = new Date(o.created_at);
@@ -146,15 +150,16 @@ export default function DashboardPage() {
 
             const val = parseFloat(String(o.order_value)) || 0;
             if (!trendMap[label]) {
-                trendMap[label] = { timeMs: timeKey, revenue: 0 };
+                trendMap[label] = { timeMs: timeKey, revenue: 0, orders: 0 };
             }
             trendMap[label].revenue += val;
+            trendMap[label].orders += 1;
         });
 
         const trendArray = Object.entries(trendMap)
-            .map(([date, item]) => ({ date, timeMs: item.timeMs, revenue: item.revenue }))
+            .map(([date, item]) => ({ date, timeMs: item.timeMs, revenue: item.revenue, orders: item.orders }))
             .sort((a, b) => a.timeMs - b.timeMs)
-            .map(({ date, revenue }) => ({ date, revenue }));
+            .map(({ date, revenue, orders }) => ({ date, revenue, orders }));
 
         setRevenueTrend(trendArray);
     }, [allOrders, revenuePeriod]);
@@ -263,7 +268,7 @@ export default function DashboardPage() {
                                         </div>
                                     ) : (
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={revenueTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                                            <LineChart data={revenueTrend} margin={{ top: 5, right: 15, left: 0, bottom: 5 }}>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" />
                                                 <XAxis
                                                     dataKey="date"
@@ -272,11 +277,21 @@ export default function DashboardPage() {
                                                     axisLine={false}
                                                 />
                                                 <YAxis
+                                                    yAxisId="left"
                                                     tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 500 }}
                                                     tickLine={false}
                                                     axisLine={false}
                                                     tickFormatter={formatRevenue}
-                                                    width={42}
+                                                    width={46}
+                                                />
+                                                <YAxis
+                                                    yAxisId="right"
+                                                    orientation="right"
+                                                    tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 500 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    allowDecimals={false}
+                                                    width={30}
                                                 />
                                                 <Tooltip
                                                     contentStyle={{
@@ -288,15 +303,42 @@ export default function DashboardPage() {
                                                         boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)",
                                                         color: "#1e293b",
                                                     }}
-                                                    formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Revenue"]}
+                                                    formatter={(value: number, name: string) => [
+                                                        name === "revenue" ? `₹${value.toLocaleString("en-IN")}` : value,
+                                                        name === "revenue" ? "Revenue" : "Total Orders",
+                                                    ]}
+                                                />
+                                                <Legend
+                                                    verticalAlign="top"
+                                                    align="right"
+                                                    height={24}
+                                                    iconType="circle"
+                                                    formatter={(value: string) => (
+                                                        <span className="text-xs font-semibold text-muted-foreground capitalize">
+                                                            {value === "revenue" ? "Revenue" : "Orders"}
+                                                        </span>
+                                                    )}
                                                 />
                                                 <Line
+                                                    yAxisId="left"
                                                     type="monotone"
                                                     dataKey="revenue"
+                                                    name="revenue"
                                                     stroke="#10b981"
                                                     strokeWidth={3}
                                                     dot={{ r: 3, fill: "#10b981" }}
                                                     activeDot={{ r: 6, fill: "#10b981", strokeWidth: 0 }}
+                                                />
+                                                <Line
+                                                    yAxisId="right"
+                                                    type="monotone"
+                                                    dataKey="orders"
+                                                    name="orders"
+                                                    stroke="#6366f1"
+                                                    strokeWidth={2}
+                                                    strokeDasharray="4 4"
+                                                    dot={{ r: 3, fill: "#6366f1" }}
+                                                    activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 0 }}
                                                 />
                                             </LineChart>
                                         </ResponsiveContainer>
