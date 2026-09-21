@@ -63,6 +63,9 @@ interface ApiOrder {
     user_id: number | null;
     status_id: number | null;
     order_number: string;
+    q_no?: string | number | null;
+    c_g?: string | null;
+    combo?: string | null;
     bill_number?: string | null;
     board_name: string;
     gerber_preview_data?: string;
@@ -71,6 +74,12 @@ interface ApiOrder {
     user_mobile: string;
     status: string;
     completed_qty?: number;
+    order_qty?: number;
+    launch_qty?: number;
+    panel_qty?: number;
+    ups_qty?: number;
+    final_qty?: number;
+    failed_qty?: number;
     unit_price: string | number;
     order_value: string | number;
     launch_date?: string | null;
