@@ -408,12 +408,30 @@ export default function ClientsPage() {
                         </div>
 
                         {/* Pagination Footer */}
-                        <div className="p-4 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-medium bg-card">
-                            <span>
-                                Showing <strong className="text-foreground">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}</strong> to{" "}
-                                <strong className="text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</strong> of{" "}
-                                <strong className="text-foreground">{filtered.length}</strong> clients
-                            </span>
+                        <div className="p-3 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-medium bg-card">
+                            <div className="flex items-center gap-3">
+                                <span>
+                                    Showing <strong className="text-foreground">{filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}</strong> to{" "}
+                                    <strong className="text-foreground">{Math.min(page * pageSize, filtered.length)}</strong> of{" "}
+                                    <strong className="text-foreground">{filtered.length}</strong> clients
+                                </span>
+                                <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-border/60">
+                                    <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">Rows per page:</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={(e) => {
+                                            setPageSize(Number(e.target.value));
+                                            setPage(1);
+                                        }}
+                                        className="px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={20}>20</option>
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <button
                                     disabled={page === 1}
