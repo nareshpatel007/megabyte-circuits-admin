@@ -47,6 +47,7 @@ interface ApiOrder {
     q_no?: string | number | null;
     c_g?: string | null;
     combo?: string | null;
+    bill_number?: string | null;
     board_name: string;
     customer_name: string | null;
     user_email: string;
@@ -516,6 +517,13 @@ export default function OrdersPage() {
     const [modalNewStatus, setModalNewStatus] = useState("");
     const [modalCompletedQty, setModalCompletedQty] = useState<number>(0);
     const [modalFailedQty, setModalFailedQty] = useState<number>(0);
+    const [modalQNo, setModalQNo] = useState("");
+    const [modalCombo, setModalCombo] = useState("");
+    const [modalLaunchQty, setModalLaunchQty] = useState<number>(0);
+    const [modalPanelQty, setModalPanelQty] = useState<number>(0);
+    const [modalUpsQty, setModalUpsQty] = useState<number>(0);
+    const [modalFinalQty, setModalFinalQty] = useState<number>(0);
+    const [modalBillNumber, setModalBillNumber] = useState("");
     const [modalRemark, setModalRemark] = useState("");
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -885,8 +893,9 @@ export default function OrdersPage() {
     const totalPages = Math.ceil(filtered.length / pageSize);
     const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+
     // Open change status modal
-    const openStatusModal = (order: ApiOrder) => {
+    const handleOpenStatusModal = (order: ApiOrder) => {
         if (!hasChangeStatusPermission) return;
         const isCompleted = ['completed', 'shipped', 'delivered'].includes((order.status || '').toLowerCase());
         const totalQtyVal = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
@@ -897,8 +906,16 @@ export default function OrdersPage() {
         setModalNewStatus(order.status);
         setModalCompletedQty(initialCompletedQty);
         setModalFailedQty(initialFailedQty);
+        setModalQNo(order.q_no ? String(order.q_no) : "");
+        setModalCombo(order.combo ? String(order.combo) : "");
+        setModalLaunchQty(order.launch_qty || 0);
+        setModalPanelQty(order.panel_qty || 0);
+        setModalUpsQty(order.ups_qty || 0);
+        setModalFinalQty(order.final_qty || 0);
+        setModalBillNumber(order.bill_number ? String(order.bill_number) : "");
         setModalRemark("");
     };
+    const openStatusModal = handleOpenStatusModal;
 
     // Quick inline status change handler
     const handleInlineStatusChange = async (order: ApiOrder, newStatus: string) => {
@@ -948,15 +965,34 @@ export default function OrdersPage() {
                     status: modalNewStatus,
                     completed_qty: modalCompletedQty,
                     failed_qty: modalFailedQty,
+                    q_no: modalQNo,
+                    combo: modalCombo,
+                    launch_qty: modalLaunchQty,
+                    panel_qty: modalPanelQty,
+                    ups_qty: modalUpsQty,
+                    final_qty: modalFinalQty,
+                    bill_number: modalBillNumber,
                     remark: modalRemark
                 })
             });
 
             const data = await res.json();
             if (data.status || data.success) {
-                toast.success(`Order #${statusModalOrder.order_number} status & quantity updated`);
+                toast.success(`Order #${statusModalOrder.order_number} updated successfully`);
                 // Update live orders list state immediately
-                setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? { ...o, status: modalNewStatus, completed_qty: modalCompletedQty, failed_qty: modalFailedQty } : o));
+                setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? {
+                    ...o,
+                    status: modalNewStatus,
+                    completed_qty: modalCompletedQty,
+                    failed_qty: modalFailedQty,
+                    q_no: modalQNo,
+                    combo: modalCombo,
+                    launch_qty: modalLaunchQty,
+                    panel_qty: modalPanelQty,
+                    ups_qty: modalUpsQty,
+                    final_qty: modalFinalQty,
+                    bill_number: modalBillNumber
+                } : o));
                 setStatusModalOrder(null);
             } else {
                 toast.error(data.message || "Failed to update status");
@@ -1699,19 +1735,61 @@ export default function OrdersPage() {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Q.No
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            value={modalQNo}
+                                            onChange={(e) => setModalQNo(e.target.value)}
+                                            placeholder="Q.No..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Combo
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            value={modalCombo}
+                                            onChange={(e) => setModalCombo(e.target.value)}
+                                            placeholder="Combo..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Bill Number
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            value={modalBillNumber}
+                                            onChange={(e) => setModalBillNumber(e.target.value)}
+                                            placeholder="Bill Number..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
                                             Completed Quantity (Pcs)
                                         </label>
                                         <Input
                                             type="number"
                                             min={0}
-                                            max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
                                             value={modalCompletedQty}
                                             onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
                                             placeholder="Completed Pcs..."
                                             className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                         />
                                     </div>
+                                </div>
 
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
                                             Failed Quantity (Pcs)
@@ -1719,11 +1797,68 @@ export default function OrdersPage() {
                                         <Input
                                             type="number"
                                             min={0}
-                                            max={parseInt(getMetaValue(statusModalOrder, 'qty', getMetaValue(statusModalOrder, 'quantity', '100000'))) || 100000}
                                             value={modalFailedQty}
                                             onChange={(e) => setModalFailedQty(parseInt(e.target.value) || 0)}
                                             placeholder="Failed Pcs..."
                                             className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-rose-600 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Launch Quantity
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            value={modalLaunchQty}
+                                            onChange={(e) => setModalLaunchQty(parseInt(e.target.value) || 0)}
+                                            placeholder="Launch Qty..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Panel Quantity
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            value={modalPanelQty}
+                                            onChange={(e) => setModalPanelQty(parseInt(e.target.value) || 0)}
+                                            placeholder="Panel..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Ups Quantity
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            value={modalUpsQty}
+                                            onChange={(e) => setModalUpsQty(parseInt(e.target.value) || 0)}
+                                            placeholder="Ups..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Final Quantity
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            value={modalFinalQty}
+                                            onChange={(e) => setModalFinalQty(parseInt(e.target.value) || 0)}
+                                            placeholder="Final..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                         />
                                     </div>
                                 </div>

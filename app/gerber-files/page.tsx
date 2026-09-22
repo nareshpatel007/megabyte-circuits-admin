@@ -81,6 +81,7 @@ function GerberFilesContent() {
     const [typeFilter, setTypeFilter] = useState("all"); // all | client | guest
     const [attachmentFilter, setAttachmentFilter] = useState("all"); // all | attached | unattached
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState<number>(10);
 
     // Modals
     const [previewModalFile, setPreviewModalFile] = useState<ApiGerberFile | null>(null);
@@ -162,9 +163,11 @@ function GerberFilesContent() {
         }
     };
 
+    // Download handler
     const handleDownloadFile = async (file: ApiGerberFile) => {
+        const toastId = toast.loading("Preparing download...");
         const fileName = file.original_name || file.file_name || `gerber_${file.id}.zip`;
-        const toastId = toast.loading(`Downloading ${fileName}...`);
+
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/gerber-files/${file.id}/download`, {
@@ -221,12 +224,12 @@ function GerberFilesContent() {
         return matchesSearch && matchesType && matchesAttachment;
     });
 
-    const totalPages = Math.ceil(filteredFiles.length / PAGE_SIZE) || 1;
-    const paginatedFiles = filteredFiles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const totalPages = Math.ceil(filteredFiles.length / pageSize) || 1;
+    const paginatedFiles = filteredFiles.slice((page - 1) * pageSize, page * pageSize);
 
     useEffect(() => {
         setPage(1);
-    }, [search, typeFilter, attachmentFilter]);
+    }, [search, typeFilter, attachmentFilter, pageSize]);
 
     const refreshButton = (
         <button
@@ -489,17 +492,36 @@ function GerberFilesContent() {
                         {/* Pagination */}
                         {filteredFiles.length > 0 && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-3.5 border-t border-border/80 bg-muted/20 text-xs text-muted-foreground">
-                                <div className="font-medium">
-                                    Showing <span className="font-bold text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to{" "}
-                                    <span className="font-bold text-foreground">{Math.min(page * PAGE_SIZE, filteredFiles.length)}</span> of{" "}
-                                    <span className="font-bold text-foreground">{filteredFiles.length}</span> Gerber files
+                                <div className="flex items-center gap-3">
+                                    <div className="font-medium">
+                                        Showing <span className="font-bold text-foreground">{(page - 1) * pageSize + 1}</span> to{" "}
+                                        <span className="font-bold text-foreground">{Math.min(page * pageSize, filteredFiles.length)}</span> of{" "}
+                                        <span className="font-bold text-foreground">{filteredFiles.length}</span> Gerber files
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-border/60">
+                                        <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">Rows per page:</span>
+                                        <select
+                                            value={pageSize}
+                                            onChange={(e) => {
+                                                setPageSize(Number(e.target.value));
+                                                setPage(1);
+                                            }}
+                                            className="px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={20}>20</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                                         disabled={page === 1}
-                                        className="p-1.5 rounded-lg bg-card border border-border/80 hover:bg-muted disabled:opacity-40 disabled:hover:bg-card transition-colors text-foreground"
+                                        className="p-1.5 rounded-lg bg-card border border-border/80 hover:bg-muted disabled:opacity-40 disabled:hover:bg-card transition-colors text-foreground cursor-pointer"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
@@ -509,7 +531,7 @@ function GerberFilesContent() {
                                     <button
                                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                                         disabled={page === totalPages}
-                                        className="p-1.5 rounded-lg bg-card border border-border/80 hover:bg-muted disabled:opacity-40 disabled:hover:bg-card transition-colors text-foreground"
+                                        className="p-1.5 rounded-lg bg-card border border-border/80 hover:bg-muted disabled:opacity-40 disabled:hover:bg-card transition-colors text-foreground cursor-pointer"
                                     >
                                         <ChevronRight className="w-4 h-4" />
                                     </button>

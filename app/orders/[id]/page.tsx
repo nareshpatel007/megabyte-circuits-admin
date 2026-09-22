@@ -128,6 +128,14 @@ export default function OrderDetailPage() {
     // Status & Quantity update form
     const [newStatus, setNewStatus] = useState("");
     const [completedQty, setCompletedQty] = useState<number>(0);
+    const [failedQty, setFailedQty] = useState<number>(0);
+    const [qNo, setQNo] = useState("");
+    const [combo, setCombo] = useState("");
+    const [launchQty, setLaunchQty] = useState<number>(0);
+    const [panelQty, setPanelQty] = useState<number>(0);
+    const [upsQty, setUpsQty] = useState<number>(0);
+    const [finalQty, setFinalQty] = useState<number>(0);
+    const [billNumber, setBillNumber] = useState("");
     const [remark, setRemark] = useState("");
 
     // Delivery date state & edit
@@ -148,10 +156,19 @@ export default function OrderDetailPage() {
             const statusesData = await statusesRes.json();
 
             if (orderData.status || orderData.success) {
-                setOrder(orderData.data);
-                setNewStatus(orderData.data.status);
-                setCompletedQty(orderData.data.completed_qty || 0);
-                setDeliveryDate(orderData.data.delivery_date || "");
+                const o = orderData.data;
+                setOrder(o);
+                setNewStatus(o.status || "");
+                setCompletedQty(o.completed_qty || 0);
+                setFailedQty(o.failed_qty || 0);
+                setQNo(o.q_no ? String(o.q_no) : "");
+                setCombo(o.combo ? String(o.combo) : "");
+                setLaunchQty(o.launch_qty || 0);
+                setPanelQty(o.panel_qty || 0);
+                setUpsQty(o.ups_qty || 0);
+                setFinalQty(o.final_qty || 0);
+                setBillNumber(o.bill_number ? String(o.bill_number) : "");
+                setDeliveryDate(o.delivery_date || "");
             }
             if (statusesData.status || statusesData.success) {
                 setStatuses(statusesData.data || []);
@@ -175,7 +192,7 @@ export default function OrderDetailPage() {
         if (!newStatus) return;
 
         setUpdating(true);
-        const toastId = toast.loading("Updating status & logging history...");
+        const toastId = toast.loading("Updating order details & logging history...");
         try {
             const matchedStatus = statuses.find(s => s.name.toLowerCase() === newStatus.toLowerCase());
             const token = localStorage.getItem("admin_token");
@@ -199,6 +216,14 @@ export default function OrderDetailPage() {
                     status: newStatus,
                     status_id: matchedStatus ? matchedStatus.id : null,
                     completed_qty: completedQty,
+                    failed_qty: failedQty,
+                    q_no: qNo,
+                    combo: combo,
+                    launch_qty: launchQty,
+                    panel_qty: panelQty,
+                    ups_qty: upsQty,
+                    final_qty: finalQty,
+                    bill_number: billNumber,
                     admin_id: loggedInAdminId || user?.id,
                     admin_name: user?.name,
                     remark: remark
@@ -207,11 +232,11 @@ export default function OrderDetailPage() {
 
             const data = await res.json();
             if (res.ok && (data.status || data.success)) {
-                toast.success(`Order status & completed quantity updated successfully`, { id: toastId });
+                toast.success(`Order details updated successfully`, { id: toastId });
                 setOrder(data.data);
                 setRemark("");
             } else {
-                toast.error(data.message || data.error || "Failed to update status", { id: toastId });
+                toast.error(data.message || data.error || "Failed to update order", { id: toastId });
             }
         } catch (err: any) {
             toast.error(err?.message || "Error updating order status", { id: toastId });
@@ -643,58 +668,153 @@ export default function OrderDetailPage() {
                     </div>
                 </div>
 
-                {/* Change Pipeline Status Row */}
+                {/* Update Order Parameters & Status Card */}
                 <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-sm space-y-4">
                     <h3 className="text-sm font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 text-emerald-500" /> Update Order Status & Quantity
+                        <RefreshCw className="w-4 h-4 text-emerald-500" /> Update Order Status & Parameters
                     </h3>
-                    <form onSubmit={handleUpdateStatus} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div>
-                            <label className="text-xs font-bold text-muted-foreground block mb-1.5">New Status</label>
-                            <select
-                                value={newStatus}
-                                onChange={(e) => setNewStatus(e.target.value)}
-                                className="w-full px-3.5 py-2.5 text-xs font-bold bg-background border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    <form onSubmit={handleUpdateStatus} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">New Status</label>
+                                <select
+                                    value={newStatus}
+                                    onChange={(e) => setNewStatus(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 text-xs font-bold bg-background border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                >
+                                    {statuses.map((s) => (
+                                        <option key={s.id} value={s.name}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Q.No</label>
+                                <input
+                                    type="text"
+                                    value={qNo}
+                                    onChange={(e) => setQNo(e.target.value)}
+                                    placeholder="Q.No..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Combo</label>
+                                <input
+                                    type="text"
+                                    value={combo}
+                                    onChange={(e) => setCombo(e.target.value)}
+                                    placeholder="Combo..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Bill Number</label>
+                                <input
+                                    type="text"
+                                    value={billNumber}
+                                    onChange={(e) => setBillNumber(e.target.value)}
+                                    placeholder="Bill No..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Completed Qty (Pcs)</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={completedQty}
+                                    onChange={(e) => setCompletedQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Completed..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Failed Qty (Pcs)</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={failedQty}
+                                    onChange={(e) => setFailedQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Failed..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-rose-500 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Launch Qty</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={launchQty}
+                                    onChange={(e) => setLaunchQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Launch..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Panel Qty</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={panelQty}
+                                    onChange={(e) => setPanelQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Panel..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Ups Qty</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={upsQty}
+                                    onChange={(e) => setUpsQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Ups..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Final Qty</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={finalQty}
+                                    onChange={(e) => setFinalQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Final..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Remark / Audit Note</label>
+                                <input
+                                    type="text"
+                                    value={remark}
+                                    onChange={(e) => setRemark(e.target.value)}
+                                    placeholder="State reason or notes for update..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <button
+                                type="submit"
+                                disabled={updating}
+                                className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl shadow-md transition-all text-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
                             >
-                                {statuses.map((s) => (
-                                    <option key={s.id} value={s.name}>{s.name}</option>
-                                ))}
-                            </select>
+                                <RefreshCw className={`w-3.5 h-3.5 ${updating ? 'animate-spin' : ''}`} />
+                                {updating ? "Updating..." : "Update Status & Parameters"}
+                            </button>
                         </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-muted-foreground block mb-1.5">
-                                Completed Quantity (Pcs)
-                            </label>
-                            <input
-                                type="number"
-                                min={0}
-                                max={parseInt(getMetaValue('qty', getMetaValue('quantity', '100000'))) || 100000}
-                                value={completedQty}
-                                onChange={(e) => setCompletedQty(parseInt(e.target.value) || 0)}
-                                placeholder="Pcs completed..."
-                                className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-muted-foreground block mb-1.5">Remark / Audit Note</label>
-                            <input
-                                type="text"
-                                value={remark}
-                                onChange={(e) => setRemark(e.target.value)}
-                                placeholder="State reason or notes for update..."
-                                className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={updating}
-                            className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl shadow-md transition-all text-xs cursor-pointer disabled:opacity-50"
-                        >
-                            {updating ? "Updating..." : "Update Status & Qty"}
-                        </button>
                     </form>
                 </div>
 

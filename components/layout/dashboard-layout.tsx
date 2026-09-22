@@ -41,7 +41,7 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
     const [accessDenied, setAccessDenied] = useState(false);
 
     useEffect(() => {
-        const verifyPagePermission = async () => {
+        const verifyPagePermission = () => {
             setVerifying(true);
             setAccessDenied(false);
 
@@ -54,56 +54,45 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
                     return;
                 }
 
+                const userStr = localStorage.getItem("user");
+                let perms: string[] = [];
+                let isSuper = false;
 
-                // Call API after page load to verify current role permissions
-                const res = await fetch("/api/admin/my-permissions", {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const data = await res.json();
+                if (userStr) {
+                    try {
+                        const u = JSON.parse(userStr);
+                        isSuper = (u.role && u.role.toLowerCase() === "super admin");
+                        perms = Array.isArray(u.permissions) ? u.permissions : [];
+                    } catch (e) {}
+                }
 
-                if (res.ok && data.status) {
-                    const isSuper = !!data.is_super_admin;
-                    const perms: string[] = Array.isArray(data.permissions) ? data.permissions : [];
+                if (isSuper) {
+                    setAccessDenied(false);
+                    setVerifying(false);
+                    return;
+                }
 
-                    // Update stored user object permissions in localStorage for live sidebar sync
-                    const userStr = localStorage.getItem("user");
-                    if (userStr) {
-                        try {
-                            const u = JSON.parse(userStr);
-                            u.permissions = perms;
-                            localStorage.setItem("user", JSON.stringify(u));
-                            window.dispatchEvent(new Event("storage"));
-                        } catch (e) {}
-                    }
-
-                    if (isSuper) {
-                        setAccessDenied(false);
-                        setVerifying(false);
-                        return;
-                    }
-
-                    // Match current pathname against required permission rule
-                    const currentPath = pathname || "";
-                    const rule = PAGE_PERMISSIONS.find((p) => currentPath === p.prefix || currentPath.startsWith(p.prefix + "/"));
-                    if (rule) {
-                        if (!perms.includes(rule.perm)) {
-                            setAccessDenied(true);
-                        } else {
-                            setAccessDenied(false);
-                        }
+                // Match current pathname against required permission rule
+                const currentPath = pathname || "";
+                const rule = PAGE_PERMISSIONS.find((p) => currentPath === p.prefix || currentPath.startsWith(p.prefix + "/"));
+                if (rule) {
+                    if (!perms.includes(rule.perm)) {
+                        setAccessDenied(true);
                     } else {
                         setAccessDenied(false);
                     }
+                } else {
+                    setAccessDenied(false);
                 }
             } catch (err) {
-                console.error("Error checking permissions on page load", err);
+                console.error("Error checking stored permissions", err);
             } finally {
                 setVerifying(false);
             }
         };
 
         verifyPagePermission();
-    }, [pathname]);
+    }, [pathname, router]);
 
     return (
         <div className="flex h-screen bg-background overflow-hidden relative">
