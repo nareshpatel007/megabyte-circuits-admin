@@ -524,6 +524,7 @@ export default function OrdersPage() {
     // Change status modal state
     const [statusModalOrder, setStatusModalOrder] = useState<ApiOrder | null>(null);
     const [modalNewStatus, setModalNewStatus] = useState("");
+    const [modalCustomerName, setModalCustomerName] = useState("");
     const [modalCompletedQty, setModalCompletedQty] = useState<number>(0);
     const [modalFailedQty, setModalFailedQty] = useState<number>(0);
     const [modalQNo, setModalQNo] = useState("");
@@ -913,6 +914,7 @@ export default function OrdersPage() {
 
         setStatusModalOrder(order);
         setModalNewStatus(order.status);
+        setModalCustomerName(order.customer_name || "");
         setModalCompletedQty(initialCompletedQty);
         setModalFailedQty(initialFailedQty);
         setModalQNo(order.q_no ? String(order.q_no) : "");
@@ -972,6 +974,7 @@ export default function OrdersPage() {
                 },
                 body: JSON.stringify({
                     status: modalNewStatus,
+                    customer_name: modalCustomerName,
                     completed_qty: modalCompletedQty,
                     failed_qty: modalFailedQty,
                     q_no: modalQNo,
@@ -992,6 +995,7 @@ export default function OrdersPage() {
                 setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? {
                     ...o,
                     status: modalNewStatus,
+                    customer_name: modalCustomerName,
                     completed_qty: modalCompletedQty,
                     failed_qty: modalFailedQty,
                     q_no: modalQNo,
@@ -1726,7 +1730,7 @@ export default function OrdersPage() {
                     const modalPcbColor = getPcbColorCode(modalPcbColorVal);
                     return (
                         <DialogContent
-                            className="max-w-lg border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            className="max-w-2xl border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
                             style={{
                                 backgroundColor: getPcbLightBg(modalPcbColor),
                                 borderColor: `${modalPcbColor}60`
@@ -1754,25 +1758,40 @@ export default function OrdersPage() {
                             </DialogHeader>
 
                             <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                        Select New Pipeline Status
-                                    </label>
-                                    <Select
-                                        value={modalNewStatus}
-                                        onValueChange={(val) => setModalNewStatus(val)}
-                                    >
-                                        <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
-                                            <SelectValue placeholder="Select status..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60 overflow-y-auto font-semibold">
-                                            {statuses.map((s) => (
-                                                <SelectItem key={s.id} value={s.name}>
-                                                    {s.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Customer Name
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            value={modalCustomerName}
+                                            onChange={(e) => setModalCustomerName(e.target.value)}
+                                            placeholder="Customer Name..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Select New Pipeline Status
+                                        </label>
+                                        <Select
+                                            value={modalNewStatus}
+                                            onValueChange={(val) => setModalNewStatus(val)}
+                                        >
+                                            <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
+                                                <SelectValue placeholder="Select status..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-60 overflow-y-auto font-semibold">
+                                                {statuses.map((s) => (
+                                                    <SelectItem key={s.id} value={s.name}>
+                                                        {s.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
