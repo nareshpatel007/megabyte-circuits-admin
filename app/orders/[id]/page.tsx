@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrderDetailSkeleton } from "@/components/ui/skeleton";
@@ -58,9 +59,19 @@ interface OrderLog {
     created_at: string;
 }
 
+interface CustomerUser {
+    id: number;
+    name: string | null;
+    company_name?: string | null;
+    email?: string | null;
+    mobile?: string | null;
+}
+
 interface ApiOrder {
     id: number;
     user_id: number | null;
+    user?: CustomerUser | null;
+    layers?: string | number | null;
     status_id: number | null;
     order_number: string;
     q_no?: string | number | null;
@@ -563,12 +574,27 @@ export default function OrderDetailPage() {
                         </h3>
                         <div className="space-y-4 text-xs">
                             <div className="space-y-2 pb-3 border-b border-border/40">
-                                <div className="flex justify-between py-1">
+                                <div className="flex justify-between py-1 items-center">
                                     <span className="text-muted-foreground font-medium">Customer Name</span>
                                     <span className="font-bold text-foreground">
-                                        {order.shipping_first_name || order.billing_first_name
-                                            ? `${order.shipping_first_name || order.billing_first_name || ''} ${order.shipping_last_name || order.billing_last_name || ''}`
-                                            : (order.customer_name || (order as any).user?.name || getMetaValue('customer_name', getMetaValue('name', 'N/A')))}
+                                        {(() => {
+                                            const custName = order.shipping_first_name || order.billing_first_name
+                                                ? `${order.shipping_first_name || order.billing_first_name || ''} ${order.shipping_last_name || order.billing_last_name || ''}`
+                                                : (order.customer_name || order.user?.company_name || order.user?.name || getMetaValue('customer_name', getMetaValue('name', 'N/A')));
+                                            const customerId = order.user_id || order.user?.id;
+                                            if (customerId) {
+                                                return (
+                                                    <Link
+                                                        href={`/clients/${customerId}`}
+                                                        className="text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold"
+                                                    >
+                                                        {custName}
+                                                        <ExternalLink className="w-3 h-3 inline" />
+                                                    </Link>
+                                                );
+                                            }
+                                            return custName;
+                                        })()}
                                     </span>
                                 </div>
                                 <div className="flex justify-between py-1">

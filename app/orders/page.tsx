@@ -39,9 +39,18 @@ interface StatusHistory {
     created_at: string;
 }
 
+interface CustomerUser {
+    id: number;
+    name: string | null;
+    company_name?: string | null;
+    email?: string | null;
+    mobile?: string | null;
+}
+
 interface ApiOrder {
     id: number;
     user_id: number | null;
+    user?: CustomerUser | null;
     status_id: number | null;
     order_number: string;
     q_no?: string | number | null;
@@ -1381,6 +1390,7 @@ export default function OrdersPage() {
                                         <tr className="bg-muted/80 border-b border-border/80 text-foreground uppercase tracking-wider font-extrabold text-[11px]">
                                             <th className="py-2 px-3.5">Status</th>
                                             <th className="py-2 px-3.5">Order Number</th>
+                                            <th className="py-2 px-3.5">Customer</th>
                                             <th className="py-2 px-3.5">Layers</th>
                                             <th className="py-2 px-3.5">Film</th>
                                             <th className="py-2 px-3.5">
@@ -1394,7 +1404,7 @@ export default function OrdersPage() {
                                     <tbody className="divide-y divide-border/40">
                                         {paginated.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
+                                                <td colSpan={9} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
                                                     No orders matched your search or status filter.
                                                 </td>
                                             </tr>
@@ -1461,6 +1471,39 @@ export default function OrdersPage() {
                                                                     #{order.order_number}
                                                                 </span>
                                                             )}
+                                                        </td>
+
+                                                        {/* 3. Customer */}
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                                            {(() => {
+                                                                const customerId = order.user_id || order.user?.id;
+                                                                const custDisplayName = order.user?.company_name || order.user?.name || order.customer_name || (order.user_email ? order.user_email : null);
+                                                                
+                                                                if (!custDisplayName && !customerId) {
+                                                                    return <span className="text-muted-foreground font-medium text-xs">—</span>;
+                                                                }
+
+                                                                const displayText = custDisplayName || `Customer #${customerId}`;
+
+                                                                if (customerId) {
+                                                                    return (
+                                                                        <Link
+                                                                            href={`/clients/${customerId}`}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            title={displayText}
+                                                                            className="inline-flex items-center gap-1 font-bold text-xs text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors max-w-[170px] truncate"
+                                                                        >
+                                                                            <span className="truncate">{displayText}</span>
+                                                                        </Link>
+                                                                    );
+                                                                }
+
+                                                                return (
+                                                                    <span title={displayText} className="font-semibold text-xs text-muted-foreground max-w-[170px] truncate block">
+                                                                        {displayText}
+                                                                    </span>
+                                                                );
+                                                            })()}
                                                         </td>
 
                                                         {/* 3. Layers */}
