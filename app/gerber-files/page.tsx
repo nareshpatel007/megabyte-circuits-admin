@@ -162,6 +162,36 @@ function GerberFilesContent() {
         }
     };
 
+    const handleDownloadFile = async (file: ApiGerberFile) => {
+        const fileName = file.original_name || file.file_name || `gerber_${file.id}.zip`;
+        const toastId = toast.loading(`Downloading ${fileName}...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/gerber-files/${file.id}/download`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => null);
+                throw new Error(errJson?.message || "File is not available on server disk");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success(`Downloaded ${fileName} successfully`, { id: toastId });
+        } catch (err: any) {
+            console.error("Gerber file download error:", err);
+            toast.error(err.message || "Failed to download Gerber file", { id: toastId });
+        }
+    };
+
     // Filter Logic
     const filteredFiles = files.filter((file) => {
         // Search Filter
@@ -424,18 +454,13 @@ function GerberFilesContent() {
                                                     {/* Actions */}
                                                     <td className="py-2 px-4 text-right whitespace-nowrap">
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        {file.file_url && (
-                                                            <a
-                                                                href={file.file_url}
-                                                                download={file.original_name}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors"
-                                                                title="Download Gerber file"
-                                                            >
-                                                                <Download className="w-4 h-4" />
-                                                            </a>
-                                                        )}
+                                                        <button
+                                                            onClick={() => handleDownloadFile(file)}
+                                                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer"
+                                                            title="Download Gerber file"
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                        </button>
 
                                                         <button
                                                             onClick={() => setPreviewModalFile(file)}
@@ -563,18 +588,13 @@ function GerberFilesContent() {
 
                                 {/* Modal Actions */}
                                 <div className="flex items-center justify-end gap-3 border-t border-border/80 pt-4">
-                                    {previewModalFile.file_url && (
-                                        <a
-                                            href={previewModalFile.file_url}
-                                            download={previewModalFile.original_name}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl text-xs font-bold transition-colors"
-                                        >
-                                            <Download className="w-4 h-4" />
-                                            Download File
-                                        </a>
-                                    )}
+                                    <button
+                                        onClick={() => handleDownloadFile(previewModalFile)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download File
+                                    </button>
                                     <button
                                         onClick={() => setPreviewModalFile(null)}
                                         className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-xs font-bold transition-colors"
