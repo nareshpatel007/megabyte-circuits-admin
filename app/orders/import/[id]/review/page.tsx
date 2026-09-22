@@ -955,10 +955,6 @@ export default function ImportReviewPage({ params }: { params: Promise<{ id: str
                                     <span className="font-mono uppercase">{duplicateAction}</span>
                                 </div>
                             </div>
-
-                            <p className="text-[11px] text-muted-foreground font-medium">
-                                Clicking "Start Import" will queue a background worker job (`ProcessPcbImportJob`). You will be redirected to the real-time progress tracking dashboard.
-                            </p>
                         </div>
 
                         <DialogFooter className="gap-2 sm:gap-0">
