@@ -41,6 +41,8 @@ interface ApiGerberFile {
     file_size?: string;
     board_name?: string;
     preview_data?: string;
+    front_preview_url?: string;
+    preview_front?: string;
     created_at: string;
     updated_at: string;
     client_name?: string;
@@ -329,26 +331,20 @@ function GerberFilesContent() {
                                                     </p>
                                                 </td>
                                             </tr>
-                                        ) : (
-                                            paginatedFiles.map((file) => (
-                                                <tr key={file.id} className="hover:bg-muted/20 transition-colors">
-                                                    {/* File Details */}
-                                                    <td className="py-2 px-4 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2.5">
-                                                            {file.preview_data ? (
-                                                                <div className="w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/30 bg-slate-900 shrink-0 p-1 flex items-center justify-center shadow-2xs">
-                                                                    <GerberBoardPreview
-                                                                        previewData={file.preview_data}
-                                                                        boardName={file.board_name}
-                                                                        originalName={file.original_name}
-                                                                        className="w-full h-full"
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                                                    <FileArchive className="w-4 h-4" />
-                                                                </div>
-                                                            )}
+                                         ) : (
+                                             paginatedFiles.map((file) => (
+                                                 <tr key={file.id} className="hover:bg-muted/20 transition-colors">
+                                                     {/* File Details */}
+                                                     <td className="py-2 px-4 whitespace-nowrap">
+                                                         <div className="flex items-center gap-2.5">
+                                                             <div className="w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/30 bg-slate-900 shrink-0 p-1 flex items-center justify-center shadow-2xs">
+                                                                 <GerberBoardPreview
+                                                                     previewData={file.preview_data || file.front_preview_url || file.preview_front || (file.id ? `/api/gerber/${file.id}/preview/front` : undefined)}
+                                                                     boardName={file.board_name}
+                                                                     originalName={file.original_name}
+                                                                     className="w-full h-full"
+                                                                 />
+                                                             </div>
                                                             <div className="flex items-center gap-2 min-w-0">
                                                                 <p className="font-bold text-foreground text-xs truncate max-w-[220px]" title={file.original_name}>
                                                                     {file.original_name}
@@ -458,9 +454,9 @@ function GerberFilesContent() {
                                                         </button>
                                                     </div>
                                                 </td>
-                                            </tr>
-                                        ))
-                                    )}
+                                             </tr>
+                                         ))
+                                     )}
                                 </tbody>
                             </table>
                         </div>
@@ -519,22 +515,21 @@ function GerberFilesContent() {
                                     </button>
                                 </div>
 
-                                {/* Board Visualizer Preview */}
-                                <div className="bg-muted/30 border border-border/80 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px]">
-                                    {previewModalFile.preview_data ? (
-                                        <div className="w-52 h-52 flex items-center justify-center">
-                                            <GerberBoardPreview
-                                                previewData={previewModalFile.preview_data}
-                                                boardName={previewModalFile.board_name}
-                                                originalName={previewModalFile.original_name}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <span className="text-muted-foreground font-medium text-sm text-center">
-                                            No preview detected
-                                        </span>
-                                    )}
-                                </div>
+                                 {/* Board Visualizer Preview */}
+                                 {(() => {
+                                     const modalPreviewData = previewModalFile.preview_data || previewModalFile.front_preview_url || previewModalFile.preview_front || (previewModalFile.id ? `/api/gerber/${previewModalFile.id}/preview/front` : undefined);
+                                     return (
+                                         <div className="bg-muted/30 border border-border/80 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px]">
+                                             <div className="w-52 h-52 flex items-center justify-center">
+                                                 <GerberBoardPreview
+                                                     previewData={modalPreviewData}
+                                                     boardName={previewModalFile.board_name}
+                                                     originalName={previewModalFile.original_name}
+                                                 />
+                                             </div>
+                                         </div>
+                                     );
+                                 })()}
 
                                 {/* File & Client Meta Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

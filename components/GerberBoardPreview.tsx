@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { FileArchive } from "lucide-react";
 
 interface GerberBoardPreviewProps {
     previewData?: string;
@@ -12,16 +13,6 @@ interface GerberBoardPreviewProps {
     className?: string;
 }
 
-const COLOR_MAP: Record<string, { bg: string; border: string; silk: string }> = {
-    green: { bg: "#0c3b19", border: "#22863a", silk: "#ffffff" },
-    red: { bg: "#4a0b0b", border: "#a82424", silk: "#ffffff" },
-    blue: { bg: "#092247", border: "#1f5ab2", silk: "#ffffff" },
-    black: { bg: "#121314", border: "#383b40", silk: "#e2e8f0" },
-    white: { bg: "#f0f4f8", border: "#cbd5e1", silk: "#1e293b" },
-    yellow: { bg: "#524408", border: "#a38b18", silk: "#ffffff" },
-    purple: { bg: "#2d0b45", border: "#7924b2", silk: "#ffffff" },
-};
-
 export default function GerberBoardPreview({
     previewData,
     boardName,
@@ -31,6 +22,8 @@ export default function GerberBoardPreview({
     dimensions,
     className = "w-full h-full"
 }: GerberBoardPreviewProps) {
+    const [imgError, setImgError] = useState(false);
+
     if (previewData && (previewData.includes("<svg") || previewData.trim().startsWith("<svg"))) {
         const svgStart = previewData.indexOf("<svg");
         const svgContent = svgStart !== -1 ? previewData.substring(svgStart) : previewData;
@@ -42,19 +35,28 @@ export default function GerberBoardPreview({
         );
     }
 
-    if (previewData && (previewData.startsWith("http") || previewData.startsWith("data:"))) {
+    const isUrl = previewData && !imgError && (
+        previewData.startsWith("http://") ||
+        previewData.startsWith("https://") ||
+        previewData.startsWith("data:") ||
+        previewData.startsWith("/") ||
+        previewData.startsWith("./")
+    );
+
+    if (isUrl) {
         return (
             <img
                 src={previewData}
                 alt="Gerber Board Preview"
-                className={`object-contain rounded-xl ${className}`}
+                className={`object-contain rounded-lg max-w-full max-h-full ${className}`}
+                onError={() => setImgError(true)}
             />
         );
     }
 
     return (
-        <div className={`w-full h-full flex items-center justify-center text-center text-muted-foreground font-medium text-xs ${className}`}>
-            No preview detected
+        <div className={`w-full h-full flex items-center justify-center text-emerald-500/80 ${className}`}>
+            <FileArchive className="w-4 h-4 shrink-0" />
         </div>
     );
 }

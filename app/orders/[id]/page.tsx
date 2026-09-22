@@ -68,6 +68,7 @@ interface ApiOrder {
     combo?: string | null;
     bill_number?: string | null;
     board_name: string;
+    gerber_file_id?: number | string | null;
     gerber_preview_data?: string;
     customer_name: string | null;
     user_email: string;
@@ -480,7 +481,7 @@ export default function OrderDetailPage() {
                         <div className="flex items-center gap-4">
                             <div className="w-20 h-20 rounded-2xl bg-[#0c3b19] flex items-center justify-center p-1 overflow-hidden shrink-0 border border-emerald-500/30 shadow-md">
                                 <GerberBoardPreview
-                                    previewData={order.gerber_preview_data || getMetaValue('preview_data', '')}
+                                    previewData={order.gerber_preview_data || getMetaValue('preview_data', '') || getMetaValue('front_preview_url', '') || (order.gerber_file_id ? `/api/gerber/${order.gerber_file_id}/preview/front` : '')}
                                     boardName={boardNameVal}
                                     layers={layerCount}
                                     dimensions={getMetaValue('dimensions', '')}
