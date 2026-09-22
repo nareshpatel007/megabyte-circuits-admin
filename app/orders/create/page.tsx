@@ -651,10 +651,24 @@ export default function CreateOrderPage() {
         }
     }, [boardLength, boardWidth, quantity, layerCount, material, thickness, surfaceFinish, copperWeight, solderMask, selectedDay, pricingConfig]);
 
-    // Handle Gerber File Analysis & Layer/Dimension Extraction (Quote Page Logic)
+    // Gerber File & Analysis State
+    const [uploadedGerberFileId, setUploadedGerberFileId] = useState<number | null>(null);
+    const [topSvg, setTopSvg] = useState<string>("");
+    const [bottomSvg, setBottomSvg] = useState<string>("");
+
+    // Handle Gerber File Analysis & Layer/Dimension Extraction (Same /api/upload pipeline as Client)
     const handleFileValidation = async (file: File) => {
         setGerberFile(file);
         setDetectionAlert(null);
+        setUploadedGerberFileId(null);
+        setTopSvg("");
+        setBottomSvg("");
+
+        const maxSize = 100 * 1024 * 1024;
+        if (file.size > maxSize) {
+            toast.error("File exceeds 100 MB limit.");
+            return;
+        }
 
         const fileExtension = file.name.split('.').pop()?.toLowerCase();
         if (fileExtension !== 'zip' && fileExtension !== 'rar') {
@@ -664,143 +678,48 @@ export default function CreateOrderPage() {
 
         setIsValidating(true);
 
-        if (fileExtension === 'zip') {
-            try {
-                const zip = await JSZip.loadAsync(file);
-                const fileNames = Object.keys(zip.files);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
 
-                const layersObj = {
-                    topCopper: { name: "Top Copper Layer", detected: false, file: "" },
-                    bottomCopper: { name: "Bottom Copper Layer", detected: false, file: "" },
-                    topSolderMask: { name: "Top Solder Mask", detected: false, file: "" },
-                    bottomSolderMask: { name: "Bottom Solder Mask", detected: false, file: "" },
-                    topSilkscreen: { name: "Top Silkscreen", detected: false, file: "" },
-                    bottomSilkscreen: { name: "Bottom Silkscreen", detected: false, file: "" },
-                    drills: { name: "Drill Holes", detected: false, file: "" },
-                    outline: { name: "Board Outline", detected: false, file: "" }
-                };
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
 
-                let gerberCount = 0;
+            const data = await res.json();
 
-                fileNames.forEach(name => {
-                    if (zip.files[name].dir) return;
-
-                    const lowerName = name.toLowerCase();
-                    if (GERBER_PATTERNS.topCopper.test(name)) {
-                        layersObj.topCopper.detected = true;
-                        layersObj.topCopper.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.bottomCopper.test(name)) {
-                        layersObj.bottomCopper.detected = true;
-                        layersObj.bottomCopper.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.topSolderMask.test(name)) {
-                        layersObj.topSolderMask.detected = true;
-                        layersObj.topSolderMask.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.bottomSolderMask.test(name)) {
-                        layersObj.bottomSolderMask.detected = true;
-                        layersObj.bottomSolderMask.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.topSilkscreen.test(name)) {
-                        layersObj.topSilkscreen.detected = true;
-                        layersObj.topSilkscreen.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.bottomSilkscreen.test(name)) {
-                        layersObj.bottomSilkscreen.detected = true;
-                        layersObj.bottomSilkscreen.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.drills.test(name)) {
-                        layersObj.drills.detected = true;
-                        layersObj.drills.file = name;
-                        gerberCount++;
-                    } else if (GERBER_PATTERNS.outline.test(name) || lowerName.endsWith('.gbr')) {
-                        layersObj.outline.detected = true;
-                        layersObj.outline.file = name;
-                        gerberCount++;
-                    }
-                });
-
-                const detectedArray: DetectedLayerItem[] = Object.entries(layersObj).map(([_, val]) => ({
-                    name: val.name,
-                    status: val.detected ? "detected" as const : "not_detected" as const,
-                    filename: val.file || undefined
-                }));
-                setDetectedLayers(detectedArray);
-
-                // Auto-detect Layer Count
-                let copperLayersCount = 0;
-                if (layersObj.topCopper.detected) copperLayersCount++;
-                if (layersObj.bottomCopper.detected) copperLayersCount++;
-                const finalLayersCount = copperLayersCount > 0 ? copperLayersCount.toString() : "2";
-                setLayerCount(finalLayersCount);
-
-                // Parse Board Outline coordinates for dimensions
-                let parsedWidth = 91.62;
-                let parsedHeight = 54.35;
-
-                if (layersObj.outline.file) {
-                    try {
-                        const outlineContent = await zip.files[layersObj.outline.file].async("string");
-
-                        let isMetric = true;
-                        if (outlineContent.includes("G70") || outlineContent.includes("%MOIN*%")) {
-                            isMetric = false;
-                        }
-
-                        let divisor = 10000;
-                        const formatMatch = outlineContent.match(/%FSLAX(\d)(\d)Y/i);
-                        if (formatMatch) {
-                            divisor = Math.pow(10, parseInt(formatMatch[2], 10));
-                        }
-
-                        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                        let currentX = 0, currentY = 0;
-
-                        const lines = outlineContent.split('\n');
-                        lines.forEach(line => {
-                            const xMatch = line.match(/X(-?\d+)/i);
-                            const yMatch = line.match(/Y(-?\d+)/i);
-
-                            if (xMatch) currentX = parseInt(xMatch[1], 10) / divisor;
-                            if (yMatch) currentY = parseInt(yMatch[1], 10) / divisor;
-
-                            if (xMatch || yMatch) {
-                                if (currentX < minX) minX = currentX;
-                                if (currentX > maxX) maxX = currentX;
-                                if (currentY < minY) minY = currentY;
-                                if (currentY > maxY) maxY = currentY;
-                            }
-                        });
-
-                        if (minX !== Infinity && maxX !== -Infinity && minY !== Infinity && maxY !== -Infinity) {
-                            let w = maxX - minX;
-                            let h = maxY - minY;
-
-                            if (!isMetric) {
-                                w = w * 25.4;
-                                h = h * 25.4;
-                            }
-
-                            if (w > 1 && h > 1 && w < 1000 && h < 1000) {
-                                parsedWidth = parseFloat(w.toFixed(2));
-                                parsedHeight = parseFloat(h.toFixed(2));
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse outline coordinates", e);
-                    }
+            if (data.success) {
+                if (data.gerber_file_id) {
+                    setUploadedGerberFileId(data.gerber_file_id);
+                    setSelectedGerberFileId(data.gerber_file_id.toString());
                 }
 
-                setBoardLength(parsedHeight.toString());
-                setBoardWidth(parsedWidth.toString());
-                toast.success("Gerber ZIP file parsed & board parameters auto-detected!");
-            } catch (err) {
-                console.error("ZIP validation error:", err);
-                toast.error("Failed to parse ZIP archive.");
+                const frontUrl = data.preview_front || (data.gerber_file_id ? `/api/gerber/${data.gerber_file_id}/preview/front` : "");
+                const backUrl = data.preview_back || (data.gerber_file_id ? `/api/gerber/${data.gerber_file_id}/preview/back` : "");
+
+                setTopSvg(frontUrl);
+                setBottomSvg(backUrl);
+
+                const widthVal = data.board_width ? Number(data.board_width).toFixed(2) : boardWidth;
+                const heightVal = data.board_height ? Number(data.board_height).toFixed(2) : boardLength;
+                const layerCountVal = data.layer_count ? String(data.layer_count) : layerCount;
+
+                setBoardWidth(widthVal);
+                setBoardLength(heightVal);
+                setLayerCount(layerCountVal);
+                setDimensionUnit("mm");
+
+                toast.success(`Gerber processed successfully! Auto-detected ${layerCountVal} Layers, ${widthVal} x ${heightVal} mm`);
+            } else {
+                toast.error(data.error || "Gerber processing failed. Please verify archive files.");
             }
+        } catch (err: any) {
+            console.error("Gerber upload error:", err);
+            toast.error("Network or server error during Gerber upload.");
+        } finally {
+            setIsValidating(false);
         }
-        setIsValidating(false);
     };
 
     // Handle Submit Form
@@ -1864,47 +1783,74 @@ export default function CreateOrderPage() {
                                 )}
                             </div>
                         ) : (
-                            /* Simple File Uploaded Card (No Canvas Live Preview) */
-                            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                                        <CheckCircle2 className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-sm font-extrabold text-foreground">{gerberFile.name}</h4>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
-                                                File Uploaded
-                                            </span>
+                            /* File Uploaded & Preview Card */
+                            <div className="space-y-4">
+                                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                            <CheckCircle2 className="w-6 h-6" />
                                         </div>
-                                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                            Size: {(gerberFile.size / (1024 * 1024)).toFixed(2)} MB • Auto-detected: {layerCount} Layers ({boardWidth} x {boardLength} mm)
-                                        </p>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-sm font-extrabold text-foreground">{gerberFile.name}</h4>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
+                                                    Gerber Processed
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                                Size: {(gerberFile.size / (1024 * 1024)).toFixed(2)} MB • Extracted: {layerCount} Layers ({boardWidth} x {boardLength} mm)
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-card border border-border/80 hover:bg-muted text-foreground text-xs font-bold transition-colors cursor-pointer"
+                                        >
+                                            <RotateCcw className="w-3.5 h-3.5 text-emerald-500" />
+                                            Re-upload
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setGerberFile(null);
+                                                setUploadedGerberFileId(null);
+                                                setTopSvg("");
+                                                setBottomSvg("");
+                                                setDetectionAlert(null);
+                                                setDetectedLayers([]);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold transition-colors cursor-pointer"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                            Remove
+                                        </button>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-card border border-border/80 hover:bg-muted text-foreground text-xs font-bold transition-colors cursor-pointer"
-                                    >
-                                        <RotateCcw className="w-3.5 h-3.5 text-emerald-500" />
-                                        Re-upload
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setGerberFile(null);
-                                            setDetectionAlert(null);
-                                            setDetectedLayers([]);
-                                        }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold transition-colors cursor-pointer"
-                                    >
-                                        <X className="w-3.5 h-3.5" />
-                                        Remove
-                                    </button>
-                                </div>
+                                {/* Front & Back PCB Preview Grid */}
+                                {(topSvg || bottomSvg) && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                        {topSvg && (
+                                            <div className="bg-muted/20 border border-border/70 rounded-xl p-4 flex flex-col items-center">
+                                                <span className="text-xs font-bold text-muted-foreground mb-2">Front Side Preview (Top)</span>
+                                                <div className="w-full h-48 flex items-center justify-center overflow-hidden rounded-lg bg-background/50 p-2">
+                                                    <img src={topSvg} alt="Gerber Top Preview" className="max-w-full max-h-full object-contain" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {bottomSvg && (
+                                            <div className="bg-muted/20 border border-border/70 rounded-xl p-4 flex flex-col items-center">
+                                                <span className="text-xs font-bold text-muted-foreground mb-2">Back Side Preview (Bottom)</span>
+                                                <div className="w-full h-48 flex items-center justify-center overflow-hidden rounded-lg bg-background/50 p-2">
+                                                    <img src={bottomSvg} alt="Gerber Bottom Preview" className="max-w-full max-h-full object-contain" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
