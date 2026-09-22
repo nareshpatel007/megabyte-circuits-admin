@@ -286,8 +286,14 @@ export default function OrderDetailPage() {
         return found ? found.meta_value : fallback;
     };
 
-    const isPastDeliveryDate = (dateString?: string | null) => {
+    const isPastDeliveryDate = (dateString?: string | null, status?: string | null) => {
         if (!dateString || dateString === 'N/A') return false;
+        if (status) {
+            const s = status.toString().toLowerCase().trim();
+            if (['completed', 'shipped', 'delivered', 'cancelled', 'canceled'].includes(s)) {
+                return false;
+            }
+        }
         try {
             const d = new Date(dateString);
             if (isNaN(d.getTime())) return false;
@@ -491,7 +497,7 @@ export default function OrderDetailPage() {
                             )}
                         </div>
                         {!editingDeliveryDate ? (
-                            <p className={`text-base font-bold font-mono mt-1 ${isPastDeliveryDate(order.delivery_date) ? "text-red-600 dark:text-red-400 font-extrabold" : "text-foreground"}`}>
+                            <p className={`text-base font-bold font-mono mt-1 ${isPastDeliveryDate(order.delivery_date, order.status) ? "text-red-600 dark:text-red-400 font-extrabold" : "text-foreground"}`}>
                                 {order.delivery_date && !isNaN(new Date(order.delivery_date).getTime())
                                     ? new Date(order.delivery_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                                     : 'N/A'}

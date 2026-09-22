@@ -71,7 +71,9 @@ export default function DashboardPage() {
     const hasPaymentPermission = user?.permissions ? user.permissions.includes("payments.view") : true;
     const hasAnalyticsPermission = user?.permissions ? user.permissions.includes("dashboard.analytics") : true;
 
-    const [loading, setLoading] = useState(true);
+    const [loadingStats, setLoadingStats] = useState(true);
+    const [loadingOrders, setLoadingOrders] = useState(true);
+    const [loadingPayments, setLoadingPayments] = useState(true);
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [recentOrders, setRecentOrders] = useState<ApiOrder[]>([]);
     const [recentPayments, setRecentPayments] = useState<PaymentTransaction[]>([]);
@@ -81,48 +83,47 @@ export default function DashboardPage() {
     const [revenueTrend, setRevenueTrend] = useState<{ date: string; revenue: number }[]>([]);
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                const token = localStorage.getItem("admin_token");
-                const headers = { Authorization: `Bearer ${token}` };
+        const token = localStorage.getItem("admin_token");
+        const headers = { Authorization: `Bearer ${token}` };
 
-                const [statsRes, ordersRes, statusesRes, paymentsRes] = await Promise.all([
-                    fetch("/api/admin/stats", { headers }),
-                    fetch("/api/admin/orders", { headers }),
-                    fetch("/api/admin/statuses", { headers }),
-                    fetch("/api/admin/payments?per_page=10", { headers }),
-                ]);
+        // 1. Fetch Stats
+        fetch("/api/admin/stats", { headers })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.status || data.success) setStats(data.stats);
+            })
+            .catch((err) => console.error("Error loading stats:", err))
+            .finally(() => setLoadingStats(false));
 
-                const statsData = await statsRes.json();
-                const ordersData = await ordersRes.json();
-                const statusesData = await statusesRes.json();
-                const paymentsData = await paymentsRes.json();
+        // 2. Fetch Statuses
+        fetch("/api/admin/statuses", { headers })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.status || data.success) setStatuses(data.data || []);
+            })
+            .catch((err) => console.error("Error loading statuses:", err));
 
-                if (statsData.status || statsData.success) {
-                    setStats(statsData.stats);
-                }
-
-                if (statusesData.status || statusesData.success) {
-                    setStatuses(statusesData.data || []);
-                }
-
-                if (ordersData.status || ordersData.success) {
-                    const fetchedOrders: ApiOrder[] = ordersData.data || [];
+        // 3. Fetch Recent Orders (limit=10 for ultra fast query)
+        fetch("/api/admin/orders?limit=10&per_page=10", { headers })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.status || data.success) {
+                    const fetchedOrders: ApiOrder[] = data.data || [];
                     setAllOrders(fetchedOrders);
                     setRecentOrders(fetchedOrders.slice(0, 5));
                 }
+            })
+            .catch((err) => console.error("Error loading orders:", err))
+            .finally(() => setLoadingOrders(false));
 
-                if (paymentsData.status || paymentsData.success) {
-                    setRecentPayments(paymentsData.data || []);
-                }
-            } catch (err) {
-                console.error("Error loading dashboard metrics:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchDashboardData();
+        // 4. Fetch Payments
+        fetch("/api/admin/payments?per_page=10", { headers })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.status || data.success) setRecentPayments(data.data || []);
+            })
+            .catch((err) => console.error("Error loading payments:", err))
+            .finally(() => setLoadingPayments(false));
     }, []);
 
     useEffect(() => {
@@ -163,14 +164,6 @@ export default function DashboardPage() {
 
         setRevenueTrend(trendArray);
     }, [allOrders, revenuePeriod]);
-
-    if (loading) {
-        return (
-            <DashboardLayout title="Dashboard" subtitle="PCB Manufacturing Overview">
-                <DashboardSkeleton />
-            </DashboardLayout>
-        );
-    }
 
     const donutData = stats?.status_counts
         ? Object.entries(stats.status_counts).map(([name, value]) => ({ name, value }))
@@ -216,26 +209,40 @@ export default function DashboardPage() {
     return (
         <DashboardLayout title="Dashboard" subtitle="PCB Manufacturing Overview">
             <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                    {metrics.map((m) => {
-                        const Icon = m.icon;
-                        return (
-                            <div
-                                key={m.label}
-                                className="bg-card border border-border/80 rounded-xl p-5 flex items-start gap-4 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-500/20 transition-all duration-300 relative group overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className={`w-12 h-12 rounded-xl ${m.bg} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-300`}>
-                                    <Icon className={`w-6 h-6 ${m.color}`} />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{m.label}</p>
-                                    <p className="text-2xl font-bold text-foreground mt-1 tracking-tight">{m.value}</p>
+                {loadingStats ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="bg-card border border-border/80 rounded-xl p-5 flex items-start gap-4 animate-pulse">
+                                <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <div className="h-3 bg-muted rounded w-24" />
+                                    <div className="h-6 bg-muted rounded w-16" />
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                        {metrics.map((m) => {
+                            const Icon = m.icon;
+                            return (
+                                <div
+                                    key={m.label}
+                                    className="bg-card border border-border/80 rounded-xl p-5 flex items-start gap-4 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-500/20 transition-all duration-300 relative group overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className={`w-12 h-12 rounded-xl ${m.bg} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-300`}>
+                                        <Icon className={`w-6 h-6 ${m.color}`} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{m.label}</p>
+                                        <p className="text-2xl font-bold text-foreground mt-1 tracking-tight">{m.value}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
                 {hasAnalyticsPermission && (
                     <>
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
@@ -410,7 +417,19 @@ export default function DashboardPage() {
                                     </Link>
                                 </div>
                                 <div className="space-y-3">
-                                    {recentOrders.length === 0 ? (
+                                    {loadingOrders ? (
+                                        <div className="space-y-3">
+                                            {[1, 2, 3, 4, 5].map((i) => (
+                                                <div key={i} className="p-4 rounded-xl bg-muted/20 border border-border/40 animate-pulse flex items-center gap-3.5">
+                                                    <div className="w-14 h-14 bg-muted rounded-xl shrink-0" />
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="h-3 bg-muted rounded w-32" />
+                                                        <div className="h-4 bg-muted rounded w-48" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : recentOrders.length === 0 ? (
                                         <div className="p-8 text-center text-xs text-muted-foreground italic">No recent orders found.</div>
                                     ) : (
                                         recentOrders.map((order, index) => {

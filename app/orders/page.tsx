@@ -525,6 +525,33 @@ export default function OrdersPage() {
     const [statusModalOrder, setStatusModalOrder] = useState<ApiOrder | null>(null);
     const [modalNewStatus, setModalNewStatus] = useState("");
     const [modalCustomerName, setModalCustomerName] = useState("");
+    const [modalUserId, setModalUserId] = useState<string>("");
+    const [customerList, setCustomerList] = useState<any[]>([]);
+    const [customerSearch, setCustomerSearch] = useState<string>("");
+    const [loadingCustomers, setLoadingCustomers] = useState<boolean>(false);
+
+    const fetchCustomersList = async (searchQuery: string = "") => {
+        setLoadingCustomers(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            let url = "/api/admin/users";
+            if (searchQuery.trim()) {
+                url += `?search=${encodeURIComponent(searchQuery.trim())}&q=${encodeURIComponent(searchQuery.trim())}`;
+            }
+            const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.status || data.success) {
+                const list = data.data || data.users || [];
+                setCustomerList(list);
+            }
+        } catch (err) {
+            console.error("Failed to load customer list:", err);
+        } finally {
+            setLoadingCustomers(false);
+        }
+    };
     const [modalCompletedQty, setModalCompletedQty] = useState<number>(0);
     const [modalFailedQty, setModalFailedQty] = useState<number>(0);
     const [modalQNo, setModalQNo] = useState("");
@@ -833,9 +860,15 @@ export default function OrdersPage() {
         }
     };
 
-    // Helper to check if delivery date is before today
-    const isPastDeliveryDate = (dateString?: string | null) => {
+    // Helper to check if delivery date is before today (only for non-completed orders)
+    const isPastDeliveryDate = (dateString?: string | null, status?: string | null) => {
         if (!dateString || dateString === 'N/A') return false;
+        if (status) {
+            const s = status.toString().toLowerCase().trim();
+            if (['completed', 'shipped', 'delivered', 'cancelled', 'canceled'].includes(s)) {
+                return false;
+            }
+        }
         try {
             const d = new Date(dateString);
             if (isNaN(d.getTime())) return false;
@@ -912,9 +945,13 @@ export default function OrdersPage() {
         const initialCompletedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQtyVal : 0);
         const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
 
+        const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
         setStatusModalOrder(order);
         setModalNewStatus(order.status);
         setModalCustomerName(order.customer_name || "");
+        setModalUserId(initialUserId);
+        setCustomerSearch("");
+        fetchCustomersList("");
         setModalCompletedQty(initialCompletedQty);
         setModalFailedQty(initialFailedQty);
         setModalQNo(order.q_no ? String(order.q_no) : "");
@@ -974,6 +1011,7 @@ export default function OrdersPage() {
                 },
                 body: JSON.stringify({
                     status: modalNewStatus,
+                    user_id: modalUserId ? Number(modalUserId) : null,
                     customer_name: modalCustomerName,
                     completed_qty: modalCompletedQty,
                     failed_qty: modalFailedQty,
@@ -995,6 +1033,7 @@ export default function OrdersPage() {
                 setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? {
                     ...o,
                     status: modalNewStatus,
+                    user_id: modalUserId ? Number(modalUserId) : o.user_id,
                     customer_name: modalCustomerName,
                     completed_qty: modalCompletedQty,
                     failed_qty: modalFailedQty,
@@ -1578,7 +1617,7 @@ export default function OrdersPage() {
                                                         </td>
 
                                                         {/* 7. Delivery Date */}
-                                                        <td className={`py-1.5 px-3.5 font-bold font-mono text-xs whitespace-nowrap ${isPastDeliveryDate(order.delivery_date) ? "text-red-500 font-extrabold" : "text-foreground"}`}>
+                                                        <td className={`py-1.5 px-3.5 font-bold font-mono text-xs whitespace-nowrap ${isPastDeliveryDate(order.delivery_date, order.status) ? "text-red-500 font-extrabold" : "text-foreground"}`}>
                                                             {formatDate(order.delivery_date)}
                                                         </td>
 
@@ -1760,16 +1799,65 @@ export default function OrdersPage() {
                             <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Customer Name
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                                            <span>Select Customer</span>
+                                            {modalUserId && <span className="text-[10px] text-emerald-600 font-extrabold">User ID: #{modalUserId}</span>}
                                         </label>
-                                        <Input
-                                            type="text"
-                                            value={modalCustomerName}
-                                            onChange={(e) => setModalCustomerName(e.target.value)}
-                                            placeholder="Customer Name..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                        />
+                                        <div className="space-y-1.5">
+                                            <Select
+                                                value={modalUserId || "custom"}
+                                                onValueChange={(val) => {
+                                                    if (val === "custom") {
+                                                        setModalUserId("");
+                                                    } else {
+                                                        setModalUserId(val);
+                                                        const selectedCust = customerList.find(c => String(c.id) === val);
+                                                        if (selectedCust) {
+                                                            const name = selectedCust.company_name || selectedCust.name || `${selectedCust.first_name || ''} ${selectedCust.last_name || ''}`.trim();
+                                                            setModalCustomerName(name);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
+                                                    <SelectValue placeholder="Select customer..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="max-h-64 overflow-y-auto font-semibold">
+                                                    <div className="p-2 sticky top-0 bg-white border-b border-slate-100 z-10">
+                                                        <input
+                                                            type="text"
+                                                            value={customerSearch}
+                                                            onChange={(e) => {
+                                                                setCustomerSearch(e.target.value);
+                                                                fetchCustomersList(e.target.value);
+                                                            }}
+                                                            placeholder="🔍 Search customer name, email, phone..."
+                                                            className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                        />
+                                                    </div>
+                                                    <SelectItem value="custom" className="text-slate-500 italic">-- Custom / Manual Entry --</SelectItem>
+                                                    {customerList.map((c) => {
+                                                        const displayName = c.company_name || c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed';
+                                                        const contact = c.email || c.mobile || c.phone_number || '';
+                                                        return (
+                                                            <SelectItem key={c.id} value={String(c.id)}>
+                                                                <span className="font-bold text-slate-900">{displayName}</span>
+                                                                {contact ? <span className="text-slate-500 font-normal"> ({contact})</span> : ''}
+                                                            </SelectItem>
+                                                        );
+                                                    })}
+                                                </SelectContent>
+                                            </Select>
+                                            <Input
+                                                type="text"
+                                                value={modalCustomerName}
+                                                onChange={(e) => setModalCustomerName(e.target.value)}
+                                                placeholder="Customer Name..."
+                                                className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>
@@ -2009,7 +2097,7 @@ export default function OrdersPage() {
                                 <div><span className="text-slate-500 font-semibold">Amount:</span> <span className="font-black text-emerald-700">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
                                 <div><span className="text-slate-500 font-semibold">Email:</span> <span className="font-bold text-slate-900">{selectedOrder.user_email}</span></div>
                                 <div><span className="text-slate-500 font-semibold">Mobile:</span> <span className="font-bold text-slate-900">{selectedOrder.user_mobile}</span></div>
-                                <div><span className="text-slate-500 font-semibold">Delivery:</span> <span className={`font-bold ${isPastDeliveryDate(selectedOrder.delivery_date) ? "text-red-600 font-extrabold" : "text-slate-900"}`}>{formatDate(selectedOrder.delivery_date)}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Delivery:</span> <span className={`font-bold ${isPastDeliveryDate(selectedOrder.delivery_date, selectedOrder.status) ? "text-red-600 font-extrabold" : "text-slate-900"}`}>{formatDate(selectedOrder.delivery_date)}</span></div>
                             </div>
 
                             <div className="pt-2 flex justify-end gap-3">
