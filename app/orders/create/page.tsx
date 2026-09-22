@@ -91,13 +91,24 @@ export default function CreateOrderPage() {
     const [newClientCompany, setNewClientCompany] = useState("");
     const [newClientPassword, setNewClientPassword] = useState("Client@123");
 
-    // PCB Specifications (Quote Home Page fields)
+    // PCB Specifications (Quote Home Page fields & source of truth)
     const [layerCount, setLayerCount] = useState<string>("2");
     const [boardLength, setBoardLength] = useState<string>("100");
     const [boardWidth, setBoardWidth] = useState<string>("100");
     const [dimensionUnit, setDimensionUnit] = useState<string>("mm");
     const [quantity, setQuantity] = useState<string>("5");
     const [material, setMaterial] = useState<string>("FR-4");
+    const [substrateType, setSubstrateType] = useState<string>("25µm dielectric thickness");
+    const [coverlayColor, setCoverlayColor] = useState<string>("Yellow");
+    const [coverlayThickness, setCoverlayThickness] = useState<string>("PI:12.5um/AD:15um");
+    const [copperType, setCopperType] = useState<string>("Electro-deposited");
+    const [stiffener, setStiffener] = useState<string>("Without");
+    const [emiShielding, setEmiShielding] = useState<string>("Without");
+    const [cuttingMethod, setCuttingMethod] = useState<string>("Laser Cutting");
+    const [silkscreenOnStiffener, setSilkscreenOnStiffener] = useState<string>("No");
+    const [edaSoftware, setEdaSoftware] = useState<string>("EasyEDA Pro");
+    const [panelColumn, setPanelColumn] = useState<string>("");
+    const [panelRow, setPanelRow] = useState<string>("");
     const [thickness, setThickness] = useState<string>("1.6mm");
     const [surfaceFinish, setSurfaceFinish] = useState<string>("HASL(Leaded)");
     const [solderMask, setSolderMask] = useState<string>("Green");
@@ -107,11 +118,11 @@ export default function CreateOrderPage() {
     const [productType, setProductType] = useState<string>("Industrial/Consumer electronics");
     const [differentDesign, setDifferentDesign] = useState<string>("1");
     const [deliveryFormat, setDeliveryFormat] = useState<string>("Single PCB");
-    const [materialType, setMaterialType] = useState<string>("FR-4");
-    const [goldThickness, setGoldThickness] = useState<string>("1 U*");
+    const [materialType, setMaterialType] = useState<string>("FR4-TG135");
+    const [goldThickness, setGoldThickness] = useState<string>("1 U\"");
     const [viaCovering, setViaCovering] = useState<string>("Not Specified");
     const [viaPlating, setViaPlating] = useState<string>("Not Specified");
-    const [minHole, setMinHole] = useState<string>("0.3mm");
+    const [minHole, setMinHole] = useState<string>("0.3mm/(0.4/0.45mm)");
     const [confirmFile, setConfirmFile] = useState<string>("No");
     const [markOnPcb, setMarkOnPcb] = useState<string>("Remove Mark");
     const [elecTest, setElecTest] = useState<string>("Flying Probe Fully Test");
@@ -127,6 +138,135 @@ export default function CreateOrderPage() {
     const [silkscreenTech, setSilkscreenTech] = useState<string>("Ink-jet Printing Silkscreen");
     const [inspectionReport, setInspectionReport] = useState<string>("No");
     const [pcbRemark, setPcbRemark] = useState<string>("");
+
+    const validateDimensions = (w: number, h: number, l: number) => {
+        if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return;
+        const unitMultiplier = dimensionUnit === "inches" ? 25.4 : 1;
+        const wMm = w * unitMultiplier;
+        const hMm = h * unitMultiplier;
+
+        const minLength = 20;
+        const minWidth = 20;
+        let maxLength = 300;
+        let maxWidth = 300;
+
+        if (l === 1) {
+            maxLength = 400;
+            maxWidth = 400;
+        } else if (l === 2) {
+            maxLength = 300;
+            maxWidth = 300;
+        } else if ([4, 6, 8, 10, 12, 14, 16].includes(l)) {
+            maxLength = 400;
+            maxWidth = 500;
+        }
+
+        let newW = w;
+        let newH = h;
+        let reset = false;
+
+        if (wMm < minLength) {
+            newW = minLength / unitMultiplier;
+        }
+        if (hMm < minWidth) {
+            newH = minWidth / unitMultiplier;
+        }
+
+        if (wMm > maxLength || hMm > maxWidth) {
+            toast.error(`For ${l}-layer boards, board size must be between ${minLength}mm x ${minWidth}mm and ${maxLength}mm x ${maxWidth}mm.`);
+            newW = 100 / unitMultiplier;
+            newH = 100 / unitMultiplier;
+            reset = true;
+        }
+
+        if (newW !== w || newH !== h || reset) {
+            setBoardWidth(newW.toFixed(2));
+            setBoardLength(newH.toFixed(2));
+        }
+    };
+
+    const handleMaterialChange = (newMat: string) => {
+        setMaterial(newMat);
+        if (newMat === "Flex") {
+            if (!["1", "2", "4"].includes(layerCount)) {
+                setLayerCount("2");
+            }
+            setSubstrateType(prev => prev || "25µm dielectric thickness");
+            setSurfaceFinish("ENIG");
+            setSilkscreen("White");
+            setCopperType("Electro-deposited");
+            setCoverlayColor(prev => (prev === "Transparent" ? "Yellow" : (prev || "Yellow")));
+            setGoldThickness(prev => prev || "1 U\"");
+            setCopperWeight("0.5 oz");
+            setThickness("0.11mm");
+        } else if (newMat === "Rogers") {
+            setLayerCount("2");
+            setMaterialType("RO4350B(Dk=3.48,Df=0.0037)");
+            setSurfaceFinish("ENIG");
+            setGoldThickness(prev => prev || "1 U\"");
+            setCopperWeight("1 oz");
+            if (!["0.51mm", "0.76mm", "1.52mm"].includes(thickness)) {
+                setThickness("0.51mm");
+            }
+        } else if (newMat === "PTFE Teflon") {
+            setLayerCount("2");
+            setMaterialType("ZYF300CA-C(Dk=2.94,Df=0.0016)");
+            setSurfaceFinish("ENIG");
+            setGoldThickness(prev => prev || "1 U\"");
+            setCopperWeight("1 oz");
+            if (!["0.76mm", "1.52mm"].includes(thickness)) {
+                setThickness("0.76mm");
+            }
+        } else {
+            setMaterialType("FR4-TG135");
+            setCopperWeight("1 oz");
+            if (!["0.6mm", "0.8mm", "1.0mm", "1.2mm", "1.6mm", "2.0mm"].includes(thickness)) {
+                setThickness("1.6mm");
+            }
+        }
+    };
+
+    const handleSubstrateTypeChange = (newSub: string) => {
+        setSubstrateType(newSub);
+        if (material === "Flex") {
+            if (newSub === "Transparent") {
+                setCoverlayColor("Transparent");
+                if (layerCount === "1") setThickness("0.14mm");
+                else if (layerCount === "2") setThickness("0.24mm");
+            } else {
+                if (coverlayColor === "Transparent") {
+                    setCoverlayColor("Yellow");
+                }
+                if (newSub === "50µm dielectric thickness") {
+                    if (layerCount === "1") setThickness("0.12mm");
+                    else if (layerCount === "2") setThickness("0.19mm");
+                } else if (newSub === "25µm dielectric thickness") {
+                    if (layerCount === "1") setThickness("0.07mm");
+                    else if (layerCount === "2") setThickness("0.11mm");
+                }
+            }
+        }
+    };
+
+    const handleLayerChange = (newLayers: string) => {
+        setLayerCount(newLayers);
+        if (material === "Flex") {
+            if (newLayers === "1") {
+                if (substrateType === "Transparent") setThickness("0.14mm");
+                else if (substrateType === "50µm dielectric thickness") setThickness("0.12mm");
+                else setThickness("0.07mm");
+            } else if (newLayers === "2") {
+                if (substrateType === "Transparent") setThickness("0.24mm");
+                else if (substrateType === "50µm dielectric thickness") setThickness("0.19mm");
+                else setThickness("0.11mm");
+            } else if (newLayers === "4") {
+                setThickness("0.2mm");
+                setSubstrateType("25µm dielectric thickness");
+                if (coverlayColor === "Transparent") setCoverlayColor("Yellow");
+            }
+        }
+        validateDimensions(parseFloat(boardWidth) || 0, parseFloat(boardLength) || 0, parseInt(newLayers, 10));
+    };
 
     // Delivery Calendar Matrix Selection State
     const [selectedDay, setSelectedDay] = useState<number>(3);
@@ -698,6 +838,17 @@ export default function CreateOrderPage() {
             formData.append("copper_weight", copperWeight);
 
             // Extended Quote Specs Metas
+            formData.append("substrate_type", substrateType);
+            formData.append("coverlay_color", coverlayColor);
+            formData.append("coverlay_thickness", coverlayThickness);
+            formData.append("copper_type", copperType);
+            formData.append("stiffener", stiffener);
+            formData.append("emi_shielding", emiShielding);
+            formData.append("cutting_method", cuttingMethod);
+            formData.append("silkscreen_on_stiffener", silkscreenOnStiffener);
+            formData.append("eda_software", edaSoftware);
+            if (panelColumn) formData.append("panel_column", panelColumn);
+            if (panelRow) formData.append("panel_row", panelRow);
             formData.append("product_type", productType);
             formData.append("different_design", differentDesign);
             formData.append("delivery_format", deliveryFormat);
@@ -927,7 +1078,7 @@ export default function CreateOrderPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">2. PCB Specifications</h3>
-                                    <p className="text-xs text-muted-foreground font-medium">Configure detailed board parameters matching Quote page specifications</p>
+                                    <p className="text-xs text-muted-foreground font-medium">Configure detailed board parameters matching customer Quote page specifications</p>
                                 </div>
                             </div>
                         </div>
@@ -945,24 +1096,7 @@ export default function CreateOrderPage() {
                             {/* Base Material */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Base Material</label>
-                                <Select value={material} onValueChange={(val) => {
-                                    setMaterial(val);
-                                    if (val === "Flex") {
-                                        setMaterialType("Polyimide (PI)");
-                                        setThickness("0.12mm");
-                                        setSurfaceFinish("ENIG");
-                                        setCopperWeight("0.5 oz");
-                                    } else if (val === "Rogers") {
-                                        setMaterialType("RO4350B(Dk=3.48,Df=0.0037)");
-                                        setThickness("1.6mm");
-                                    } else if (val === "PTFE Teflon") {
-                                        setMaterialType("ZYF300CA-P(Dk=3.0,Df=0.0016)");
-                                        setThickness("1.6mm");
-                                    } else {
-                                        setMaterialType("FR4-TG135");
-                                        setThickness("1.6mm");
-                                    }
-                                }}>
+                                <Select value={material} onValueChange={handleMaterialChange}>
                                     <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
                                         <SelectValue placeholder="Select Base Material" />
                                     </SelectTrigger>
@@ -975,23 +1109,52 @@ export default function CreateOrderPage() {
                                 </Select>
                             </div>
 
+                            {/* Substrate Type (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Substrate Type</label>
+                                    <Select value={substrateType} onValueChange={handleSubstrateTypeChange}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue placeholder="Select Substrate Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="25µm dielectric thickness">25µm dielectric thickness</SelectItem>
+                                            <SelectItem value="50µm dielectric thickness" disabled={layerCount === "4"}>50µm dielectric thickness</SelectItem>
+                                            <SelectItem value="Transparent" disabled={layerCount === "4"}>Transparent Substrate</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
                             {/* Layer Count */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Layer Count</label>
-                                <Select value={layerCount} onValueChange={setLayerCount}>
+                                <Select value={layerCount} onValueChange={handleLayerChange}>
                                     <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
                                         <SelectValue placeholder="Select Layers" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">1 Layer</SelectItem>
-                                        <SelectItem value="2">2 Layers</SelectItem>
-                                        <SelectItem value="4">4 Layers</SelectItem>
-                                        <SelectItem value="6">6 Layers (High Precision)</SelectItem>
-                                        <SelectItem value="8">8 Layers (High Precision)</SelectItem>
-                                        <SelectItem value="10">10 Layers (High Precision)</SelectItem>
-                                        <SelectItem value="12">12 Layers (High Precision)</SelectItem>
-                                        <SelectItem value="14">14 Layers (High Precision)</SelectItem>
-                                        <SelectItem value="16">16 Layers (High Precision)</SelectItem>
+                                        {material === "Rogers" || material === "PTFE Teflon" ? (
+                                            <SelectItem value="2">2 Layers</SelectItem>
+                                        ) : material === "Flex" ? (
+                                            <>
+                                                <SelectItem value="1">1 Layer</SelectItem>
+                                                <SelectItem value="2">2 Layers</SelectItem>
+                                                <SelectItem value="4">4 Layers</SelectItem>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <SelectItem value="1">1 Layer</SelectItem>
+                                                <SelectItem value="2">2 Layers</SelectItem>
+                                                <SelectItem value="4">4 Layers</SelectItem>
+                                                <SelectItem value="6">6 Layers (High Precision)</SelectItem>
+                                                <SelectItem value="8">8 Layers (High Precision)</SelectItem>
+                                                <SelectItem value="10">10 Layers (High Precision)</SelectItem>
+                                                <SelectItem value="12">12 Layers (High Precision)</SelectItem>
+                                                <SelectItem value="14">14 Layers (High Precision)</SelectItem>
+                                                <SelectItem value="16">16 Layers (High Precision)</SelectItem>
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1005,6 +1168,12 @@ export default function CreateOrderPage() {
                                         placeholder="Length"
                                         value={boardLength}
                                         onChange={(e) => setBoardLength(e.target.value)}
+                                        onBlur={(e) => {
+                                            let val = parseFloat(e.target.value);
+                                            if (isNaN(val) || val <= 0) val = 100;
+                                            setBoardLength(val.toString());
+                                            validateDimensions(parseFloat(boardWidth) || 0, val, parseInt(layerCount, 10));
+                                        }}
                                         className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
                                     <span className="text-xs text-muted-foreground font-bold">x</span>
@@ -1013,6 +1182,12 @@ export default function CreateOrderPage() {
                                         placeholder="Width"
                                         value={boardWidth}
                                         onChange={(e) => setBoardWidth(e.target.value)}
+                                        onBlur={(e) => {
+                                            let val = parseFloat(e.target.value);
+                                            if (isNaN(val) || val <= 0) val = 100;
+                                            setBoardWidth(val.toString());
+                                            validateDimensions(val, parseFloat(boardLength) || 0, parseInt(layerCount, 10));
+                                        }}
                                         className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
                                     <Select value={dimensionUnit} onValueChange={setDimensionUnit}>
@@ -1032,11 +1207,29 @@ export default function CreateOrderPage() {
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Quantity (Pcs)</label>
                                 <Input
                                     type="number"
-                                    min="1"
+                                    min="5"
                                     value={quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
                                     className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                 />
+                            </div>
+
+                            {/* Product Type */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Product Type</label>
+                                <Select value={productType} onValueChange={setProductType}>
+                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Industrial/Consumer electronics">Industrial/Consumer electronics</SelectItem>
+                                        <SelectItem value="Medical equipment">Medical equipment</SelectItem>
+                                        <SelectItem value="Automotive electronics">Automotive electronics</SelectItem>
+                                        <SelectItem value="Aerospace">Aerospace</SelectItem>
+                                        <SelectItem value="Telecommunication">Telecommunication</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Different Design */}
@@ -1070,6 +1263,32 @@ export default function CreateOrderPage() {
                                 </Select>
                             </div>
 
+                            {/* Panel Columns & Rows (when Delivery Format is Panel) */}
+                            {deliveryFormat !== "Single PCB" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Panel Layout (Col x Row)</label>
+                                    <div className="flex items-center gap-1.5">
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            placeholder="Columns"
+                                            value={panelColumn}
+                                            onChange={(e) => setPanelColumn(e.target.value)}
+                                            className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
+                                        />
+                                        <span className="text-xs text-muted-foreground font-bold">x</span>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            placeholder="Rows"
+                                            value={panelRow}
+                                            onChange={(e) => setPanelRow(e.target.value)}
+                                            className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Board Thickness */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Board Thickness</label>
@@ -1079,14 +1298,62 @@ export default function CreateOrderPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {material === "Flex" ? (
-                                            <>
-                                                <SelectItem value="0.11mm">0.11 mm</SelectItem>
-                                                <SelectItem value="0.12mm">0.12 mm</SelectItem>
-                                                <SelectItem value="0.2mm">0.2 mm</SelectItem>
-                                            </>
+                                            substrateType === "Transparent" ? (
+                                                layerCount === "1" ? (
+                                                    <SelectItem value="0.14mm">0.14 mm</SelectItem>
+                                                ) : (
+                                                    <SelectItem value="0.24mm">0.24 mm</SelectItem>
+                                                )
+                                            ) : substrateType === "50µm dielectric thickness" ? (
+                                                layerCount === "1" ? (
+                                                    <>
+                                                        <SelectItem value="0.07mm" disabled>0.07 mm (N/A)</SelectItem>
+                                                        <SelectItem value="0.12mm">0.12 mm</SelectItem>
+                                                    </>
+                                                ) : layerCount === "4" ? (
+                                                    <>
+                                                        <SelectItem value="0.2mm">0.2 mm</SelectItem>
+                                                        <SelectItem value="0.25mm">0.25 mm</SelectItem>
+                                                        <SelectItem value="0.3mm">0.3 mm</SelectItem>
+                                                        <SelectItem value="0.35mm">0.35 mm</SelectItem>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <SelectItem value="0.11mm" disabled>0.11 mm (N/A)</SelectItem>
+                                                        <SelectItem value="0.12mm" disabled>0.12 mm (N/A)</SelectItem>
+                                                        <SelectItem value="0.19mm">0.19 mm</SelectItem>
+                                                        <SelectItem value="0.2mm">0.2 mm</SelectItem>
+                                                    </>
+                                                )
+                                            ) : (
+                                                layerCount === "1" ? (
+                                                    <>
+                                                        <SelectItem value="0.07mm">0.07 mm</SelectItem>
+                                                        <SelectItem value="0.11mm">0.11 mm</SelectItem>
+                                                    </>
+                                                ) : layerCount === "4" ? (
+                                                    <>
+                                                        <SelectItem value="0.2mm">0.2 mm</SelectItem>
+                                                        <SelectItem value="0.25mm">0.25 mm</SelectItem>
+                                                        <SelectItem value="0.3mm">0.3 mm</SelectItem>
+                                                        <SelectItem value="0.35mm">0.35 mm</SelectItem>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <SelectItem value="0.11mm">0.11 mm</SelectItem>
+                                                        <SelectItem value="0.12mm">0.12 mm</SelectItem>
+                                                        <SelectItem value="0.2mm">0.2 mm</SelectItem>
+                                                    </>
+                                                )
+                                            )
                                         ) : material === "Rogers" ? (
                                             <>
                                                 <SelectItem value="0.51mm">0.51 mm</SelectItem>
+                                                <SelectItem value="0.76mm">0.76 mm</SelectItem>
+                                                <SelectItem value="1.52mm">1.52 mm</SelectItem>
+                                            </>
+                                        ) : material === "PTFE Teflon" ? (
+                                            <>
                                                 <SelectItem value="0.76mm">0.76 mm</SelectItem>
                                                 <SelectItem value="1.52mm">1.52 mm</SelectItem>
                                             </>
@@ -1104,28 +1371,50 @@ export default function CreateOrderPage() {
                                 </Select>
                             </div>
 
-                            {/* Solder Mask Color */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Solder Mask Color</label>
-                                <Select value={solderMask} onValueChange={(val) => {
-                                    setSolderMask(val);
-                                    const mapHex: Record<string, string> = { Green: "#52c41a", Red: "#f5222d", Blue: "#1677ff", Black: "#000000", White: "#ffffff", Yellow: "#fadb14", Purple: "#722ed1" };
-                                    setPcbColorHex(mapHex[val] || "#52c41a");
-                                }}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue placeholder="Select Solder Mask Color" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Green">Green</SelectItem>
-                                        <SelectItem value="Red">Red</SelectItem>
-                                        <SelectItem value="Blue">Blue</SelectItem>
-                                        <SelectItem value="Black">Black</SelectItem>
-                                        <SelectItem value="White">White</SelectItem>
-                                        <SelectItem value="Yellow">Yellow</SelectItem>
-                                        <SelectItem value="Purple">Purple</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {/* Coverlay Color (Flex) vs Solder Mask Color (Others) */}
+                            {material === "Flex" ? (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Coverlay Color</label>
+                                    <Select value={coverlayColor} onValueChange={setCoverlayColor} disabled={substrateType === "Transparent"}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue placeholder="Select Coverlay Color" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {substrateType === "Transparent" ? (
+                                                <SelectItem value="Transparent">Transparent</SelectItem>
+                                            ) : (
+                                                <>
+                                                    <SelectItem value="Yellow">Yellow</SelectItem>
+                                                    <SelectItem value="Black">Black</SelectItem>
+                                                    <SelectItem value="White">White</SelectItem>
+                                                </>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Solder Mask Color</label>
+                                    <Select value={solderMask} onValueChange={(val) => {
+                                        setSolderMask(val);
+                                        const mapHex: Record<string, string> = { Green: "#52c41a", Red: "#f5222d", Blue: "#1677ff", Black: "#000000", White: "#ffffff", Yellow: "#fadb14", Purple: "#722ed1" };
+                                        setPcbColorHex(mapHex[val] || "#52c41a");
+                                    }}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue placeholder="Select Solder Mask Color" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Green">Green</SelectItem>
+                                            <SelectItem value="Purple">Purple</SelectItem>
+                                            <SelectItem value="Red">Red</SelectItem>
+                                            <SelectItem value="Yellow">Yellow</SelectItem>
+                                            <SelectItem value="Blue">Blue</SelectItem>
+                                            <SelectItem value="White">White</SelectItem>
+                                            <SelectItem value="Black">Black</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
 
                             {/* Silkscreen Color */}
                             <div>
@@ -1142,36 +1431,21 @@ export default function CreateOrderPage() {
                                 </Select>
                             </div>
 
-                            {/* Surface Finish */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Surface Finish</label>
-                                <Select value={surfaceFinish} onValueChange={setSurfaceFinish}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue placeholder="Select Surface Finish" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="HASL(Leaded)">HASL (Leaded)</SelectItem>
-                                        <SelectItem value="LeadFree HASL">LeadFree HASL</SelectItem>
-                                        <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
-                                        <SelectItem value="OSP">OSP</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Outer Copper Weight */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Outer Copper Weight</label>
-                                <Select value={copperWeight} onValueChange={setCopperWeight}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue placeholder="Select Copper Weight" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="1 oz">1 oz</SelectItem>
-                                        <SelectItem value="2 oz">2 oz</SelectItem>
-                                        {material === "Flex" && <SelectItem value="0.5 oz">0.5 oz</SelectItem>}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {/* Copper Type (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Copper Type</label>
+                                    <Select value={copperType} onValueChange={setCopperType}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Electro-deposited">Electro-deposited</SelectItem>
+                                            <SelectItem value="Rolled Annealed" disabled>Rolled Annealed (N/A)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
 
                             {/* Material Type */}
                             <div>
@@ -1181,61 +1455,246 @@ export default function CreateOrderPage() {
                                         <SelectValue placeholder="Select Material Type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="FR-4">FR-4</SelectItem>
-                                        <SelectItem value="Flex">Flex</SelectItem>
-                                        <SelectItem value="Rogers">Rogers</SelectItem>
-                                        <SelectItem value="PTFE Teflon">PTFE Teflon</SelectItem>
+                                        {material === "FR-4" ? (
+                                            <SelectItem value="FR4-TG135">FR4-TG135</SelectItem>
+                                        ) : material === "Rogers" ? (
+                                            <SelectItem value="RO4350B(Dk=3.48,Df=0.0037)">RO4350B(Dk=3.48,Df=0.0037)</SelectItem>
+                                        ) : material === "PTFE Teflon" ? (
+                                            <>
+                                                <SelectItem value="ZYF300CA-P(Dk=3.0,Df=0.0018)">ZYF300CA-P(Dk=3.0,Df=0.0018)</SelectItem>
+                                                <SelectItem value="ZYF300CA-C(Dk=2.94,Df=0.0016)">ZYF300CA-C(Dk=2.94,Df=0.0016)</SelectItem>
+                                                <SelectItem value="ZYF265D(Dk=2.65,Df=0.0019)">ZYF265D(Dk=2.65,Df=0.0019)</SelectItem>
+                                                <SelectItem value="ZYF255DA(Dk=2.55,Df=0.0018)">ZYF255DA(Dk=2.55,Df=0.0018)</SelectItem>
+                                            </>
+                                        ) : (
+                                            <SelectItem value="Polyimide (PI)">Polyimide (PI)</SelectItem>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Via Covering */}
+                            {/* Surface Finish */}
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Via Covering</label>
-                                <Select value={viaCovering} onValueChange={setViaCovering}>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Surface Finish</label>
+                                <Select value={surfaceFinish} onValueChange={setSurfaceFinish}>
                                     <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Select Surface Finish" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Tented">Tented</SelectItem>
-                                        <SelectItem value="Untented">Untented</SelectItem>
-                                        <SelectItem value="Plugged">Plugged</SelectItem>
-                                        <SelectItem value="Epoxy Filled & Capped">Epoxy Filled & Capped</SelectItem>
-                                        <SelectItem value="Not Specified">Not Specified</SelectItem>
+                                        {material === "Flex" ? (
+                                            <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
+                                        ) : material === "Rogers" || material === "PTFE Teflon" ? (
+                                            <>
+                                                <SelectItem value="OSP">OSP</SelectItem>
+                                                <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
+                                                <SelectItem value="HASL(with lead)" disabled>HASL (with lead) - N/A</SelectItem>
+                                                <SelectItem value="LeadFree HASL" disabled>LeadFree HASL - N/A</SelectItem>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <SelectItem value="OSP">OSP</SelectItem>
+                                                <SelectItem value="HASL(Leaded)">HASL (Leaded)</SelectItem>
+                                                <SelectItem value="LeadFree HASL">LeadFree HASL</SelectItem>
+                                                <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Via Plating Method */}
+                            {/* Gold Thickness (when ENIG or Flex) */}
+                            {(surfaceFinish === "ENIG" || material === "Flex") && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Gold Thickness</label>
+                                    <Select value={goldThickness} onValueChange={setGoldThickness}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1 U&quot;">1 U&quot;</SelectItem>
+                                            <SelectItem value="2 U&quot;">2 U&quot;</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Outer Copper Weight */}
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Via Plating Method</label>
-                                <Select value={viaPlating} onValueChange={setViaPlating}>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">Outer Copper Weight</label>
+                                <Select value={copperWeight} onValueChange={setCopperWeight}>
                                     <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Select Copper Weight" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Not Specified">Not Specified</SelectItem>
-                                        <SelectItem value="Conductive Adhesive">Conductive Adhesive</SelectItem>
-                                        <SelectItem value="Horizontal Electroless Copper Plating">Horizontal Electroless Copper Plating</SelectItem>
+                                        {material === "Flex" ? (
+                                            <>
+                                                <SelectItem value="0.5 oz">0.5 oz</SelectItem>
+                                                <SelectItem value="1 oz">1 oz</SelectItem>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <SelectItem value="1 oz">1 oz</SelectItem>
+                                                <SelectItem value="2 oz">2 oz</SelectItem>
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Min Hole Size */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Min Via Hole Size</label>
-                                <Select value={minHole} onValueChange={setMinHole}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="0.3mm/(0.4/0.45mm)">0.3mm / (0.4/0.45mm)</SelectItem>
-                                        <SelectItem value="0.25mm/(0.35/0.4mm)">0.25mm / (0.35/0.4mm)</SelectItem>
-                                        <SelectItem value="0.2mm/(0.3/0.35mm)">0.2mm / (0.3/0.35mm)</SelectItem>
-                                        <SelectItem value="0.15mm/(0.25/0.3mm)">0.15mm / (0.25/0.3mm)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {/* Coverlay Thickness (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Coverlay Thickness</label>
+                                    <Select value={coverlayThickness} onValueChange={setCoverlayThickness}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="PI:12.5um/AD:15um">PI:12.5um/AD:15um</SelectItem>
+                                            <SelectItem value="PI:25um/AD:25um">PI:25um/AD:25um</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Stiffener (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Stiffener</label>
+                                    <Select value={stiffener} onValueChange={setStiffener}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Without">Without</SelectItem>
+                                            <SelectItem value="Polyimide">Polyimide</SelectItem>
+                                            <SelectItem value="FR4">FR4</SelectItem>
+                                            <SelectItem value="Stainless Steel">Stainless Steel</SelectItem>
+                                            <SelectItem value="3M Tape">3M Tape</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* EMI Shielding Film (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">EMI Shielding Film</label>
+                                    <Select value={emiShielding} onValueChange={setEmiShielding}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Without">Without</SelectItem>
+                                            <SelectItem value="Both sides ( Black, 18um )">Both sides ( Black, 18um )</SelectItem>
+                                            <SelectItem value="Single side ( Black, 18um )">Single side ( Black, 18um )</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Cutting Method (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Cutting Method</label>
+                                    <Select value={cuttingMethod} onValueChange={setCuttingMethod}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Laser Cutting">Laser Cutting</SelectItem>
+                                            <SelectItem value="Punching">Punching</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Silkscreen on Stiffener (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Silkscreen on Stiffener</label>
+                                    <Select value={silkscreenOnStiffener} onValueChange={setSilkscreenOnStiffener}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="No">No</SelectItem>
+                                            <SelectItem value="Yes">Yes</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* EDA Software (Flex Only) */}
+                            {material === "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">EDA Software</label>
+                                    <Select value={edaSoftware} onValueChange={setEdaSoftware}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="EasyEDA Pro">EasyEDA Pro</SelectItem>
+                                            <SelectItem value="Other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Via Covering (Non-Flex) */}
+                            {material !== "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Via Covering</label>
+                                    <Select value={viaCovering} onValueChange={setViaCovering}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Tented">Tented</SelectItem>
+                                            <SelectItem value="Untented">Untented</SelectItem>
+                                            <SelectItem value="Plugged">Plugged</SelectItem>
+                                            <SelectItem value="Epoxy Filled & Capped">Epoxy Filled & Capped</SelectItem>
+                                            <SelectItem value="Copper paste Filled & Capped" disabled>Copper paste Filled & Capped (N/A)</SelectItem>
+                                            <SelectItem value="Not Specified">Not Specified</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Via Plating Method (Non-Flex) */}
+                            {material !== "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Via Plating Method</label>
+                                    <Select value={viaPlating} onValueChange={setViaPlating}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Not Specified">Not Specified</SelectItem>
+                                            <SelectItem value="Conductive Adhesive">Conductive Adhesive</SelectItem>
+                                            <SelectItem value="Horizontal Electroless Copper Plating">Horizontal Electroless Copper Plating</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Min Hole Size (Non-Flex) */}
+                            {material !== "Flex" && (
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground block mb-1">Min Via Hole Size</label>
+                                    <Select value={minHole} onValueChange={setMinHole}>
+                                        <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0.3mm/(0.4/0.45mm)">0.3mm / (0.4/0.45mm)</SelectItem>
+                                            <SelectItem value="0.25mm/(0.35/0.4mm)">0.25mm / (0.35/0.4mm)</SelectItem>
+                                            <SelectItem value="0.2mm/(0.3/0.35mm)">0.2mm / (0.3/0.35mm)</SelectItem>
+                                            <SelectItem value="0.15mm/(0.25/0.3mm)">0.15mm / (0.25/0.3mm)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
 
                             {/* Electrical Test */}
                             <div>
@@ -1270,20 +1729,21 @@ export default function CreateOrderPage() {
                             <h4 className="text-xs font-bold text-muted-foreground mb-2.5">High-Spec & Quality Options</h4>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 {[
-                                    { label: "Gold Fingers", state: goldFingers, setState: setGoldFingers },
-                                    { label: "Castellated Holes", state: castellated, setState: setCastellated },
-                                    { label: "Edge Plating", state: edgePlating, setState: setEdgePlating },
-                                    { label: "Blind Slots", state: blindSlots, setState: setBlindSlots },
-                                    { label: "Humidity Card", state: humidity, setState: setHumidity },
-                                    { label: "Kelvin Test", state: kelvinTest, setState: setKelvinTest },
-                                    { label: "Paper Between PCBs", state: paperBetween, setState: setPaperBetween },
-                                    { label: "Confirm Production File", state: confirmFile, setState: setConfirmFile }
+                                    { label: "Gold Fingers", state: goldFingers, setState: setGoldFingers, disabled: false },
+                                    { label: "Castellated Holes", state: castellated, setState: setCastellated, disabled: material === "Flex" },
+                                    { label: "Edge Plating", state: edgePlating, setState: setEdgePlating, disabled: true },
+                                    { label: "Blind Slots", state: blindSlots, setState: setBlindSlots, disabled: material === "Flex" },
+                                    { label: "Humidity Card", state: humidity, setState: setHumidity, disabled: false },
+                                    { label: "Kelvin Test", state: kelvinTest, setState: setKelvinTest, disabled: false },
+                                    { label: "Paper Between PCBs", state: paperBetween, setState: setPaperBetween, disabled: false },
+                                    { label: "Confirm Production File", state: confirmFile, setState: setConfirmFile, disabled: false }
                                 ].map((opt, idx) => (
-                                    <label key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/60 cursor-pointer select-none">
+                                    <label key={idx} className={`flex items-center gap-2 p-2 rounded-xl border border-border/60 select-none ${opt.disabled ? 'opacity-50 cursor-not-allowed bg-muted/10' : 'bg-muted/20 hover:bg-muted/40 cursor-pointer'}`}>
                                         <input
                                             type="checkbox"
+                                            disabled={opt.disabled}
                                             checked={opt.state === "Yes"}
-                                            onChange={(e) => opt.setState(e.target.checked ? "Yes" : "No")}
+                                            onChange={(e) => !opt.disabled && opt.setState(e.target.checked ? "Yes" : "No")}
                                             className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
                                         />
                                         <span className="text-xs font-semibold text-foreground">{opt.label}</span>

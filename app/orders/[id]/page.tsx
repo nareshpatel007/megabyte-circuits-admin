@@ -648,23 +648,195 @@ export default function OrderDetailPage() {
                         </div>
                     </div>
 
-                    {/* Technical Specifications Card (Without scroll & without preview data) */}
-                    <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-sm space-y-4">
-                        <h3 className="text-sm font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2 border-b border-border/40 pb-3">
-                            <FileText className="w-4 h-4 text-emerald-500" /> Technical Parameters
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            {filteredMetas.length > 0 ? (
-                                filteredMetas.map((meta) => (
-                                    <div key={meta.id} className="bg-muted/30 rounded-xl p-3 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase truncate">{meta.meta_key.replace(/_/g, ' ')}</p>
-                                        <p className="text-xs font-bold text-foreground mt-0.5 break-words">{meta.meta_value}</p>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="col-span-2 text-xs text-muted-foreground italic">No extra metadata recorded.</div>
-                            )}
+                    {/* Technical Parameters / PCB Specifications Card */}
+                    <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-sm space-y-6">
+                        <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                            <h3 className="text-sm font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-emerald-500" /> Technical Parameters & PCB Specifications
+                            </h3>
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                Order Snapshot
+                            </span>
                         </div>
+
+                        {/* PCB Basic Specifications Group */}
+                        <div className="space-y-2">
+                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                1. PCB Basic Specifications
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Base Material</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('base_material', getMetaValue('material', 'FR-4'))}</p>
+                                </div>
+                                {getMetaValue('substrate_type', '') && getMetaValue('substrate_type') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Substrate Type</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('substrate_type')}</p>
+                                    </div>
+                                )}
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Layer Count</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('layers', order.layers ? `${order.layers} Layers` : '2 Layers')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Dimensions</p>
+                                    <p className="font-bold text-foreground mt-0.5">
+                                        {getMetaValue('dimensions', (getMetaValue('dimensions_width') && getMetaValue('dimensions_length')) ? `${getMetaValue('dimensions_width')} x ${getMetaValue('dimensions_length')} ${getMetaValue('dimension_unit', 'mm')}` : '100x100mm')}
+                                    </p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">PCB Quantity</p>
+                                    <p className="font-bold text-foreground mt-0.5">{order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))} Pcs</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Different Design Count</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('different_design', '1')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Delivery Format</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('delivery_format', 'Single PCB')}</p>
+                                </div>
+                                {getMetaValue('panel_format', '') && getMetaValue('panel_format') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Panel Layout</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('panel_format')}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* PCB Specifications Group */}
+                        <div className="space-y-2 pt-2 border-t border-border/40">
+                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                2. PCB Specifications
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">PCB Thickness</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('thickness', '1.6mm')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Solder Mask / Coverlay Color</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('pcb_color', getMetaValue('coverlay_color', 'Green'))}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Silkscreen Color</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('silkscreen', 'White')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Material Type</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('material_type', 'FR4-TG135')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Surface Finish</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('surface_finish', 'HASL(Leaded)')}</p>
+                                </div>
+                                {getMetaValue('gold_thickness', '') && getMetaValue('gold_thickness') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Gold Thickness</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('gold_thickness')}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* High-Spec Options Group */}
+                        <div className="space-y-2 pt-2 border-t border-border/40">
+                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                3. High-Spec Options
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Outer Copper Weight</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('copper_weight', '1 oz')}</p>
+                                </div>
+                                {getMetaValue('via_covering', '') && getMetaValue('via_covering') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Via Covering</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('via_covering')}</p>
+                                    </div>
+                                )}
+                                {getMetaValue('via_plating', '') && getMetaValue('via_plating') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Via Plating Method</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('via_plating')}</p>
+                                    </div>
+                                )}
+                                {getMetaValue('min_hole', '') && getMetaValue('min_hole') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Min Via Hole Size</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('min_hole')}</p>
+                                    </div>
+                                )}
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Confirm Production File</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('confirm_file', 'No')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Mark on PCB</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('mark_on_pcb', 'Remove Mark')}</p>
+                                </div>
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Electrical Test</p>
+                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('elec_test', 'Flying Probe Fully Test')}</p>
+                                </div>
+                                {getMetaValue('coverlay_thickness', '') && getMetaValue('coverlay_thickness') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Coverlay Thickness</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('coverlay_thickness')}</p>
+                                    </div>
+                                )}
+                                {getMetaValue('stiffener', '') && getMetaValue('stiffener') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Stiffener</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('stiffener')}</p>
+                                    </div>
+                                )}
+                                {getMetaValue('emi_shielding', '') && getMetaValue('emi_shielding') !== 'N/A' && (
+                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">EMI Shielding Film</p>
+                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('emi_shielding')}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Advanced Options Group */}
+                        <div className="space-y-2 pt-2 border-t border-border/40">
+                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                4. Advanced Options & Badges
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                {[
+                                    { label: "Gold Fingers", val: getMetaValue('gold_fingers', 'No') },
+                                    { label: "Castellated Holes", val: getMetaValue('castellated', 'No') },
+                                    { label: "Edge Plating", val: getMetaValue('edge_plating', 'No') },
+                                    { label: "Blind Slots", val: getMetaValue('blind_slots', 'No') },
+                                    { label: "UL Marking", val: getMetaValue('ul_marking', 'No') },
+                                    { label: "Humidity Card", val: getMetaValue('humidity', 'No') },
+                                    { label: "Kelvin Test", val: getMetaValue('kelvin_test', 'No') },
+                                    { label: "Paper Between PCBs", val: getMetaValue('paper_between', 'No') }
+                                ].map((badge, idx) => (
+                                    <div key={idx} className={`p-2 rounded-xl border flex items-center justify-between font-bold ${badge.val === 'Yes' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-muted/20 border-border/60 text-muted-foreground'}`}>
+                                        <span className="text-[11px]">{badge.label}</span>
+                                        <span className="text-[10px] px-2 py-0.5 rounded-md uppercase font-black bg-card border border-border/60">{badge.val}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Custom Information & Remarks */}
+                        {getMetaValue('pcb_remark', '') && getMetaValue('pcb_remark') !== 'N/A' && (
+                            <div className="space-y-1.5 pt-2 border-t border-border/40">
+                                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                    5. Customer PCB Remark / Instructions
+                                </h4>
+                                <div className="p-3 bg-muted/30 rounded-xl border border-border/60 text-xs font-semibold text-foreground italic leading-relaxed">
+                                    "{getMetaValue('pcb_remark')}"
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
