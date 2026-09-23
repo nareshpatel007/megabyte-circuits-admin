@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -529,6 +529,7 @@ export default function OrdersPage() {
     const [customerList, setCustomerList] = useState<any[]>([]);
     const [customerSearch, setCustomerSearch] = useState<string>("");
     const [loadingCustomers, setLoadingCustomers] = useState<boolean>(false);
+    const [customerDropdownOpen, setCustomerDropdownOpen] = useState<boolean>(false);
 
     const fetchCustomersList = async (searchQuery: string = "") => {
         setLoadingCustomers(true);
@@ -951,6 +952,7 @@ export default function OrdersPage() {
         setModalCustomerName(order.customer_name || "");
         setModalUserId(initialUserId);
         setCustomerSearch("");
+        setCustomerDropdownOpen(false);
         fetchCustomersList("");
         setModalCompletedQty(initialCompletedQty);
         setModalFailedQty(initialFailedQty);
@@ -1803,60 +1805,71 @@ export default function OrdersPage() {
                                             <span>Select Customer</span>
                                             {modalUserId && <span className="text-[10px] text-emerald-600 font-extrabold">User ID: #{modalUserId}</span>}
                                         </label>
-                                        <div className="space-y-1.5">
-                                            <Select
-                                                value={modalUserId || "custom"}
-                                                onValueChange={(val) => {
-                                                    if (val === "custom") {
-                                                        setModalUserId("");
-                                                    } else {
-                                                        setModalUserId(val);
-                                                        const selectedCust = customerList.find(c => String(c.id) === val);
-                                                        if (selectedCust) {
-                                                            const name = selectedCust.company_name || selectedCust.name || `${selectedCust.first_name || ''} ${selectedCust.last_name || ''}`.trim();
-                                                            setModalCustomerName(name);
-                                                        }
-                                                    }
-                                                }}
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCustomerDropdownOpen(!customerDropdownOpen)}
+                                                className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border border-slate-300 rounded-xl text-slate-900 shadow-xs flex items-center justify-between hover:border-slate-400 transition-colors h-10"
                                             >
-                                                <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
-                                                    <SelectValue placeholder="Select customer..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="max-h-64 overflow-y-auto font-semibold">
-                                                    <div className="p-2 sticky top-0 bg-white border-b border-slate-100 z-10">
-                                                        <input
-                                                            type="text"
-                                                            value={customerSearch}
-                                                            onChange={(e) => {
-                                                                setCustomerSearch(e.target.value);
-                                                                fetchCustomersList(e.target.value);
-                                                            }}
-                                                            placeholder="🔍 Search customer name, email, phone..."
-                                                            className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            onKeyDown={(e) => e.stopPropagation()}
-                                                        />
+                                                <span className="truncate">
+                                                    {modalCustomerName || "Select customer..."}
+                                                </span>
+                                                <ChevronDown className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
+                                            </button>
+
+                                            {customerDropdownOpen && (
+                                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 p-2 space-y-2 max-w-full">
+                                                    <input
+                                                        type="text"
+                                                        value={customerSearch}
+                                                        onChange={(e) => {
+                                                            setCustomerSearch(e.target.value);
+                                                            fetchCustomersList(e.target.value);
+                                                        }}
+                                                        placeholder="🔍 Search customer name, email, phone..."
+                                                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                                                        autoFocus
+                                                    />
+
+                                                    <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
+                                                        {loadingCustomers ? (
+                                                            <div className="p-3 text-center text-xs text-slate-400 italic">
+                                                                Searching customers...
+                                                            </div>
+                                                        ) : customerList.length === 0 ? (
+                                                            <div className="p-3 text-center text-xs text-slate-400 italic">
+                                                                No matching customers found.
+                                                            </div>
+                                                        ) : (
+                                                            customerList.map((c) => {
+                                                                const displayName = c.company_name || c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed';
+                                                                const contact = c.email || c.mobile || c.phone_number || '';
+                                                                const isSelected = String(c.id) === String(modalUserId);
+                                                                return (
+                                                                    <button
+                                                                        key={c.id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setModalUserId(String(c.id));
+                                                                            setModalCustomerName(displayName);
+                                                                            setCustomerDropdownOpen(false);
+                                                                        }}
+                                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                                                                            isSelected ? "bg-emerald-50 text-emerald-900 font-bold" : "hover:bg-slate-100 text-slate-800"
+                                                                        }`}
+                                                                    >
+                                                                        <div className="min-w-0 pr-2">
+                                                                            <p className="font-bold truncate">{displayName}</p>
+                                                                            {contact && <p className="text-[10px] text-slate-500 font-normal truncate">{contact}</p>}
+                                                                        </div>
+                                                                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                                                    </button>
+                                                                );
+                                                            })
+                                                        )}
                                                     </div>
-                                                    <SelectItem value="custom" className="text-slate-500 italic">-- Custom / Manual Entry --</SelectItem>
-                                                    {customerList.map((c) => {
-                                                        const displayName = c.company_name || c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed';
-                                                        const contact = c.email || c.mobile || c.phone_number || '';
-                                                        return (
-                                                            <SelectItem key={c.id} value={String(c.id)}>
-                                                                <span className="font-bold text-slate-900">{displayName}</span>
-                                                                {contact ? <span className="text-slate-500 font-normal"> ({contact})</span> : ''}
-                                                            </SelectItem>
-                                                        );
-                                                    })}
-                                                </SelectContent>
-                                            </Select>
-                                            <Input
-                                                type="text"
-                                                value={modalCustomerName}
-                                                onChange={(e) => setModalCustomerName(e.target.value)}
-                                                placeholder="Customer Name..."
-                                                className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                            />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
