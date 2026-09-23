@@ -1523,7 +1523,7 @@ export default function OrdersPage() {
                                                             {(() => {
                                                                 const customerId = order.user_id || order.user?.id;
                                                                 const custDisplayName = order.user?.company_name || order.user?.name || order.customer_name || (order.user_email ? order.user_email : null);
-                                                                
+
                                                                 if (!custDisplayName && !customerId) {
                                                                     return <span className="text-muted-foreground font-medium text-xs">—</span>;
                                                                 }
@@ -1789,7 +1789,7 @@ export default function OrdersPage() {
                                     </div>
                                     <div>
                                         <DialogTitle className="text-base font-black text-slate-900">
-                                            Update Order Status
+                                            Update Order
                                         </DialogTitle>
                                         <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
                                             Order #{statusModalOrder.order_number}
@@ -1854,9 +1854,8 @@ export default function OrdersPage() {
                                                                             setModalCustomerName(displayName);
                                                                             setCustomerDropdownOpen(false);
                                                                         }}
-                                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between ${
-                                                                            isSelected ? "bg-emerald-50 text-emerald-900 font-bold" : "hover:bg-slate-100 text-slate-800"
-                                                                        }`}
+                                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between ${isSelected ? "bg-emerald-50 text-emerald-900 font-bold" : "hover:bg-slate-100 text-slate-800"
+                                                                            }`}
                                                                     >
                                                                         <div className="min-w-0 pr-2">
                                                                             <p className="font-bold truncate">{displayName}</p>
