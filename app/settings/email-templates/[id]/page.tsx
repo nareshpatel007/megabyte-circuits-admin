@@ -68,6 +68,13 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
     const [useConfiguredCcBcc, setUseConfiguredCcBcc] = useState(false);
     const [sendingTest, setSendingTest] = useState(false);
 
+    // Send Report Now Modal (For Daily Reports)
+    const [sendNowModalOpen, setSendNowModalOpen] = useState(false);
+    const [sendNowDate, setSendNowDate] = useState("");
+    const [sendingNow, setSendingNow] = useState(false);
+
+    const isDailyReportTemplate = key === "daily_order_progress_report" || key === "daily_inventory_report";
+
     const fetchTemplateDetails = async () => {
         setLoading(true);
         try {
@@ -244,6 +251,35 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
         }
     };
 
+    const handleSendNow = async () => {
+        setSendingNow(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/email-templates/${templateId}/send-now`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    report_date: sendNowDate || undefined,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success(data.message || "Daily report generated and sent successfully!");
+                setSendNowModalOpen(false);
+            } else {
+                toast.error(data.message || "Failed to send daily report.");
+            }
+        } catch (err) {
+            toast.error("An error occurred while sending daily report.");
+        } finally {
+            setSendingNow(false);
+        }
+    };
+
     const headerActions = (
         <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -286,6 +322,16 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                     Live Preview
                 </button>
             </div>
+
+            {isDailyReportTemplate && (
+                <button
+                    onClick={() => setSendNowModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-900/40 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    Send Report Now
+                </button>
+            )}
 
             <button
                 onClick={() => setTestModalOpen(true)}
@@ -725,6 +771,58 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                                 >
                                     {sendingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                                     Send Email
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Send Report Now Modal */}
+                {sendNowModalOpen && (
+                    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                        <div className="bg-card border border-border rounded-xl w-full max-w-md p-5 shadow-xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-border pb-3">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                                    <h3 className="text-sm font-bold text-foreground">Send Daily Report Now</h3>
+                                </div>
+                                <button
+                                    onClick={() => setSendNowModalOpen(false)}
+                                    className="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                                    Report Date (Optional)
+                                </label>
+                                <input
+                                    type="date"
+                                    value={sendNowDate}
+                                    onChange={(e) => setSendNowDate(e.target.value)}
+                                    className="w-full px-3.5 py-2 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                                />
+                                <p className="text-[11px] text-muted-foreground mt-1">
+                                    Leave blank to generate report for today. Report will be compiled using live database records and sent to configured recipients.
+                                </p>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2">
+                                <button
+                                    onClick={() => setSendNowModalOpen(false)}
+                                    className="px-4 py-2 border border-input bg-background hover:bg-accent text-foreground text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSendNow}
+                                    disabled={sendingNow}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                                >
+                                    {sendingNow ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                    Send Report Now
                                 </button>
                             </div>
                         </div>

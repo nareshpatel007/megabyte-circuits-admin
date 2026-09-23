@@ -37,6 +37,48 @@ export default function EmailTemplatesPage() {
         bcc: string[];
     } | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [togglingId, setTogglingId] = useState<number | null>(null);
+
+    const handleToggleStatus = async (tpl: EmailTemplate) => {
+        const newStatus = !tpl.is_active;
+        setTogglingId(tpl.id);
+
+        // Optimistic UI update
+        setTemplates((prev) =>
+            prev.map((item) => (item.id === tpl.id ? { ...item, is_active: newStatus } : item))
+        );
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/email-templates/${tpl.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ is_active: newStatus }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success(`"${tpl.name}" status updated to ${newStatus ? "Active" : "Inactive"}.`);
+            } else {
+                // Rollback on error
+                setTemplates((prev) =>
+                    prev.map((item) => (item.id === tpl.id ? { ...item, is_active: tpl.is_active } : item))
+                );
+                toast.error(data.message || "Failed to update status.");
+            }
+        } catch (err) {
+            // Rollback on error
+            setTemplates((prev) =>
+                prev.map((item) => (item.id === tpl.id ? { ...item, is_active: tpl.is_active } : item))
+            );
+            toast.error("Failed to update template status.");
+        } finally {
+            setTogglingId(null);
+        }
+    };
 
     const fetchTemplates = useCallback(async () => {
         setLoading(true);
@@ -227,17 +269,39 @@ export default function EmailTemplatesPage() {
                                             </td>
 
                                             <td className="py-3.5 px-4">
-                                                {tpl.is_active ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-xs font-semibold">
-                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                        Active
+                                                <button
+                                                    onClick={() => handleToggleStatus(tpl)}
+                                                    disabled={togglingId === tpl.id}
+                                                    title={`Click to switch to ${tpl.is_active ? "Inactive" : "Active"}`}
+                                                    className="inline-flex items-center gap-2 px-2 py-1 rounded-full cursor-pointer transition-all hover:bg-muted/60 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
+                                                >
+                                                    <div
+                                                        className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out flex items-center ${
+                                                            tpl.is_active
+                                                                ? "bg-emerald-500"
+                                                                : "bg-muted-foreground/30 dark:bg-muted-foreground/20"
+                                                        }`}
+                                                    >
+                                                        <div
+                                                            className={`w-4 h-4 rounded-full bg-white shadow-xs transform transition-transform duration-200 ease-in-out flex items-center justify-center ${
+                                                                tpl.is_active ? "translate-x-4" : "translate-x-0"
+                                                            }`}
+                                                        >
+                                                            {togglingId === tpl.id && (
+                                                                <Loader2 className="w-2.5 h-2.5 text-muted-foreground animate-spin" />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <span
+                                                        className={`text-xs font-semibold select-none ${
+                                                            tpl.is_active
+                                                                ? "text-emerald-600 dark:text-emerald-400"
+                                                                : "text-muted-foreground"
+                                                        }`}
+                                                    >
+                                                        {tpl.is_active ? "Active" : "Inactive"}
                                                     </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border text-xs font-semibold">
-                                                        <XCircle className="w-3.5 h-3.5" />
-                                                        Inactive
-                                                    </span>
-                                                )}
+                                                </button>
                                             </td>
 
                                             <td className="py-3.5 px-4 text-xs text-muted-foreground">
