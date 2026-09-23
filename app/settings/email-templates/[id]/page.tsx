@@ -40,6 +40,9 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
     const [key, setKey] = useState("");
     const [subject, setSubject] = useState("");
     const [body, setBody] = useState("");
+    const [toRecipient, setToRecipient] = useState("");
+    const [fromEmail, setFromEmail] = useState("");
+    const [fromName, setFromName] = useState("");
     const [cc, setCc] = useState("");
     const [bcc, setBcc] = useState("");
     const [isActive, setIsActive] = useState(true);
@@ -52,6 +55,8 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
     const [previewData, setPreviewData] = useState<{
         rendered_subject: string;
         rendered_body: string;
+        from_email?: string;
+        from_name?: string;
         to: string;
         cc: string[];
         bcc: string[];
@@ -80,6 +85,9 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                 setKey(tpl.key || "");
                 setSubject(tpl.subject || "");
                 setBody(tpl.body || "");
+                setToRecipient(tpl.to || "");
+                setFromEmail(tpl.from_email || "");
+                setFromName(tpl.from_name || "");
                 setCc(tpl.cc || "");
                 setBcc(tpl.bcc || "");
                 setIsActive(!!tpl.is_active);
@@ -126,6 +134,9 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                 body: JSON.stringify({
                     subject,
                     body,
+                    to: toRecipient,
+                    from_email: fromEmail,
+                    from_name: fromName,
                     cc,
                     bcc,
                     is_active: isActive,
@@ -166,6 +177,9 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                     name,
                     subject,
                     body,
+                    to: toRecipient,
+                    from_email: fromEmail,
+                    from_name: fromName,
                     cc,
                     bcc,
                     is_active: isActive,
@@ -208,6 +222,9 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                     use_configured_cc_bcc: useConfiguredCcBcc,
                     subject,
                     body,
+                    to: toRecipient,
+                    from_email: fromEmail,
+                    from_name: fromName,
                     cc,
                     bcc,
                 }),
@@ -406,8 +423,50 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                                     />
                                 </div>
 
-                                {/* CC & BCC */}
+                                {/* From Email & From Name */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                                    <div>
+                                        <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                                            From Email <span className="text-xs text-muted-foreground font-normal">(Optional override)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={fromEmail}
+                                            onChange={(e) => setFromEmail(e.target.value)}
+                                            placeholder="notifications@megabytecircuit.com"
+                                            className="w-full px-3.5 py-2 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                                            From Name <span className="text-xs text-muted-foreground font-normal">(Optional variable e.g. {"{{company_name}}"})</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={fromName}
+                                            onChange={(e) => setFromName(e.target.value)}
+                                            placeholder="{{company_name}}"
+                                            className="w-full px-3.5 py-2 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* TO, CC & BCC */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                                    <div>
+                                        <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                                            TO Recipient <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={toRecipient}
+                                            onChange={(e) => setToRecipient(e.target.value)}
+                                            placeholder="inventory@example.com"
+                                            className="w-full px-3.5 py-2 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                                        />
+                                    </div>
+
                                     <div>
                                         <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
                                             CC <span className="text-xs text-muted-foreground font-normal">(Comma separated)</span>
@@ -518,6 +577,12 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                                                     <div className="flex">
                                                         <span className="w-20 font-bold text-muted-foreground uppercase">Subject:</span>
                                                         <span className="font-semibold text-foreground">{previewData.rendered_subject}</span>
+                                                    </div>
+                                                    <div className="flex">
+                                                        <span className="w-20 font-bold text-muted-foreground uppercase">From:</span>
+                                                        <span className="font-medium text-foreground">
+                                                            {previewData.from_name ? `${previewData.from_name} <${previewData.from_email}>` : previewData.from_email}
+                                                        </span>
                                                     </div>
                                                     <div className="flex">
                                                         <span className="w-20 font-bold text-muted-foreground uppercase">To:</span>
