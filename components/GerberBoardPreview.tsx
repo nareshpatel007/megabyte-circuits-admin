@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { FileArchive } from "lucide-react";
 
 interface GerberBoardPreviewProps {
+    gerberFileId?: number | string;
     previewData?: string;
     boardName?: string;
     originalName?: string;
@@ -14,6 +15,7 @@ interface GerberBoardPreviewProps {
 }
 
 export default function GerberBoardPreview({
+    gerberFileId,
     previewData,
     boardName,
     originalName,
@@ -24,9 +26,14 @@ export default function GerberBoardPreview({
 }: GerberBoardPreviewProps) {
     const [imgError, setImgError] = useState(false);
 
-    if (previewData && (previewData.includes("<svg") || previewData.trim().startsWith("<svg"))) {
-        const svgStart = previewData.indexOf("<svg");
-        const svgContent = svgStart !== -1 ? previewData.substring(svgStart) : previewData;
+    let effectiveSrc = previewData;
+    if (gerberFileId && (!effectiveSrc || effectiveSrc.startsWith("/projects/"))) {
+        effectiveSrc = `/api/gerber/${gerberFileId}/preview/front`;
+    }
+
+    if (effectiveSrc && (effectiveSrc.includes("<svg") || effectiveSrc.trim().startsWith("<svg"))) {
+        const svgStart = effectiveSrc.indexOf("<svg");
+        const svgContent = svgStart !== -1 ? effectiveSrc.substring(svgStart) : effectiveSrc;
         return (
             <div
                 className={`w-full h-full flex items-center justify-center overflow-hidden [&_svg]:w-full [&_svg]:h-full [&_svg]:object-contain ${className}`}
@@ -35,21 +42,28 @@ export default function GerberBoardPreview({
         );
     }
 
-    const isUrl = previewData && !imgError && (
-        previewData.startsWith("http://") ||
-        previewData.startsWith("https://") ||
-        previewData.startsWith("data:") ||
-        previewData.startsWith("/") ||
-        previewData.startsWith("./")
+    const isUrl = effectiveSrc && !imgError && (
+        effectiveSrc.startsWith("http://") ||
+        effectiveSrc.startsWith("https://") ||
+        effectiveSrc.startsWith("data:") ||
+        effectiveSrc.startsWith("/") ||
+        effectiveSrc.startsWith("./")
     );
 
     if (isUrl) {
         return (
             <img
-                src={previewData}
+                src={effectiveSrc}
                 alt="Gerber Board Preview"
                 className={`object-contain rounded-lg max-w-full max-h-full ${className}`}
-                onError={() => setImgError(true)}
+                onError={() => {
+                    if (gerberFileId && effectiveSrc !== `/api/gerber/${gerberFileId}/preview/front`) {
+                        setImgError(false);
+                        effectiveSrc = `/api/gerber/${gerberFileId}/preview/front`;
+                    } else {
+                        setImgError(true);
+                    }
+                }}
             />
         );
     }

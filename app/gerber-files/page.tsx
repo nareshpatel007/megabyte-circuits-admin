@@ -372,6 +372,7 @@ function GerberFilesContent() {
                                                          <div className="flex items-center gap-2.5">
                                                              <div className="w-9 h-9 rounded-lg overflow-hidden border border-emerald-500/30 bg-slate-900 shrink-0 p-1 flex items-center justify-center shadow-2xs">
                                                                  <GerberBoardPreview
+                                                                     gerberFileId={file.id}
                                                                      previewData={file.preview_data || file.front_preview_url || file.preview_front || (file.id ? `/api/gerber/${file.id}/preview/front` : undefined)}
                                                                      boardName={file.board_name}
                                                                      originalName={file.original_name}
