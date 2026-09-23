@@ -126,44 +126,23 @@ export default function DashboardPage() {
             .finally(() => setLoadingPayments(false));
     }, []);
 
+    const [loadingTrend, setLoadingTrend] = useState<boolean>(true);
+
     useEffect(() => {
-        if (!allOrders.length) return;
+        const token = localStorage.getItem("admin_token");
+        const headers = { Authorization: `Bearer ${token}` };
 
-        const trendMap: Record<string, { timeMs: number; revenue: number; orders: number }> = {};
-
-        allOrders.forEach(o => {
-            const dateObj = new Date(o.created_at);
-            if (isNaN(dateObj.getTime())) return;
-
-            let label = "";
-            let timeKey = 0;
-
-            if (revenuePeriod === "day") {
-                label = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                timeKey = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
-            } else if (revenuePeriod === "month") {
-                label = dateObj.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-                timeKey = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1).getTime();
-            } else if (revenuePeriod === "year") {
-                label = String(dateObj.getFullYear());
-                timeKey = new Date(dateObj.getFullYear(), 0, 1).getTime();
-            }
-
-            const val = parseFloat(String(o.order_value)) || 0;
-            if (!trendMap[label]) {
-                trendMap[label] = { timeMs: timeKey, revenue: 0, orders: 0 };
-            }
-            trendMap[label].revenue += val;
-            trendMap[label].orders += 1;
-        });
-
-        const trendArray = Object.entries(trendMap)
-            .map(([date, item]) => ({ date, timeMs: item.timeMs, revenue: item.revenue, orders: item.orders }))
-            .sort((a, b) => a.timeMs - b.timeMs)
-            .map(({ date, revenue, orders }) => ({ date, revenue, orders }));
-
-        setRevenueTrend(trendArray);
-    }, [allOrders, revenuePeriod]);
+        setLoadingTrend(true);
+        fetch(`/api/admin/revenue-trend?period=${revenuePeriod}`, { headers })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.status || data.success) {
+                    setRevenueTrend(data.data || []);
+                }
+            })
+            .catch((err) => console.error("Error loading revenue trend:", err))
+            .finally(() => setLoadingTrend(false));
+    }, [revenuePeriod]);
 
     const donutData = stats?.status_counts
         ? Object.entries(stats.status_counts).map(([name, value]) => ({ name, value }))
@@ -269,11 +248,16 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                                 <div className="h-56">
-                                    {revenueTrend.length === 0 ? (
-                                        <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
-                                            No order revenue data recorded yet.
-                                        </div>
-                                    ) : (
+                                     {loadingTrend ? (
+                                         <div className="h-full flex flex-col items-center justify-center space-y-2">
+                                             <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                                             <span className="text-xs text-muted-foreground font-semibold">Loading analytics trend...</span>
+                                         </div>
+                                     ) : revenueTrend.length === 0 ? (
+                                         <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
+                                             No order revenue data recorded yet.
+                                         </div>
+                                     ) : (
                                         <ResponsiveContainer width="100%" height="100%">
                                             <LineChart data={revenueTrend} margin={{ top: 5, right: 15, left: 0, bottom: 5 }}>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" />

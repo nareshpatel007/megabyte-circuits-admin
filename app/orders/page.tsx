@@ -43,6 +43,8 @@ interface CustomerUser {
     id: number;
     name: string | null;
     company_name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
     email?: string | null;
     mobile?: string | null;
 }
@@ -546,6 +548,15 @@ export default function OrdersPage() {
             if (data.status || data.success) {
                 const list = data.data || data.users || [];
                 setCustomerList(list);
+                if (modalUserId) {
+                    const found = list.find((u: any) => String(u.id) === String(modalUserId));
+                    if (found) {
+                        const name = found.company_name || found.name || `${found.first_name || ''} ${found.last_name || ''}`.trim();
+                        if (name) {
+                            setModalCustomerName(name);
+                        }
+                    }
+                }
             }
         } catch (err) {
             console.error("Failed to load customer list:", err);
@@ -562,6 +573,7 @@ export default function OrdersPage() {
     const [modalUpsQty, setModalUpsQty] = useState<number>(0);
     const [modalFinalQty, setModalFinalQty] = useState<number>(0);
     const [modalBillNumber, setModalBillNumber] = useState("");
+    const [modalDeliveryDate, setModalDeliveryDate] = useState("");
     const [modalRemark, setModalRemark] = useState("");
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -947,9 +959,10 @@ export default function OrdersPage() {
         const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
 
         const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
+        const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
         setStatusModalOrder(order);
         setModalNewStatus(order.status);
-        setModalCustomerName(order.customer_name || "");
+        setModalCustomerName(fallbackName);
         setModalUserId(initialUserId);
         setCustomerSearch("");
         setCustomerDropdownOpen(false);
@@ -963,6 +976,7 @@ export default function OrdersPage() {
         setModalUpsQty(order.ups_qty || 0);
         setModalFinalQty(order.final_qty || 0);
         setModalBillNumber(order.bill_number ? String(order.bill_number) : "");
+        setModalDeliveryDate(order.delivery_date ? String(order.delivery_date).split('T')[0] : "");
         setModalRemark("");
     };
     const openStatusModal = handleOpenStatusModal;
@@ -1024,6 +1038,7 @@ export default function OrdersPage() {
                     ups_qty: modalUpsQty,
                     final_qty: modalFinalQty,
                     bill_number: modalBillNumber,
+                    delivery_date: modalDeliveryDate || null,
                     remark: modalRemark
                 })
             });
@@ -1045,7 +1060,8 @@ export default function OrdersPage() {
                     panel_qty: modalPanelQty,
                     ups_qty: modalUpsQty,
                     final_qty: modalFinalQty,
-                    bill_number: modalBillNumber
+                    bill_number: modalBillNumber,
+                    delivery_date: modalDeliveryDate || o.delivery_date
                 } : o));
                 setStatusModalOrder(null);
             } else {
@@ -1803,7 +1819,6 @@ export default function OrdersPage() {
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
                                             <span>Select Customer</span>
-                                            {modalUserId && <span className="text-[10px] text-emerald-600 font-extrabold">User ID: #{modalUserId}</span>}
                                         </label>
                                         <div className="relative">
                                             <button
