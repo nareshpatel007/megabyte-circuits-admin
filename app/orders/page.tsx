@@ -1001,7 +1001,7 @@ export default function OrdersPage() {
             const data = await res.json();
             if (data.status || data.success) {
                 toast.success(`Order #${order.order_number} status updated to "${newStatus}"`, { id: toastId });
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus } : o));
+                fetchData(debouncedSearch);
             } else {
                 toast.error(data.message || "Failed to update status", { id: toastId });
             }
@@ -1046,24 +1046,8 @@ export default function OrdersPage() {
             const data = await res.json();
             if (data.status || data.success) {
                 toast.success(`Order #${statusModalOrder.order_number} updated successfully`);
-                // Update live orders list state immediately
-                setOrders(prev => prev.map(o => o.id === statusModalOrder.id ? {
-                    ...o,
-                    status: modalNewStatus,
-                    user_id: modalUserId ? Number(modalUserId) : o.user_id,
-                    customer_name: modalCustomerName,
-                    completed_qty: modalCompletedQty,
-                    failed_qty: modalFailedQty,
-                    q_no: modalQNo,
-                    combo: modalCombo,
-                    launch_qty: modalLaunchQty,
-                    panel_qty: modalPanelQty,
-                    ups_qty: modalUpsQty,
-                    final_qty: modalFinalQty,
-                    bill_number: modalBillNumber,
-                    delivery_date: modalDeliveryDate || o.delivery_date
-                } : o));
                 setStatusModalOrder(null);
+                fetchData(debouncedSearch);
             } else {
                 toast.error(data.message || "Failed to update status");
             }
