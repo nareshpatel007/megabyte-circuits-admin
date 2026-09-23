@@ -158,9 +158,26 @@ export default function EmailTemplatesPage() {
                 {/* Table View */}
                 <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
                     {loading ? (
-                        <div className="flex items-center justify-center py-16 text-muted-foreground">
-                            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                            <span>Loading email templates...</span>
+                        <div className="p-6 space-y-4">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className="flex items-center justify-between gap-4 animate-pulse">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-9 h-9 rounded-lg bg-muted" />
+                                        <div className="space-y-2 flex-1">
+                                            <div className="h-4 bg-muted rounded-md w-1/4" />
+                                            <div className="h-3 bg-muted/60 rounded-md w-1/6" />
+                                        </div>
+                                    </div>
+                                    <div className="h-6 bg-muted/80 rounded-md w-28" />
+                                    <div className="h-4 bg-muted rounded-md w-1/3 hidden md:block" />
+                                    <div className="h-6 bg-muted/70 rounded-full w-20" />
+                                    <div className="h-4 bg-muted/60 rounded-md w-24 hidden lg:block" />
+                                    <div className="flex gap-2">
+                                        <div className="h-8 bg-muted rounded-lg w-20" />
+                                        <div className="h-8 bg-muted rounded-lg w-16" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : filteredTemplates.length === 0 ? (
                         <div className="text-center py-16 px-4">
@@ -192,9 +209,6 @@ export default function EmailTemplatesPage() {
                                         <tr key={tpl.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="py-3.5 px-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 font-bold text-xs flex items-center justify-center border border-emerald-500/20">
-                                                        {tpl.name.substring(0, 2).toUpperCase()}
-                                                    </div>
                                                     <div>
                                                         <span className="font-semibold text-foreground block">{tpl.name}</span>
                                                         <span className="text-xs text-muted-foreground">System Notification</span>
@@ -289,9 +303,20 @@ export default function EmailTemplatesPage() {
                             {/* Modal Body */}
                             <div className="p-5 overflow-y-auto flex-1 space-y-4">
                                 {previewLoading ? (
-                                    <div className="py-12 text-center text-muted-foreground flex items-center justify-center">
-                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                        <span>Rendering template preview...</span>
+                                    <div className="space-y-4 animate-pulse">
+                                        <div className="bg-background border border-border p-3.5 rounded-lg space-y-2.5">
+                                            <div className="h-4 bg-muted rounded-md w-3/4" />
+                                            <div className="h-3 bg-muted/70 rounded-md w-1/2" />
+                                        </div>
+                                        <div className="border border-border rounded-lg p-6 bg-white min-h-[300px] flex flex-col items-center justify-center space-y-4">
+                                            <div className="h-8 bg-slate-200 rounded-md w-48" />
+                                            <div className="w-full space-y-2 max-w-md pt-4">
+                                                <div className="h-4 bg-slate-200 rounded-md w-full" />
+                                                <div className="h-4 bg-slate-200 rounded-md w-5/6" />
+                                                <div className="h-4 bg-slate-200 rounded-md w-4/6" />
+                                            </div>
+                                            <div className="h-28 bg-slate-100 border border-slate-200 rounded-lg w-full max-w-md mt-4" />
+                                        </div>
                                     </div>
                                 ) : previewData ? (
                                     <>

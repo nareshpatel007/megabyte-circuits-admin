@@ -297,9 +297,46 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
         >
             <div className="space-y-6 pb-12">
                 {loading ? (
-                    <div className="flex items-center justify-center py-20 text-muted-foreground">
-                        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                        <span>Loading template configuration...</span>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-pulse">
+                        <div className="lg:col-span-2 space-y-6">
+                            {/* Form Header Skeleton */}
+                            <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+                                <div className="h-4 bg-muted rounded-md w-1/4 mb-4" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <div className="h-3 bg-muted/70 rounded-md w-24" />
+                                        <div className="h-10 bg-muted/50 rounded-lg w-full" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="h-3 bg-muted/70 rounded-md w-20" />
+                                        <div className="h-10 bg-muted/40 rounded-lg w-full" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="h-3 bg-muted/70 rounded-md w-28" />
+                                    <div className="h-10 bg-muted/50 rounded-lg w-full" />
+                                </div>
+                            </div>
+
+                            {/* Editor Skeleton */}
+                            <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+                                <div className="h-4 bg-muted rounded-md w-1/3" />
+                                <div className="h-[420px] bg-muted/40 rounded-lg w-full" />
+                            </div>
+                        </div>
+
+                        {/* Sidebar Skeleton */}
+                        <div className="space-y-6">
+                            <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+                                <div className="h-4 bg-muted rounded-md w-1/2 mb-2" />
+                                <div className="h-3 bg-muted/60 rounded-md w-3/4 mb-4" />
+                                <div className="space-y-3">
+                                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                                        <div key={i} className="h-16 bg-muted/30 border border-border/40 rounded-lg" />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     /* Main Content Grid */
@@ -460,9 +497,20 @@ export default function EditEmailTemplatePage({ params }: { params: Promise<{ id
                                 ) : (
                                     <div className="space-y-4">
                                         {previewLoading ? (
-                                            <div className="py-16 text-center text-muted-foreground flex items-center justify-center">
-                                                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                                <span>Rendering live preview...</span>
+                                            <div className="space-y-4 animate-pulse">
+                                                <div className="bg-background border border-border p-3.5 rounded-lg space-y-2.5">
+                                                    <div className="h-4 bg-muted rounded-md w-3/4" />
+                                                    <div className="h-3 bg-muted/70 rounded-md w-1/2" />
+                                                </div>
+                                                <div className="border border-border rounded-lg p-6 bg-white min-h-[350px] flex flex-col items-center justify-center space-y-4">
+                                                    <div className="h-8 bg-slate-200 rounded-md w-48" />
+                                                    <div className="w-full space-y-2 max-w-md pt-4">
+                                                        <div className="h-4 bg-slate-200 rounded-md w-full" />
+                                                        <div className="h-4 bg-slate-200 rounded-md w-5/6" />
+                                                        <div className="h-4 bg-slate-200 rounded-md w-4/6" />
+                                                    </div>
+                                                    <div className="h-32 bg-slate-100 border border-slate-200 rounded-lg w-full max-w-md mt-4" />
+                                                </div>
                                             </div>
                                         ) : previewData ? (
                                             <>
