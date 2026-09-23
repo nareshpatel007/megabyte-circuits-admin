@@ -761,7 +761,10 @@ export default function CreateOrderPage() {
             const formData = new FormData();
             formData.append("file", file);
 
-            const res = await fetch("/api/upload", {
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/$/, "");
+            const uploadUrl = apiBase ? (apiBase.endsWith("/api") ? `${apiBase}/upload` : `${apiBase}/api/upload`) : "/api/upload";
+
+            const res = await fetch(uploadUrl, {
                 method: "POST",
                 body: formData,
             });
