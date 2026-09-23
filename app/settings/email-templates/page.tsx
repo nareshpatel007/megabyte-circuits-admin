@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Mail, Edit2, Eye, CheckCircle2, XCircle, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Mail, Edit2, Eye, CheckCircle2, XCircle, RefreshCw, Search, Filter, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
-import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface EmailTemplate {
     id: number;
@@ -23,7 +22,10 @@ interface EmailTemplate {
 export default function EmailTemplatesPage() {
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+
+    // Search and Status filters
+    const [search, setSearch] = useState("");
+    const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
     // Modal state for quick preview
     const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
@@ -36,10 +38,8 @@ export default function EmailTemplatesPage() {
     } | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
 
-    const fetchTemplates = async (isRefresh = false) => {
-        if (isRefresh) setRefreshing(true);
-        else setLoading(true);
-
+    const fetchTemplates = useCallback(async () => {
+        setLoading(true);
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch("/api/admin/email-templates", {
@@ -58,13 +58,12 @@ export default function EmailTemplatesPage() {
             toast.error("Error connecting to server.");
         } finally {
             setLoading(false);
-            setRefreshing(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchTemplates();
-    }, []);
+    }, [fetchTemplates]);
 
     const handleQuickPreview = async (template: EmailTemplate) => {
         setPreviewTemplate(template);
@@ -94,98 +93,140 @@ export default function EmailTemplatesPage() {
         }
     };
 
+    const filteredTemplates = templates.filter((t) => {
+        const matchesSearch =
+            !search.trim() ||
+            t.name.toLowerCase().includes(search.toLowerCase()) ||
+            t.key.toLowerCase().includes(search.toLowerCase()) ||
+            t.subject.toLowerCase().includes(search.toLowerCase());
+
+        const matchesStatus =
+            selectedStatus === "all" ||
+            (selectedStatus === "active" && t.is_active) ||
+            (selectedStatus === "inactive" && !t.is_active);
+
+        return matchesSearch && matchesStatus;
+    });
+
     return (
-        <DashboardLayout title="Email Templates">
-            <div className="space-y-6 max-w-7xl mx-auto pb-12">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card/60 backdrop-blur-md p-6 rounded-2xl border border-border/80 shadow-xs">
-                    <div>
+        <DashboardLayout
+            title="Email Templates"
+            subtitle="Manage, customize, and automate order notification emails sent to customers."
+        >
+            <div className="space-y-6">
+                {/* Action / Filter Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border shadow-xs">
+                    {/* Search & Status Filters */}
+                    <div className="flex flex-wrap items-center gap-3 flex-1">
+                        <div className="relative flex-1 min-w-[240px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search template name, key, subject..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                            />
+                        </div>
+
                         <div className="flex items-center gap-2">
-                            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                <Mail className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-foreground tracking-tight">Email Templates</h1>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Manage, customize, and automate order notification emails sent to customers.
-                                </p>
-                            </div>
+                            <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                            <select
+                                value={selectedStatus}
+                                onChange={(e) => setSelectedStatus(e.target.value)}
+                                className="bg-background border border-input rounded-lg text-sm px-3 py-2 text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                            >
+                                <option value="all">All Statuses</option>
+                                <option value="active">Active Only</option>
+                                <option value="inactive">Inactive Only</option>
+                            </select>
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => fetchTemplates(true)}
-                        disabled={refreshing}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs font-semibold rounded-xl transition-all cursor-pointer border border-border/60 disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                        Refresh
-                    </button>
+                    {/* Refresh Button */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={fetchTemplates}
+                            title="Refresh List"
+                            className="p-2.5 text-muted-foreground hover:text-foreground border border-input rounded-lg bg-background hover:bg-accent transition-colors"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Listing Table */}
-                <div className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-xs">
+                {/* Table View */}
+                <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
                     {loading ? (
-                        <div className="p-12 text-center">
-                            <LoadingSpinner />
+                        <div className="flex items-center justify-center py-16 text-muted-foreground">
+                            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                            <span>Loading email templates...</span>
                         </div>
-                    ) : templates.length === 0 ? (
-                        <div className="p-12 text-center text-muted-foreground text-sm">
-                            No email templates found.
+                    ) : filteredTemplates.length === 0 ? (
+                        <div className="text-center py-16 px-4">
+                            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                                <Mail className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-base font-semibold text-foreground">No email templates found</h3>
+                            <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1">
+                                {search || selectedStatus !== "all"
+                                    ? "No templates match your search parameters."
+                                    : "No email templates exist."}
+                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm border-collapse">
+                            <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b border-border/60 bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                                        <th className="py-3.5 px-5">Template Name</th>
-                                        <th className="py-3.5 px-5">Key Identifier</th>
-                                        <th className="py-3.5 px-5">Subject Line</th>
-                                        <th className="py-3.5 px-5">Status</th>
-                                        <th className="py-3.5 px-5">Last Updated</th>
-                                        <th className="py-3.5 px-5 text-right">Actions</th>
+                                    <tr className="bg-muted/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider font-semibold">
+                                        <th className="py-3 px-4">Template Name</th>
+                                        <th className="py-3 px-4">Key Identifier</th>
+                                        <th className="py-3 px-4">Subject Line</th>
+                                        <th className="py-3 px-4">Status</th>
+                                        <th className="py-3 px-4">Last Updated</th>
+                                        <th className="py-3 px-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border/40 font-medium">
-                                    {templates.map((tpl) => (
-                                        <tr key={tpl.id} className="hover:bg-muted/20 transition-colors">
-                                            <td className="py-4 px-5">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-xs">
+                                <tbody className="divide-y divide-border/60 font-medium text-sm">
+                                    {filteredTemplates.map((tpl) => (
+                                        <tr key={tpl.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 font-bold text-xs flex items-center justify-center border border-emerald-500/20">
                                                         {tpl.name.substring(0, 2).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <span className="font-bold text-foreground block">{tpl.name}</span>
+                                                        <span className="font-semibold text-foreground block">{tpl.name}</span>
                                                         <span className="text-xs text-muted-foreground">System Notification</span>
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            <td className="py-4 px-5">
-                                                <code className="px-2.5 py-1 rounded-md bg-muted text-emerald-500 text-xs font-mono font-semibold border border-border/50">
+                                            <td className="py-3.5 px-4">
+                                                <code className="px-2.5 py-1 rounded bg-muted text-emerald-600 text-xs font-mono font-semibold border border-border">
                                                     {tpl.key}
                                                 </code>
                                             </td>
 
-                                            <td className="py-4 px-5 max-w-xs truncate text-muted-foreground">
+                                            <td className="py-3.5 px-4 max-w-xs truncate text-muted-foreground">
                                                 {tpl.subject}
                                             </td>
 
-                                            <td className="py-4 px-5">
+                                            <td className="py-3.5 px-4">
                                                 {tpl.is_active ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-bold">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-xs font-semibold">
                                                         <CheckCircle2 className="w-3.5 h-3.5" />
                                                         Active
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 text-xs font-bold">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border text-xs font-semibold">
                                                         <XCircle className="w-3.5 h-3.5" />
                                                         Inactive
                                                     </span>
                                                 )}
                                             </td>
 
-                                            <td className="py-4 px-5 text-xs text-muted-foreground">
+                                            <td className="py-3.5 px-4 text-xs text-muted-foreground">
                                                 {new Date(tpl.updated_at).toLocaleDateString("en-IN", {
                                                     day: "2-digit",
                                                     month: "short",
@@ -195,11 +236,11 @@ export default function EmailTemplatesPage() {
                                                 })}
                                             </td>
 
-                                            <td className="py-4 px-5 text-right">
+                                            <td className="py-3.5 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleQuickPreview(tpl)}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors cursor-pointer border border-border/60"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-input bg-background hover:bg-accent text-foreground transition-colors cursor-pointer"
                                                     >
                                                         <Eye className="w-3.5 h-3.5" />
                                                         Preview
@@ -207,7 +248,7 @@ export default function EmailTemplatesPage() {
 
                                                     <Link
                                                         href={`/settings/email-templates/${tpl.id}`}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors cursor-pointer shadow-xs"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs"
                                                     >
                                                         <Edit2 className="w-3.5 h-3.5" />
                                                         Edit
@@ -224,13 +265,13 @@ export default function EmailTemplatesPage() {
 
                 {/* Quick Preview Modal */}
                 {previewTemplate && (
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-card border border-border/80 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                        <div className="bg-card border border-border rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl overflow-hidden">
                             {/* Modal Header */}
-                            <div className="flex items-center justify-between p-5 border-b border-border/60 bg-muted/30">
+                            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/40">
                                 <div className="flex items-center gap-2">
-                                    <Sparkles className="w-5 h-5 text-emerald-500" />
-                                    <h3 className="text-base font-bold text-foreground">
+                                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                                    <h3 className="text-sm font-bold text-foreground">
                                         Email Preview: {previewTemplate.name}
                                     </h3>
                                 </div>
@@ -239,44 +280,45 @@ export default function EmailTemplatesPage() {
                                         setPreviewTemplate(null);
                                         setPreviewData(null);
                                     }}
-                                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
+                                    className="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
                                 >
-                                    ✕
+                                    <X className="w-4 h-4" />
                                 </button>
                             </div>
 
                             {/* Modal Body */}
-                            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div className="p-5 overflow-y-auto flex-1 space-y-4">
                                 {previewLoading ? (
-                                    <div className="py-12 text-center">
-                                        <LoadingSpinner />
+                                    <div className="py-12 text-center text-muted-foreground flex items-center justify-center">
+                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                        <span>Rendering template preview...</span>
                                     </div>
                                 ) : previewData ? (
                                     <>
-                                        <div className="bg-background/80 border border-border/70 p-4 rounded-xl space-y-2 text-xs">
+                                        <div className="bg-background border border-border p-3.5 rounded-lg space-y-1.5 text-xs">
                                             <div className="flex">
-                                                <span className="w-20 font-bold text-muted-foreground uppercase tracking-wider">Subject:</span>
+                                                <span className="w-20 font-bold text-muted-foreground uppercase">Subject:</span>
                                                 <span className="font-semibold text-foreground">{previewData.rendered_subject}</span>
                                             </div>
                                             <div className="flex">
-                                                <span className="w-20 font-bold text-muted-foreground uppercase tracking-wider">To:</span>
+                                                <span className="w-20 font-bold text-muted-foreground uppercase">To:</span>
                                                 <span className="font-medium text-foreground">{previewData.to}</span>
                                             </div>
                                             {previewData.cc && previewData.cc.length > 0 && (
                                                 <div className="flex">
-                                                    <span className="w-20 font-bold text-muted-foreground uppercase tracking-wider">CC:</span>
+                                                    <span className="w-20 font-bold text-muted-foreground uppercase">CC:</span>
                                                     <span className="font-medium text-muted-foreground">{previewData.cc.join(", ")}</span>
                                                 </div>
                                             )}
                                             {previewData.bcc && previewData.bcc.length > 0 && (
                                                 <div className="flex">
-                                                    <span className="w-20 font-bold text-muted-foreground uppercase tracking-wider">BCC:</span>
+                                                    <span className="w-20 font-bold text-muted-foreground uppercase">BCC:</span>
                                                     <span className="font-medium text-muted-foreground">{previewData.bcc.join(", ")}</span>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="border border-border/80 rounded-xl p-4 bg-white text-black min-h-[250px]">
+                                        <div className="border border-border rounded-lg p-5 bg-white text-black min-h-[250px]">
                                             <div dangerouslySetInnerHTML={{ __html: previewData.rendered_body }} />
                                         </div>
                                     </>
@@ -286,10 +328,10 @@ export default function EmailTemplatesPage() {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="flex items-center justify-between p-4 border-t border-border/60 bg-muted/20">
+                            <div className="flex items-center justify-between p-4 border-t border-border bg-muted/20">
                                 <Link
                                     href={`/settings/email-templates/${previewTemplate.id}`}
-                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-xs"
                                 >
                                     <Edit2 className="w-3.5 h-3.5" />
                                     Edit This Template
@@ -300,7 +342,7 @@ export default function EmailTemplatesPage() {
                                         setPreviewTemplate(null);
                                         setPreviewData(null);
                                     }}
-                                    className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                                    className="px-4 py-2 border border-input bg-background hover:bg-accent text-foreground text-xs font-medium rounded-lg transition-colors cursor-pointer"
                                 >
                                     Close
                                 </button>
