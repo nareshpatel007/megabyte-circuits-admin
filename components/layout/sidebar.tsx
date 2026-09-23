@@ -30,7 +30,7 @@ import {
     MessageSquare,
     Cpu,
     FileSpreadsheet,
-    Download,
+    Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +67,7 @@ const navItems: NavItem[] = [
         children: [
             { href: "/settings", label: "General Settings", icon: Sliders, permission: "settings.general" },
             { href: "/settings/statuses", label: "Order Statuses", icon: ListFilter, permission: "settings.order_status" },
+            { href: "/settings/email-templates", label: "Email Templates", icon: Mail, permission: "settings.general" },
             { href: "/settings/holidays", label: "Holidays", icon: Calendar, permission: "settings.general" },
             { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
             { href: "/settings/shipping-options", label: "Shipping Options", icon: Truck, permission: "settings.general" },
