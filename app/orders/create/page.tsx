@@ -450,10 +450,7 @@ export default function CreateOrderPage() {
         else if (totalAreaInSqM <= 1) tierKey = "0.51 to 1";
         else if (totalAreaInSqM <= 2) tierKey = "1.01 to 2";
         else if (totalAreaInSqM <= 3) tierKey = "2.01 to 3";
-        else if (totalAreaInSqM <= 9.99) tierKey = "3.01 to 9.99";
-        else {
-            return { options: [], showContact: true, totalAreaInSqM };
-        }
+        else tierKey = "3.01 to 9.99";
 
         const applicablePrices = priceTiers[layers.toString()]?.[tierKey];
         if (!applicablePrices) {
@@ -485,40 +482,31 @@ export default function CreateOrderPage() {
             };
         });
 
-        let showContact = false;
         if (layers >= 4 && layers <= 10) {
             options.forEach(opt => {
                 if (opt.day !== 20) opt.visible = false;
             });
         } else if (layers === 1 || layers === 2) {
-            if (layers === 2 && totalAreaInSqM > 7) {
-                options.forEach(opt => opt.visible = false);
-                showContact = true;
-            } else if (layers === 1 && totalAreaInSqM > 10) {
-                options.forEach(opt => opt.visible = false);
-                showContact = true;
-            } else {
-                if (layers === 2) {
-                    if (totalAreaInSqM > 2) {
-                        options.forEach(opt => { if ([1, 3, 5].includes(opt.day)) opt.visible = false; });
-                    } else if (totalAreaInSqM > 1.5) {
-                        options.forEach(opt => { if ([1, 3].includes(opt.day)) opt.visible = false; });
-                    } else if (totalAreaInSqM > 1) {
-                        options.forEach(opt => { if (opt.day === 1) opt.visible = false; });
-                    }
-                } else if (layers === 1) {
-                    if (totalAreaInSqM > 5) {
-                        options.forEach(opt => { if ([1, 3, 5].includes(opt.day)) opt.visible = false; });
-                    } else if (totalAreaInSqM > 3) {
-                        options.forEach(opt => { if ([1, 3].includes(opt.day)) opt.visible = false; });
-                    } else if (totalAreaInSqM > 2) {
-                        options.forEach(opt => { if (opt.day === 1) opt.visible = false; });
-                    }
+            if (layers === 2) {
+                if (totalAreaInSqM > 2) {
+                    options.forEach(opt => { if ([1, 3, 5].includes(opt.day)) opt.visible = false; });
+                } else if (totalAreaInSqM > 1.5) {
+                    options.forEach(opt => { if ([1, 3].includes(opt.day)) opt.visible = false; });
+                } else if (totalAreaInSqM > 1) {
+                    options.forEach(opt => { if (opt.day === 1) opt.visible = false; });
+                }
+            } else if (layers === 1) {
+                if (totalAreaInSqM > 5) {
+                    options.forEach(opt => { if ([1, 3, 5].includes(opt.day)) opt.visible = false; });
+                } else if (totalAreaInSqM > 3) {
+                    options.forEach(opt => { if ([1, 3].includes(opt.day)) opt.visible = false; });
+                } else if (totalAreaInSqM > 2) {
+                    options.forEach(opt => { if (opt.day === 1) opt.visible = false; });
                 }
             }
         }
 
-        return { options, showContact, totalAreaInSqM };
+        return { options, showContact: false, totalAreaInSqM };
     };
 
     // Debounce search effect (400ms)
@@ -1985,15 +1973,7 @@ export default function CreateOrderPage() {
                         {/* Integrated 20-Day Delivery Lead Time Calendar Selector */}
                         <div className="bg-muted/20 border border-border/80 p-4 rounded-xl space-y-3">
                             {(() => {
-                                const { options, showContact } = getLeadTimePricing();
-
-                                if (showContact) {
-                                    return (
-                                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center shadow-xs">
-                                            <p className="text-xs font-bold text-red-800">For larger bulk PCB orders, please contact customer support directly.</p>
-                                        </div>
-                                    );
-                                }
+                                const { options } = getLeadTimePricing();
 
                                 const unitMultiplier = dimensionUnit === "inches" ? 25.4 : 1;
                                 const length = (parseFloat(boardWidth) || 0) * unitMultiplier;
