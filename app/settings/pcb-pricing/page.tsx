@@ -46,6 +46,10 @@ export default function PcbPricingPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    // JLCPCB Margin & GST State
+    const [jlcpcbMargin, setJlcpcbMargin] = useState<number>(20);
+    const [gstPercentage, setGstPercentage] = useState<number>(18);
+
     // Fixed Costs State
     const [fixedCosts, setFixedCosts] = useState<Record<string, Record<string, number>>>({});
 
@@ -76,6 +80,12 @@ export default function PcbPricingPage() {
                         ? data.data.shippingOptions
                         : DEFAULT_SHIPPING_OPTIONS
                 );
+                if (data.data.jlcpcbMargin !== undefined) {
+                    setJlcpcbMargin(Number(data.data.jlcpcbMargin));
+                }
+                if (data.data.gstPercentage !== undefined) {
+                    setGstPercentage(Number(data.data.gstPercentage));
+                }
             } else {
                 toast.error(data.message || "Failed to load PCB pricing");
             }
@@ -166,7 +176,9 @@ export default function PcbPricingPage() {
                 body: JSON.stringify({
                     fixedCosts,
                     priceTiers,
-                    shippingOptions
+                    shippingOptions,
+                    jlcpcbMargin,
+                    gstPercentage
                 })
             });
             const data = await res.json();
@@ -209,7 +221,7 @@ export default function PcbPricingPage() {
     return (
         <DashboardLayout
             title="PCB Pricing Settings"
-            subtitle="Configure base setup fixed costs and variable tier matrices loaded live on the PCB quote calculator"
+            subtitle="Configure base setup fixed costs, JLCPCB admin margin, GST %, and variable tier matrices loaded live on the PCB quote calculator"
         >
             <div className="w-full space-y-6">
                 {loading ? (
@@ -218,6 +230,65 @@ export default function PcbPricingPage() {
                     </div>
                 ) : (
                     <div className="space-y-6">
+                        {/* Section 0: JLCPCB Pricing & Margin Configuration */}
+                        <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+                                <div>
+                                    <h3 className="text-sm font-bold text-foreground tracking-tight">JLCPCB Pricing & Margin Settings</h3>
+                                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                        Configure Admin Margin % and GST % for live JLCPCB quotation pricing calculations. Margin is automatically added into customer PCB base price and never exposed to customers.
+                                    </p>
+                                </div>
+                                <button
+                                    disabled={saving}
+                                    onClick={handleSave}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                    Save Settings
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                                        JLCPCB Margin (%)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            value={jlcpcbMargin}
+                                            onChange={(e) => setJlcpcbMargin(parseFloat(e.target.value) || 0)}
+                                            placeholder="20"
+                                            className="w-full px-3.5 py-2.5 text-sm font-bold bg-background border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                                        />
+                                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-muted-foreground">%</span>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground font-medium">Default: 20%. Customer Base Price = Board Price × (1 + Margin % / 100)</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                                        GST Percentage (%)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            value={gstPercentage}
+                                            onChange={(e) => setGstPercentage(parseFloat(e.target.value) || 0)}
+                                            placeholder="18"
+                                            className="w-full px-3.5 py-2.5 text-sm font-bold bg-background border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                                        />
+                                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-muted-foreground">%</span>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground font-medium">Default: 18%. GST = Subtotal (Customer Base Price + Shipping) × GST % / 100</p>
+                                </div>
+                            </div>
+                        </div>
                         {/* Section 1: Lead Time Fixed Setup Costs */}
                         <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">

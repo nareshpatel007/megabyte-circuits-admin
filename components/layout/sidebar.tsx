@@ -70,6 +70,7 @@ const navItems: NavItem[] = [
             { href: "/settings/email-templates", label: "Email Templates", icon: Mail, permission: "settings.general" },
             { href: "/settings/holidays", label: "Holidays", icon: Calendar, permission: "settings.general" },
             { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
+            { href: "/settings/jlcpcb", label: "JLCPCB Management", icon: Sliders, permission: "settings.general" },
             { href: "/settings/shipping-options", label: "Shipping Options", icon: Truck, permission: "settings.general" },
             { href: "/settings/digikey-products", label: "DigiKey Products", icon: Cpu, permission: "settings.general" },
         ],

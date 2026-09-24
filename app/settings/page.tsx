@@ -390,15 +390,16 @@ export default function SettingsPage() {
                     </SettingsSection>
 
                     <SettingsSection
-                        title="JLC PCB Developer API"
+                        title="JLC PCB Developer API & Pricing Margin"
                         isSaving={savingGroup === "jlcpcb"}
                         onSave={() => handleSaveGroup("jlcpcb", [
                             "JLCPCB_APP_ID",
                             "JLCPCB_ACCESS_KEY",
-                            "JLCPCB_BASE_URL"
+                            "JLCPCB_BASE_URL",
+                            "JLCPCB_MARGIN"
                         ])}
                     >
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <MaskedInput
                                 label="JLCPCB APP ID"
                                 placeholder="JLCPCB App ID"
@@ -416,6 +417,13 @@ export default function SettingsPage() {
                                 placeholder="https://open.jlcpcb.com"
                                 value={creds.JLCPCB_BASE_URL || ""}
                                 onChange={(val) => handleChange("JLCPCB_BASE_URL", val)}
+                            />
+                            <PlainInput
+                                label="JLCPCB MARGIN (%)"
+                                placeholder="20"
+                                type="number"
+                                value={creds.JLCPCB_MARGIN || "20"}
+                                onChange={(val) => handleChange("JLCPCB_MARGIN", val)}
                             />
                         </div>
                     </SettingsSection>
