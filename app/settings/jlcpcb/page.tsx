@@ -603,13 +603,13 @@ export default function JlcpcbManagementPage() {
                                         <span className="text-muted-foreground">Clearing + Bank + Freight + Other</span>
                                         <span className="font-mono font-bold text-foreground">{formatMoney(previewCalc.localExpenses)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-xs py-2 px-3 bg-blue-500/10 border border-blue-500/25 rounded-lg font-bold">
-                                        <span className="text-blue-950 dark:text-blue-200 font-bold">BUY COST — BEFORE GST</span>
-                                        <span className="font-mono font-black text-sm text-blue-700 dark:text-blue-300">{formatMoney(previewCalc.buyTotalExGst)}</span>
+                                    <div className="flex justify-between items-center text-xs py-2.5 px-3 bg-blue-600 text-white rounded-lg font-black shadow-xs">
+                                        <span className="font-extrabold text-white tracking-wide">BUY COST — BEFORE GST</span>
+                                        <span className="font-mono font-black text-sm text-white">{formatMoney(previewCalc.buyTotalExGst)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-xs py-2.5 px-3 bg-emerald-500/15 border border-emerald-500/30 rounded-lg font-extrabold">
-                                        <span className="text-emerald-950 dark:text-emerald-100 font-extrabold">TOTAL BUY COST — INCLUDING GST</span>
-                                        <span className="font-mono text-sm font-black text-emerald-800 dark:text-emerald-300">{formatMoney(previewCalc.totalBuyCost)}</span>
+                                    <div className="flex justify-between items-center text-xs py-2.5 px-3 bg-emerald-600 text-white rounded-lg font-black shadow-xs">
+                                        <span className="font-extrabold text-white tracking-wide">TOTAL BUY COST — INCLUDING GST</span>
+                                        <span className="font-mono font-black text-sm text-white">{formatMoney(previewCalc.totalBuyCost)}</span>
                                     </div>
                                 </div>
 
