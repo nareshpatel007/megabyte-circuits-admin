@@ -90,7 +90,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
         fetchNotifications();
 
         // Real-time EventSource Stream for Admin Notifications
-        const es = new EventSource("/api/admin/notifications/stream");
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") || localStorage.getItem("admin_token") : null;
+        const streamUrl = token ? `/api/admin/notifications/stream?token=${encodeURIComponent(token)}` : "/api/admin/notifications/stream";
+        const es = new EventSource(streamUrl);
         es.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);

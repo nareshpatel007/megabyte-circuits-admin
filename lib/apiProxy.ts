@@ -25,13 +25,18 @@ export async function handleApiProxy(
             );
         }
 
-        const clientAuth = req.headers.get("Authorization");
+        let clientAuth = req.headers.get("Authorization");
+        const tokenQuery = req.nextUrl.searchParams.get("token") || req.nextUrl.searchParams.get("admin_token") || req.nextUrl.searchParams.get("api_token");
+        if (!clientAuth && tokenQuery) {
+            clientAuth = `Bearer ${tokenQuery}`;
+        }
+
         const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
 
         const headers: HeadersInit = {
             "Accept": "application/json",
             "Requested-Domain": ALLOWED_ORIGIN,
-            "X-Api-Token": API_TOKEN,
+            "X-Api-Token": tokenQuery || API_TOKEN,
             "Authorization": clientAuth || `Bearer ${API_TOKEN}`
         };
 
