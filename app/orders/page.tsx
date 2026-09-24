@@ -55,6 +55,9 @@ interface ApiOrder {
     user?: CustomerUser | null;
     status_id: number | null;
     order_number: string;
+    order_type?: string | null;
+    quotation_source?: string | null;
+    jlcpcb_file_key?: string | null;
     q_no?: string | number | null;
     c_g?: string | null;
     combo?: string | null;

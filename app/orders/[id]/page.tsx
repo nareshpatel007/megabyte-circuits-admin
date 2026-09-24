@@ -385,9 +385,11 @@ export default function OrderDetailPage() {
         return true;
     }) : [];
 
+    const isJlcpcbOrder = (order as any)?.order_type === 'jlcpcb' || (order as any)?.quotation_source === 'jlcpcb' || order?.order_number?.startsWith('J') || getMetaValue('quotation_source') === 'jlcpcb';
+
     const pageHeaderTitle = (
         <div className="space-y-1">
-            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : "#059669" }}>
+            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : (isJlcpcbOrder ? "#7c3aed" : "#059669") }}>
                 Order #{order.order_number}
             </h1>
             <div className="flex items-center gap-2">
@@ -405,6 +407,11 @@ export default function OrderDetailPage() {
                 {isPartProduct && (
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wider">
                         Part Order
+                    </span>
+                )}
+                {isJlcpcbOrder && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
+                        JLCPCB Order
                     </span>
                 )}
             </div>
