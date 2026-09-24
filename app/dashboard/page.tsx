@@ -235,44 +235,23 @@ export default function DashboardPage() {
                     <>
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                             <div className="xl:col-span-2 bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300">
-                                <div className="mb-6 space-y-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         <div>
-                                            <h3 className="text-sm font-bold text-foreground tracking-tight">Revenue Trend</h3>
+                                            <h3 className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap">Revenue Trend</h3>
                                             <p className="text-xs text-muted-foreground mt-0.5">Real-time revenue computed from submitted PCB orders</p>
                                         </div>
-                                        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
-                                            {(["day", "month", "year"] as const).map((period) => (
-                                                <button
-                                                    key={period}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setRevenuePeriod(period);
-                                                        setStartDate("");
-                                                        setEndDate("");
-                                                    }}
-                                                    className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
-                                                        ? "bg-primary text-primary-foreground shadow-xs"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                        }`}
-                                                >
-                                                    {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
 
-                                    {/* Timeframe Filter Bar */}
-                                    <div className="p-2.5 bg-muted/30 border border-border/60 rounded-xl flex flex-wrap items-center gap-3 text-xs">
-                                        <div className="flex items-center gap-1.5 text-muted-foreground font-semibold">
-                                            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                                            <span>Timeframe:</span>
-                                        </div>
+                                        {/* Inline Timeframe Selector */}
+                                        <div className="flex flex-wrap items-center gap-2.5 px-3 py-1.5 bg-muted/30 border border-border/60 rounded-xl text-xs">
+                                            <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
+                                                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                                                <span>Timeframe:</span>
+                                            </div>
 
-                                        {/* Day to Day */}
-                                        {revenuePeriod === "day" && (
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <div className="flex items-center gap-1.5">
+                                            {/* Day to Day */}
+                                            {revenuePeriod === "day" && (
+                                                <div className="flex items-center gap-2">
                                                     <span className="text-muted-foreground text-[11px]">From</span>
                                                     <input
                                                         type="date"
@@ -280,8 +259,6 @@ export default function DashboardPage() {
                                                         onChange={(e) => setStartDate(e.target.value)}
                                                         className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                                     />
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
                                                     <span className="text-muted-foreground text-[11px]">To</span>
                                                     <input
                                                         type="date"
@@ -290,13 +267,11 @@ export default function DashboardPage() {
                                                         className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                                     />
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        {/* Month to Month */}
-                                        {revenuePeriod === "month" && (
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <div className="flex items-center gap-1.5">
+                                            {/* Month to Month */}
+                                            {revenuePeriod === "month" && (
+                                                <div className="flex items-center gap-2">
                                                     <span className="text-muted-foreground text-[11px]">From</span>
                                                     <input
                                                         type="month"
@@ -304,8 +279,6 @@ export default function DashboardPage() {
                                                         onChange={(e) => setStartDate(e.target.value)}
                                                         className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                                     />
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
                                                     <span className="text-muted-foreground text-[11px]">To</span>
                                                     <input
                                                         type="month"
@@ -314,13 +287,11 @@ export default function DashboardPage() {
                                                         className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                                     />
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        {/* Year to Year */}
-                                        {revenuePeriod === "year" && (
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <div className="flex items-center gap-1.5">
+                                            {/* Year to Year */}
+                                            {revenuePeriod === "year" && (
+                                                <div className="flex items-center gap-2">
                                                     <span className="text-muted-foreground text-[11px]">From</span>
                                                     <select
                                                         value={startDate}
@@ -334,8 +305,6 @@ export default function DashboardPage() {
                                                             </option>
                                                         ))}
                                                     </select>
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
                                                     <span className="text-muted-foreground text-[11px]">To</span>
                                                     <select
                                                         value={endDate}
@@ -350,22 +319,43 @@ export default function DashboardPage() {
                                                         ))}
                                                     </select>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        {(startDate || endDate) && (
+                                            {(startDate || endDate) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setStartDate("");
+                                                        setEndDate("");
+                                                    }}
+                                                    className="flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                                                >
+                                                    <RotateCcw className="w-3 h-3" />
+                                                    Reset
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Period Toggle Buttons */}
+                                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start lg:self-auto">
+                                        {(["day", "month", "year"] as const).map((period) => (
                                             <button
+                                                key={period}
                                                 type="button"
                                                 onClick={() => {
+                                                    setRevenuePeriod(period);
                                                     setStartDate("");
                                                     setEndDate("");
                                                 }}
-                                                className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                                className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
+                                                    ? "bg-primary text-primary-foreground shadow-xs"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                                    }`}
                                             >
-                                                <RotateCcw className="w-3 h-3" />
-                                                Reset Filter
+                                                {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
                                             </button>
-                                        )}
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="h-56">
