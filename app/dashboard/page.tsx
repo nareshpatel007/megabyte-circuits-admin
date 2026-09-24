@@ -581,6 +581,7 @@ export default function DashboardPage() {
                                                         <div className="w-14 h-14 bg-[#0c3b19] rounded-xl border border-emerald-500/30 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                                                             <GerberBoardPreview
                                                                 previewData={order.gerber_preview_data || getMetaVal("preview_data", "")}
+                                                                gerberFileId={(order as any).gerber_file_id || undefined}
                                                                 boardName={boardTitle}
                                                                 pcbColor={pcbColorVal}
                                                             />

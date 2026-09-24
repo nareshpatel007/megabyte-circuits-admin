@@ -376,6 +376,7 @@ function GerberFilesContent() {
                                                                      previewData={file.preview_data || file.front_preview_url || file.preview_front || (file.id ? `/api/gerber/${file.id}/preview/front` : undefined)}
                                                                      boardName={file.board_name}
                                                                      originalName={file.original_name}
+                                                                      pcbColor={(file as any).pcb_color || (file as any).pcbColor}
                                                                      className="w-full h-full"
                                                                  />
                                                              </div>
@@ -573,6 +574,8 @@ function GerberFilesContent() {
                                                      previewData={modalPreviewData}
                                                      boardName={previewModalFile.board_name}
                                                      originalName={previewModalFile.original_name}
+                                                      gerberFileId={previewModalFile.id}
+                                                      pcbColor={(previewModalFile as any).pcb_color || (previewModalFile as any).pcbColor}
                                                  />
                                              </div>
                                          </div>

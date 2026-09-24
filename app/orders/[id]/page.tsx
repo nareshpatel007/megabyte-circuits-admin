@@ -524,6 +524,7 @@ export default function OrderDetailPage() {
                             <div className="w-20 h-20 rounded-2xl bg-[#0c3b19] flex items-center justify-center p-1 overflow-hidden shrink-0 border border-emerald-500/30 shadow-md">
                                 <GerberBoardPreview
                                     previewData={order.gerber_preview_data || getMetaValue('preview_data', '') || getMetaValue('front_preview_url', '') || (order.gerber_file_id ? `/api/gerber/${order.gerber_file_id}/preview/front` : '')}
+                                    gerberFileId={order.gerber_file_id || undefined}
                                     boardName={boardNameVal}
                                     layers={layerCount}
                                     dimensions={getMetaValue('dimensions', '')}
