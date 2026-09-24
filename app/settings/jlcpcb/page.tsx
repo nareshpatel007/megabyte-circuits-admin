@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Save, Sliders, Plus, Loader2, Calculator, Check, ArrowRight } from "lucide-react";
+import { Save, Sliders, Plus, Loader2, Calculator, Check, ArrowRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { TableSkeleton } from "@/components/ui/skeleton";
 
@@ -51,6 +51,7 @@ export default function JlcpcbManagementPage() {
     // Live calculation preview input state
     const [samplePcbUsd, setSamplePcbUsd] = useState<number>(75);
     const [sampleQty, setSampleQty] = useState<number>(1);
+    const [fetchingFx, setFetchingFx] = useState(false);
 
     const fetchSettings = async () => {
         setLoading(true);
@@ -114,6 +115,29 @@ export default function JlcpcbManagementPage() {
             toast.error("Error saving settings");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleFetchExchangeRate = async () => {
+        setFetchingFx(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch("/api/admin/jlcpcb-settings/exchange-rate?refresh=true", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (data.success && data.rate) {
+                const rate = parseFloat(data.rate);
+                setSettings((prev) => ({ ...prev, usd_to_inr_rate: rate }));
+                toast.success(`Fetched live exchange rate: 1 USD = ₹${rate}`);
+            } else {
+                toast.error(data.message || "Failed to fetch current exchange rate");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Error fetching exchange rate");
+        } finally {
+            setFetchingFx(false);
         }
     };
 
@@ -272,16 +296,6 @@ export default function JlcpcbManagementPage() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="space-y-1.5 p-3 bg-muted/20 border border-border/60 rounded-xl">
-                                        <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-                                            PCB Purchase Price (USD)
-                                        </label>
-                                        <div className="flex items-center justify-between text-xs font-bold text-foreground">
-                                            <span>Fetched live from JLCPCB API</span>
-                                            <span className="text-emerald-500 font-mono font-black">${samplePcbUsd} USD</span>
-                                        </div>
-                                    </div>
-
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
                                             International Shipping (USD)
@@ -293,19 +307,61 @@ export default function JlcpcbManagementPage() {
                                             onChange={(e) => handleChange("international_shipping_usd", e.target.value)}
                                             className="w-full px-3.5 py-2.5 text-sm font-semibold bg-background border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
                                         />
+                                        <p className="text-[11px] font-medium text-muted-foreground mt-1">
+                                            {settings.international_shipping_usd > 0 ? (
+                                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                                    ✓ Fixed shipping fee of ${settings.international_shipping_usd.toFixed(2)} USD will be applied.
+                                                </span>
+                                            ) : (
+                                                <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                                                    ⚡ Set to 0: Actual delivery charges will be calculated directly from JLCPCB API.
+                                                </span>
+                                            )}
+                                        </p>
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
-                                            USD → INR Exchange Rate (₹)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={settings.usd_to_inr_rate}
-                                            onChange={(e) => handleChange("usd_to_inr_rate", e.target.value)}
-                                            className="w-full px-3.5 py-2.5 text-sm font-semibold bg-background border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-                                        />
+                                        <div className="flex items-center justify-between gap-2">
+                                            <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                                                USD → INR Exchange Rate (₹)
+                                            </label>
+                                            <button
+                                                type="button"
+                                                disabled={fetchingFx}
+                                                onClick={handleFetchExchangeRate}
+                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer disabled:opacity-50"
+                                            >
+                                                {fetchingFx ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    <RefreshCw className="w-3 h-3" />
+                                                )}
+                                                Fetch Live Rate
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={settings.usd_to_inr_rate}
+                                                onChange={(e) => handleChange("usd_to_inr_rate", e.target.value)}
+                                                className="w-full px-3.5 py-2.5 text-sm font-semibold bg-background border border-border/85 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={fetchingFx}
+                                                onClick={handleFetchExchangeRate}
+                                                title="Fetch live USD to INR exchange rate from API"
+                                                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 disabled:opacity-50 shadow-xs"
+                                            >
+                                                {fetchingFx ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <RefreshCw className="w-4 h-4" />
+                                                )}
+                                                <span>Fetch API</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -547,13 +603,13 @@ export default function JlcpcbManagementPage() {
                                         <span className="text-muted-foreground">Clearing + Bank + Freight + Other</span>
                                         <span className="font-mono font-bold text-foreground">{formatMoney(previewCalc.localExpenses)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-xs py-2 px-2 bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-lg font-bold">
-                                        <span>BUY COST — BEFORE GST</span>
-                                        <span className="font-mono">{formatMoney(previewCalc.buyTotalExGst)}</span>
+                                    <div className="flex justify-between items-center text-xs py-2 px-3 bg-blue-500/10 border border-blue-500/25 rounded-lg font-bold">
+                                        <span className="text-blue-950 dark:text-blue-200 font-bold">BUY COST — BEFORE GST</span>
+                                        <span className="font-mono font-black text-sm text-blue-700 dark:text-blue-300">{formatMoney(previewCalc.buyTotalExGst)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-xs py-2 px-2 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 rounded-lg font-extrabold">
-                                        <span>TOTAL BUY COST — INCLUDING GST</span>
-                                        <span className="font-mono text-sm">{formatMoney(previewCalc.totalBuyCost)}</span>
+                                    <div className="flex justify-between items-center text-xs py-2.5 px-3 bg-emerald-500/15 border border-emerald-500/30 rounded-lg font-extrabold">
+                                        <span className="text-emerald-950 dark:text-emerald-100 font-extrabold">TOTAL BUY COST — INCLUDING GST</span>
+                                        <span className="font-mono text-sm font-black text-emerald-800 dark:text-emerald-300">{formatMoney(previewCalc.totalBuyCost)}</span>
                                     </div>
                                 </div>
 
@@ -575,9 +631,9 @@ export default function JlcpcbManagementPage() {
                                         <span className="text-muted-foreground">Sales GST ({settings.sales_gst_percent}%)</span>
                                         <span className="font-mono font-bold text-foreground">{formatMoney(previewCalc.salesGstAmount)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-xs py-2 px-2 bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 rounded-lg font-black mt-3">
-                                        <span>CUSTOMER INVOICE — WITH GST</span>
-                                        <span className="font-mono text-base text-emerald-600 dark:text-emerald-400">
+                                    <div className="flex justify-between items-center text-xs py-2.5 px-3 bg-emerald-600 text-white rounded-lg font-black mt-3 shadow-xs">
+                                        <span className="font-extrabold text-white tracking-wide">CUSTOMER INVOICE — WITH GST</span>
+                                        <span className="font-mono text-base font-black text-white">
                                             {formatMoney(previewCalc.finalCustomerPrice)}
                                         </span>
                                     </div>
@@ -596,7 +652,7 @@ export default function JlcpcbManagementPage() {
                                                 <span>GST ({settings.sales_gst_percent}%):</span>
                                                 <span className="font-mono font-bold">{formatMoney(previewCalc.salesGstAmount)}</span>
                                             </div>
-                                            <div className="flex justify-between pt-1 border-t border-border/60 text-emerald-600 font-extrabold text-sm">
+                                            <div className="flex justify-between pt-1.5 border-t border-border/60 text-emerald-700 dark:text-emerald-400 font-black text-sm">
                                                 <span>Total:</span>
                                                 <span className="font-mono">{formatMoney(previewCalc.finalCustomerPrice)}</span>
                                             </div>
