@@ -129,7 +129,17 @@ export default function OrdersPage() {
 
     // Reorder modal state
     const [reorderModalOrder, setReorderModalOrder] = useState<ApiOrder | null>(null);
+    const [reorderQty, setReorderQty] = useState<number>(1);
+    const [reorderDeliveryDate, setReorderDeliveryDate] = useState<string>("");
     const [reordering, setReordering] = useState(false);
+
+    const handleOpenReorderModal = (order: ApiOrder) => {
+        setReorderModalOrder(order);
+        const origQty = order.order_qty || parseInt(getMetaValue(order, 'quantity', '1')) || 1;
+        const origDelivery = order.delivery_date || getMetaValue(order, 'delivery_date', '');
+        setReorderQty(origQty);
+        setReorderDeliveryDate(origDelivery ? String(origDelivery).split('T')[0] : '');
+    };
 
     // Import & Export Modal state
     const [importModalOpen, setImportModalOpen] = useState(false);
@@ -494,8 +504,15 @@ export default function OrdersPage() {
         }
     };
 
-    const handleReorderSubmit = async () => {
+    const handleReorderSubmit = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!reorderModalOrder) return;
+
+        if (!reorderQty || reorderQty <= 0) {
+            toast.error("Please enter a valid order quantity");
+            return;
+        }
+
         setReordering(true);
         const toastId = toast.loading(`Creating reorder for #${reorderModalOrder.order_number}...`);
         try {
@@ -505,7 +522,12 @@ export default function OrdersPage() {
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
-                }
+                },
+                body: JSON.stringify({
+                    order_qty: reorderQty,
+                    quantity: reorderQty,
+                    delivery_date: reorderDeliveryDate
+                })
             });
             const data = await res.json();
             if (res.ok && (data.status || data.success)) {
@@ -1684,7 +1706,7 @@ export default function OrdersPage() {
                                                                 {/* Reorder Icon Button */}
                                                                 {hasReorderPermission && !isPartOrder && (
                                                                     <button
-                                                                        onClick={() => setReorderModalOrder(order)}
+                                                                        onClick={() => handleOpenReorderModal(order)}
                                                                         title="Reorder"
                                                                         aria-label="Reorder"
                                                                         className="p-1.5 bg-blue-500/10 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
@@ -2680,16 +2702,16 @@ export default function OrdersPage() {
                 })()}
             </Dialog>
 
-            {/* Reorder Confirmation Dialog */}
+            {/* Reorder Confirmation & Customization Dialog */}
             <Dialog open={!!reorderModalOrder} onOpenChange={(open) => !open && setReorderModalOrder(null)}>
-                <DialogContent className="max-w-md rounded-2xl p-6">
+                <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl bg-card border-border/80">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
-                            <Copy className="w-5 h-5 text-blue-500" />
-                            Confirm Reorder
+                        <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
+                            <Copy className="w-5 h-5 text-blue-600" />
+                            Place Reorder
                         </DialogTitle>
-                        <DialogDescription className="text-xs text-muted-foreground pt-1">
-                            Are you sure you want to reorder this PCB order? A new order will be generated with all specifications duplicated.
+                        <DialogDescription className="text-xs text-muted-foreground pt-1 font-medium">
+                            Customize order quantity and delivery date for this reorder. All stage quantities (Completed, Failed, Launch, etc.) will reset to 0.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -2699,10 +2721,12 @@ export default function OrdersPage() {
                             || reorderModalOrder.user_email
                             || reorderModalOrder.user_mobile
                             || 'N/A';
+                        const unitPrice = Number(reorderModalOrder.unit_price || 0);
+                        const estOrderValue = unitPrice > 0 ? unitPrice * reorderQty : Number(reorderModalOrder.order_value || 0);
 
                         return (
-                            <div className="py-4 space-y-3">
-                                <div className="bg-muted/40 p-4 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
+                            <form onSubmit={handleReorderSubmit} className="space-y-4 py-2">
+                                <div className="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-border/60 space-y-1.5 text-xs font-medium">
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground font-semibold">Original Order #:</span>
                                         <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
@@ -2711,44 +2735,89 @@ export default function OrdersPage() {
                                         <span className="text-muted-foreground font-semibold">Customer:</span>
                                         <span className="font-bold text-foreground">{custName}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground font-semibold">Order Value:</span>
-                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">₹{Number(reorderModalOrder.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                    </div>
+                                    {reorderModalOrder.board_name && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground font-semibold">Board Name:</span>
+                                            <span className="font-bold text-foreground truncate max-w-[200px]">{reorderModalOrder.board_name}</span>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
+
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-foreground block mb-1">
+                                            Order Quantity (Pcs) <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            value={reorderQty}
+                                            onChange={(e) => setReorderQty(Math.max(1, parseInt(e.target.value) || 0))}
+                                            className="w-full h-10 text-xs font-bold rounded-xl border border-input bg-background"
+                                            placeholder="Enter order quantity..."
+                                            required
+                                        />
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            Default is original order quantity ({reorderModalOrder.order_qty || getMetaValue(reorderModalOrder, 'quantity', '1')} Pcs). Production stage quantities will default to 0.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-foreground block mb-1">
+                                            Delivery Date Option
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            value={reorderDeliveryDate}
+                                            onChange={(e) => setReorderDeliveryDate(e.target.value)}
+                                            className="w-full h-10 text-xs font-bold rounded-xl border border-input bg-background"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            Optionally select a target delivery date for this reorder.
+                                        </p>
+                                    </div>
+
+                                    {estOrderValue > 0 && (
+                                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex justify-between items-center text-xs">
+                                            <span className="font-bold text-emerald-800 dark:text-emerald-300">Estimated Order Value:</span>
+                                            <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                                ₹{estOrderValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setReorderModalOrder(null)}
+                                        disabled={reordering}
+                                        className="rounded-xl text-xs font-bold cursor-pointer"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={reordering}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer"
+                                    >
+                                        {reordering ? (
+                                            <>
+                                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                                Placing Order...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy className="w-3.5 h-3.5" />
+                                                Place Reorder
+                                            </>
+                                        )}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
                         );
                     })()}
-
-                    <DialogFooter className="flex items-center justify-end gap-2 pt-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setReorderModalOrder(null)}
-                            disabled={reordering}
-                            className="rounded-xl text-xs font-bold cursor-pointer"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={handleReorderSubmit}
-                            disabled={reordering}
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer"
-                        >
-                            {reordering ? (
-                                <>
-                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    Reordering...
-                                </>
-                            ) : (
-                                <>
-                                    <Copy className="w-3.5 h-3.5" />
-                                    Confirm Reorder
-                                </>
-                            )}
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
