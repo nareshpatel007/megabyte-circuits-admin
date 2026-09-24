@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { IndianRupee, ShoppingCart, Cpu, UserPlus, ExternalLink, Layers, Calendar, CheckCircle2 } from "lucide-react";
+import { IndianRupee, ShoppingCart, Cpu, UserPlus, ExternalLink, Layers, Calendar, CheckCircle2, RotateCcw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -80,7 +80,12 @@ export default function DashboardPage() {
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
     const [revenuePeriod, setRevenuePeriod] = useState<"day" | "month" | "year">("day");
+    const [startDate, setStartDate] = useState<string>("");
+    const [endDate, setEndDate] = useState<string>("");
     const [revenueTrend, setRevenueTrend] = useState<{ date: string; revenue: number }[]>([]);
+
+    const currentYear = new Date().getFullYear();
+    const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
     useEffect(() => {
         const token = localStorage.getItem("admin_token");
@@ -133,7 +138,11 @@ export default function DashboardPage() {
         const headers = { Authorization: `Bearer ${token}` };
 
         setLoadingTrend(true);
-        fetch(`/api/admin/revenue-trend?period=${revenuePeriod}`, { headers })
+        let url = `/api/admin/revenue-trend?period=${revenuePeriod}`;
+        if (startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+        if (endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
+
+        fetch(url, { headers })
             .then((res) => res.json())
             .then((data) => {
                 if (data.status || data.success) {
@@ -142,7 +151,7 @@ export default function DashboardPage() {
             })
             .catch((err) => console.error("Error loading revenue trend:", err))
             .finally(() => setLoadingTrend(false));
-    }, [revenuePeriod]);
+    }, [revenuePeriod, startDate, endDate]);
 
     const donutData = stats?.status_counts
         ? Object.entries(stats.status_counts).map(([name, value]) => ({ name, value }))
@@ -226,25 +235,137 @@ export default function DashboardPage() {
                     <>
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                             <div className="xl:col-span-2 bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                                    <div>
-                                        <h3 className="text-sm font-bold text-foreground tracking-tight">Revenue Trend</h3>
-                                        <p className="text-xs text-muted-foreground mt-0.5">Real-time revenue computed from submitted PCB orders</p>
+                                <div className="mb-6 space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-foreground tracking-tight">Revenue Trend</h3>
+                                            <p className="text-xs text-muted-foreground mt-0.5">Real-time revenue computed from submitted PCB orders</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
+                                            {(["day", "month", "year"] as const).map((period) => (
+                                                <button
+                                                    key={period}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setRevenuePeriod(period);
+                                                        setStartDate("");
+                                                        setEndDate("");
+                                                    }}
+                                                    className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
+                                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                        }`}
+                                                >
+                                                    {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
-                                        {(["day", "month", "year"] as const).map((period) => (
+
+                                    {/* Timeframe Filter Bar */}
+                                    <div className="p-2.5 bg-muted/30 border border-border/60 rounded-xl flex flex-wrap items-center gap-3 text-xs">
+                                        <div className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+                                            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                                            <span>Timeframe:</span>
+                                        </div>
+
+                                        {/* Day to Day */}
+                                        {revenuePeriod === "day" && (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-muted-foreground text-[11px]">From</span>
+                                                    <input
+                                                        type="date"
+                                                        value={startDate}
+                                                        onChange={(e) => setStartDate(e.target.value)}
+                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-muted-foreground text-[11px]">To</span>
+                                                    <input
+                                                        type="date"
+                                                        value={endDate}
+                                                        onChange={(e) => setEndDate(e.target.value)}
+                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Month to Month */}
+                                        {revenuePeriod === "month" && (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-muted-foreground text-[11px]">From</span>
+                                                    <input
+                                                        type="month"
+                                                        value={startDate}
+                                                        onChange={(e) => setStartDate(e.target.value)}
+                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-muted-foreground text-[11px]">To</span>
+                                                    <input
+                                                        type="month"
+                                                        value={endDate}
+                                                        onChange={(e) => setEndDate(e.target.value)}
+                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Year to Year */}
+                                        {revenuePeriod === "year" && (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-muted-foreground text-[11px]">From</span>
+                                                    <select
+                                                        value={startDate}
+                                                        onChange={(e) => setStartDate(e.target.value)}
+                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    >
+                                                        <option value="">Start Year</option>
+                                                        {yearOptions.map((yr) => (
+                                                            <option key={yr} value={String(yr)}>
+                                                                {yr}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-muted-foreground text-[11px]">To</span>
+                                                    <select
+                                                        value={endDate}
+                                                        onChange={(e) => setEndDate(e.target.value)}
+                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    >
+                                                        <option value="">End Year</option>
+                                                        {yearOptions.map((yr) => (
+                                                            <option key={yr} value={String(yr)}>
+                                                                {yr}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {(startDate || endDate) && (
                                             <button
-                                                key={period}
                                                 type="button"
-                                                onClick={() => setRevenuePeriod(period)}
-                                                className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
-                                                    ? "bg-primary text-primary-foreground shadow-xs"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                                    }`}
+                                                onClick={() => {
+                                                    setStartDate("");
+                                                    setEndDate("");
+                                                }}
+                                                className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                                             >
-                                                {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
+                                                <RotateCcw className="w-3 h-3" />
+                                                Reset Filter
                                             </button>
-                                        ))}
+                                        )}
                                     </div>
                                 </div>
                                 <div className="h-56">
