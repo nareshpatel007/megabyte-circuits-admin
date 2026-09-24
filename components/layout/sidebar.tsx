@@ -31,6 +31,7 @@ import {
     Cpu,
     FileSpreadsheet,
     Mail,
+    Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,7 @@ const navItems: NavItem[] = [
     { href: "/clients", label: "Clients", icon: Users, permission: "clients.view" },
     { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
     { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
+    { href: "/email-logs", label: "Email Logs", icon: Mail, permission: "email_logs.view" },
     {
         label: "Blog Management",
         icon: BookOpen,
@@ -72,6 +74,7 @@ const navItems: NavItem[] = [
             { href: "/settings/pcb-pricing", label: "PCB Pricing", icon: Calculator, permission: "settings.general" },
             { href: "/settings/jlcpcb", label: "JLCPCB Management", icon: Sliders, permission: "settings.general" },
             { href: "/settings/shipping-options", label: "Shipping Options", icon: Truck, permission: "settings.general" },
+            { href: "/settings/notifications", label: "Notification Settings", icon: Bell, permission: "settings.general" },
             { href: "/settings/digikey-products", label: "DigiKey Products", icon: Cpu, permission: "settings.general" },
         ],
     },

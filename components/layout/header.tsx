@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Menu, Bell, Sun, Moon, User, LogOut, ChevronDown, Settings } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Menu, Bell, Sun, Moon, User, LogOut, ChevronDown, Settings, Check } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -12,19 +14,102 @@ interface HeaderProps {
     onMenuClick: () => void;
 }
 
-const notifications = [
-    { id: 1, text: "New order PCB-2025-021 placed", time: "2m ago", unread: true },
-    { id: 2, text: "Low stock: 100nF 0402 Capacitor", time: "18m ago", unread: true },
-    { id: 3, text: "Order PCB-2025-019 shipped", time: "1h ago", unread: false },
-];
+interface AdminNotificationItem {
+    id: number;
+    title: string;
+    message: string;
+    category: string;
+    theme: string;
+    action_url: string | null;
+    is_read: boolean;
+    created_at: string;
+}
 
 export default function Header({ onMenuClick }: HeaderProps) {
+    const router = useRouter();
     const { theme, toggleTheme } = useTheme();
     const { user, logout } = useAuth();
     const [userOpen, setUserOpen] = useState(false);
     const [bellOpen, setBellOpen] = useState(false);
+
+    const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
+    const [unreadCount, setUnreadCount] = useState<number>(0);
+
     const userRef = useRef<HTMLDivElement>(null);
     const bellRef = useRef<HTMLDivElement>(null);
+
+    const getAuthHeaders = useCallback(() => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") || localStorage.getItem("admin_token") : null;
+        return {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        };
+    }, []);
+
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const res = await fetch("/api/admin/notifications?per_page=5", {
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+            if (data.status && Array.isArray(data.data)) {
+                setNotifications(data.data);
+                setUnreadCount(data.unread_count || 0);
+            }
+        } catch (e) {
+            // Background fetch error
+        }
+    }, [getAuthHeaders]);
+
+    const handleMarkAsRead = async (id: number, actionUrl?: string | null) => {
+        try {
+            await fetch(`/api/admin/notifications/${id}/read`, {
+                method: "POST",
+                headers: getAuthHeaders()
+            });
+            fetchNotifications();
+            if (actionUrl) {
+                router.push(actionUrl);
+            }
+        } catch (e) {}
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await fetch("/api/admin/notifications/read-all", {
+                method: "POST",
+                headers: getAuthHeaders()
+            });
+            fetchNotifications();
+            toast.success("All notifications marked as read");
+        } catch (e) {}
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+
+        // Real-time EventSource Stream for Admin Notifications
+        const es = new EventSource("/api/admin/notifications/stream");
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.notifications && data.notifications.length > 0) {
+                    fetchNotifications();
+                    data.notifications.forEach((n: any) => {
+                        toast.info(n.title, { description: n.message });
+                    });
+                }
+            } catch (e) {}
+        };
+
+        const pollInterval = setInterval(fetchNotifications, 15000);
+
+        return () => {
+            es.close();
+            clearInterval(pollInterval);
+        };
+    }, [fetchNotifications]);
 
     useEffect(() => {
         function handleClick(e: MouseEvent) {
@@ -34,8 +119,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
         document.addEventListener("mousedown", handleClick);
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
-
-    const unreadCount = notifications.filter((n) => n.unread).length;
 
     return (
         <header
@@ -60,11 +143,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
             {/* Right controls */}
             <div className="flex items-center gap-1.5">
-
                 {/* Theme toggle */}
                 <button
                     onClick={toggleTheme}
-                    className="relative p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all duration-200"
+                    className="relative p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all duration-200 cursor-pointer"
                     title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                 >
                     <Sun
@@ -81,43 +163,82 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     />
                 </button>
 
-                {/* Bell / notifications */}
+                {/* Bell / Notifications */}
                 <div className="relative" ref={bellRef}>
                     <button
                         onClick={() => { setBellOpen(!bellOpen); setUserOpen(false); }}
-                        className="relative p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all duration-200"
+                        className="relative p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all duration-200 cursor-pointer"
+                        title="Notifications"
                     >
                         <Bell className="w-4 h-4" />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                         )}
                     </button>
 
                     {bellOpen && (
                         <div className={cn(
                             "absolute right-0 top-full mt-2 w-80 rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50",
-                            "bg-card/95 backdrop-blur-xl",
+                            "bg-slate-900/95 backdrop-blur-xl",
                             theme === "light" ? "card-shadow" : "card-shadow-dark"
                         )}>
                             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-b from-white/5 to-transparent">
-                                <span className="text-sm font-600 text-foreground">Notifications</span>
-                                <span className="text-xs text-emerald-400 font-500">{unreadCount} new</span>
+                                <span className="text-xs font-bold text-white">Notifications</span>
+                                {unreadCount > 0 ? (
+                                    <button
+                                        onClick={handleMarkAllAsRead}
+                                        className="text-[11px] text-emerald-400 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                                    >
+                                        <Check className="w-3 h-3" />
+                                        <span>Mark all read</span>
+                                    </button>
+                                ) : (
+                                    <span className="text-[11px] text-slate-400 font-medium">0 unread</span>
+                                )}
                             </div>
-                            <div className="divide-y divide-white/5">
-                                {notifications.map((n) => (
-                                    <div key={n.id} className={cn("px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer", n.unread && "bg-emerald-500/5")}>
-                                        <div className="flex items-start gap-2.5">
-                                            {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />}
-                                            <div className={cn(!n.unread && "ml-4")}>
-                                                <p className="text-xs font-500 text-foreground leading-relaxed">{n.text}</p>
-                                                <p className="text-[10px] text-zinc-500 mt-0.5">{n.time}</p>
+                            <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
+                                {notifications.length === 0 ? (
+                                    <div className="p-6 text-center text-slate-400 text-xs">
+                                        <p className="font-semibold text-white">No notifications</p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">All system events are clear!</p>
+                                    </div>
+                                ) : (
+                                    notifications.map((n) => (
+                                        <div
+                                            key={n.id}
+                                            onClick={() => {
+                                                handleMarkAsRead(n.id, n.action_url);
+                                                setBellOpen(false);
+                                            }}
+                                            className={cn(
+                                                "px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer text-xs",
+                                                !n.is_read && "bg-emerald-500/10"
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-2.5">
+                                                {!n.is_read && (
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                                                )}
+                                                <div className={cn(n.is_read && "ml-3.5")}>
+                                                    <p className="text-xs font-bold text-slate-100 leading-snug">{n.title}</p>
+                                                    <p className="text-[11px] font-medium text-slate-400 leading-relaxed mt-0.5 line-clamp-2">{n.message}</p>
+                                                    <p className="text-[10px] text-slate-500 font-mono mt-1">
+                                                        {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
-                            <div className="px-4 py-2.5 border-t border-white/10">
-                                <button className="text-xs text-emerald-400 hover:underline">View all notifications</button>
+                            <div className="px-4 py-2.5 border-t border-white/10 bg-slate-950/40 text-center">
+                                <Link
+                                    href="/settings/notifications"
+                                    onClick={() => setBellOpen(false)}
+                                    className="text-xs font-bold text-emerald-400 hover:underline cursor-pointer block"
+                                >
+                                    Notification Settings
+                                </Link>
                             </div>
                         </div>
                     )}
@@ -127,18 +248,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 <div className="relative" ref={userRef}>
                     <button
                         onClick={() => { setUserOpen(!userOpen); setBellOpen(false); }}
-                        className="flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-xl hover:bg-white/5 transition-all duration-200"
+                        className="flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-xl hover:bg-white/5 transition-all duration-200 cursor-pointer"
                     >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
                             <User className="w-4 h-4 text-white" />
                         </div>
                         <div className="hidden sm:block text-left">
-                            <p className="text-xs font-600 text-foreground leading-tight">{user?.name || "Admin User"}</p>
+                            <p className="text-xs font-semibold text-foreground leading-tight">{user?.name || "Admin User"}</p>
                             <p className="text-[10px] text-muted-foreground">Administrator</p>
                         </div>
                         <ChevronDown
                             className={cn(
-                                "w-3 h-3 text-muted-foreground transition-transform duration-200 hidden sm:block",
+                                "w-3.5 h-3.5 text-muted-foreground transition-transform duration-200",
                                 userOpen && "rotate-180"
                             )}
                         />
@@ -146,46 +267,29 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
                     {userOpen && (
                         <div className={cn(
-                            "absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50",
-                            "bg-card/95 backdrop-blur-xl",
+                            "absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50 py-1.5",
+                            "bg-slate-900/95 backdrop-blur-xl",
                             theme === "light" ? "card-shadow" : "card-shadow-dark"
                         )}>
-                            {/* User info */}
-                            <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-gradient-to-b from-white/5 to-transparent">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-                                    <User className="w-5 h-5 text-white" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-600 text-foreground">{user?.name || "Admin User"}</p>
-                                    <p className="text-[11px] text-zinc-500 truncate max-w-[130px]">{user?.email || "admin@domain.com"}</p>
-                                </div>
+                            <div className="px-4 py-2 border-b border-white/10">
+                                <p className="text-xs font-bold text-white">{user?.name || "Admin User"}</p>
+                                <p className="text-[10px] text-slate-400 font-mono truncate">{user?.email || "admin@megabyte.com"}</p>
                             </div>
-
-                            <div className="py-1.5">
-                                {[
-                                    { icon: User, label: "Profile" },
-                                    { icon: Settings, label: "Preferences" },
-                                ].map(({ icon: Icon, label }) => (
-                                    <button
-                                        key={label}
-                                        onClick={() => { toast.success(`${label} coming soon`); setUserOpen(false); }}
-                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all duration-200"
-                                    >
-                                        <Icon className="w-4 h-4" />
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="border-t border-white/10 py-1.5">
-                                <button
-                                    onClick={() => { logout(); setUserOpen(false); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-all duration-200"
-                                >
-                                    <LogOut className="w-4 h-4" />
-                                    Sign Out
-                                </button>
-                            </div>
+                            <Link
+                                href="/settings"
+                                onClick={() => setUserOpen(false)}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                            >
+                                <Settings className="w-3.5 h-3.5" />
+                                <span>Settings</span>
+                            </Link>
+                            <button
+                                onClick={() => { logout(); setUserOpen(false); }}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            >
+                                <LogOut className="w-3.5 h-3.5" />
+                                <span>Logout</span>
+                            </button>
                         </div>
                     )}
                 </div>
