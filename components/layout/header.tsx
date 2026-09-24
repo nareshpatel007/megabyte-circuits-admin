@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import GlobalSearch from "@/components/layout/global-search";
+import { showBrowserNotification } from "@/lib/browser-notifications";
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -37,6 +38,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
     const userRef = useRef<HTMLDivElement>(null);
     const bellRef = useRef<HTMLDivElement>(null);
+    const seenIdsRef = useRef<Set<number>>(new Set());
 
     const getAuthHeaders = useCallback(() => {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") || localStorage.getItem("admin_token") : null;
@@ -56,6 +58,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
             if (data.status && Array.isArray(data.data)) {
                 setNotifications(data.data);
                 setUnreadCount(data.unread_count || 0);
+
+                // Populate seen IDs on first fetch so we don't alert on existing items
+                if (seenIdsRef.current.size === 0) {
+                    data.data.forEach((n: AdminNotificationItem) => seenIdsRef.current.add(n.id));
+                }
             }
         } catch (e) {
             // Background fetch error
@@ -99,7 +106,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 if (data.notifications && data.notifications.length > 0) {
                     fetchNotifications();
                     data.notifications.forEach((n: any) => {
-                        toast.info(n.title, { description: n.message });
+                        if (!seenIdsRef.current.has(n.id)) {
+                            seenIdsRef.current.add(n.id);
+                            toast.info(n.title, { description: n.message });
+                            showBrowserNotification({
+                                title: n.title,
+                                message: n.message,
+                                action_url: n.action_url
+                            });
+                        }
                     });
                 }
             } catch (e) {}

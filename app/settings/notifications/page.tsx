@@ -13,15 +13,12 @@ import {
     Sparkles,
     ShieldAlert,
     X,
-    Eye,
-    Package,
-    CreditCard,
-    Cpu,
-    CheckCircle2
+    Eye
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { showBrowserNotification } from "@/lib/browser-notifications";
 
 interface NotificationEventConfig {
     id: number;
@@ -157,14 +154,14 @@ export default function NotificationSettingsPage() {
             subtitle="Configure real-time event alerts, recipient rules, in-app delivery toggles, and notification retention policies."
         >
             <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-                {/* Header Title Bar */}
+                {/* Top Action Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-                            <Bell className="w-7 h-7 text-emerald-400" />
+                        <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+                            <Bell className="w-7 h-7 text-emerald-500" />
                             Notification System Settings
                         </h1>
-                        <p className="text-sm text-slate-400 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">
                             Configure real-time event alerts, recipient rules, in-app delivery toggles, and notification retention policies.
                         </p>
                     </div>
@@ -172,16 +169,16 @@ export default function NotificationSettingsPage() {
                     <div className="flex items-center gap-2.5">
                         <button
                             onClick={() => setShowCleanupModal(true)}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all cursor-pointer"
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 transition-all cursor-pointer shadow-2xs"
                         >
                             <Trash2 className="w-4 h-4" />
-                            Purge Old Notifications
+                            <span>Purge Old Notifications</span>
                         </button>
 
                         <button
                             disabled={saving}
                             onClick={handleSaveSettings}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-all cursor-pointer disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-all cursor-pointer shadow-xs disabled:opacity-50"
                         >
                             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             <span>Save Configuration</span>
@@ -189,21 +186,23 @@ export default function NotificationSettingsPage() {
                     </div>
                 </div>
 
-                {/* Event Matrix Configuration Table & Live Preview Layout */}
+                {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Matrix Table */}
-                    <div className="lg:col-span-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm overflow-hidden shadow-xl">
-                        <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
-                            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                                <Sliders className="w-4 h-4 text-emerald-400" />
+                    {/* Matrix Table Card */}
+                    <div className="lg:col-span-3 rounded-2xl bg-card border border-border/80 overflow-hidden shadow-xs">
+                        <div className="p-4 border-b border-border/80 flex items-center justify-between bg-muted/20">
+                            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <Sliders className="w-4 h-4 text-emerald-500" />
                                 Event Notification Control Matrix
                             </h2>
-                            <span className="text-xs text-slate-400">{settings.length} Registered System Events</span>
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                {settings.length} Registered System Events
+                            </span>
                         </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800/80">
+                                <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider font-bold text-[11px] border-b border-border/80">
                                     <tr>
                                         <th className="p-4">Event Name & Description</th>
                                         <th className="p-3 text-center">Client In-App</th>
@@ -214,26 +213,28 @@ export default function NotificationSettingsPage() {
                                         <th className="p-3 text-center">Preview</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                <tbody className="divide-y divide-border/60 text-foreground">
                                     {loading ? (
                                         Array.from({ length: 6 }).map((_, i) => (
                                             <tr key={i} className="animate-pulse">
-                                                <td className="p-4"><Skeleton className="h-4 w-48" /></td>
-                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto" /></td>
-                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto" /></td>
-                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto" /></td>
-                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto" /></td>
-                                                <td className="p-3 text-center"><Skeleton className="h-4 w-16 mx-auto" /></td>
-                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto" /></td>
+                                                <td className="p-4"><Skeleton className="h-4 w-48 bg-muted" /></td>
+                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto bg-muted" /></td>
+                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto bg-muted" /></td>
+                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto bg-muted" /></td>
+                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto bg-muted" /></td>
+                                                <td className="p-3 text-center"><Skeleton className="h-4 w-16 mx-auto bg-muted" /></td>
+                                                <td className="p-3 text-center"><Skeleton className="h-4 w-6 mx-auto bg-muted" /></td>
                                             </tr>
                                         ))
                                     ) : (
                                         settings.map((item) => (
-                                            <tr key={item.event_key} className="hover:bg-slate-800/40 transition-colors">
+                                            <tr key={item.event_key} className="hover:bg-muted/30 transition-colors">
                                                 <td className="p-4">
-                                                    <div className="font-bold text-white text-xs">{item.event_name}</div>
-                                                    <div className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">{item.description}</div>
-                                                    <span className="inline-block mt-1 font-mono text-[10px] text-emerald-400/80 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                                    <div className="font-bold text-foreground text-xs">{item.event_name}</div>
+                                                    <div className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed font-medium">
+                                                        {item.description}
+                                                    </div>
+                                                    <span className="inline-block mt-1.5 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-semibold">
                                                         {item.event_key}
                                                     </span>
                                                 </td>
@@ -244,7 +245,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.client_enabled}
                                                         onChange={() => handleToggle(item.event_key, "client_enabled")}
-                                                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -254,7 +255,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.admin_enabled}
                                                         onChange={() => handleToggle(item.event_key, "admin_enabled")}
-                                                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -264,7 +265,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.realtime_enabled}
                                                         onChange={() => handleToggle(item.event_key, "realtime_enabled")}
-                                                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -274,7 +275,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.toast_enabled}
                                                         onChange={() => handleToggle(item.event_key, "toast_enabled")}
-                                                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -283,7 +284,7 @@ export default function NotificationSettingsPage() {
                                                     <select
                                                         value={item.priority}
                                                         onChange={(e) => handlePriorityChange(item.event_key, e.target.value)}
-                                                        className="px-2 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-semibold text-slate-300 focus:outline-none"
+                                                        className="px-2.5 py-1.5 rounded-lg bg-background border border-border text-[11px] font-bold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer"
                                                     >
                                                         <option value="low">Low</option>
                                                         <option value="normal">Normal</option>
@@ -296,7 +297,7 @@ export default function NotificationSettingsPage() {
                                                 <td className="p-3 text-center">
                                                     <button
                                                         onClick={() => setPreviewEvent(item)}
-                                                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 transition-colors"
+                                                        className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 text-emerald-500 transition-colors cursor-pointer"
                                                         title="Preview notification appearance"
                                                     >
                                                         <Eye className="w-4 h-4" />
@@ -310,45 +311,64 @@ export default function NotificationSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Live Preview Panel */}
+                    {/* Live Preview Panel Card */}
                     <div className="space-y-4">
-                        <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm space-y-4 shadow-xl">
-                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                <Sparkles className="w-4 h-4 text-emerald-400" />
+                        <div className="p-5 rounded-2xl bg-card border border-border/80 space-y-4 shadow-xs">
+                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-emerald-500" />
                                 Live UI Notification Preview
                             </h3>
 
                             {previewEvent ? (
-                                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                                <div className="p-4 rounded-xl bg-muted/40 border border-border/80 space-y-3">
                                     <div className="flex items-start gap-3">
-                                        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
+                                        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
                                             <Bell className="w-5 h-5" />
                                         </div>
                                         <div className="space-y-1">
-                                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[10px] uppercase font-bold">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] uppercase font-bold">
                                                 {previewEvent.priority} Priority
                                             </span>
-                                            <h4 className="text-xs font-bold text-white">{previewEvent.event_name}</h4>
-                                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                                            <h4 className="text-xs font-bold text-foreground">{previewEvent.event_name}</h4>
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
                                                 {previewEvent.description || "Notification message content preview."}
                                             </p>
-                                            <span className="text-[10px] text-slate-500 font-mono block pt-1">Just now</span>
+                                            <span className="text-[10px] text-muted-foreground font-mono block pt-1">Just now</span>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-6 text-center text-slate-500 text-xs">
+                                <div className="p-6 text-center text-muted-foreground text-xs font-medium">
                                     Click an event preview icon to inspect layout.
                                 </div>
                             )}
 
-                            <div className="space-y-2 text-xs text-slate-400">
-                                <strong className="text-slate-200 block">Notification Behavior Rules:</strong>
-                                <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed">
+                            <div className="space-y-2 text-xs text-muted-foreground pt-2 border-t border-border/60">
+                                <strong className="text-foreground block font-bold">Notification Behavior Rules:</strong>
+                                <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed font-medium">
                                     <li>Real-time SSE updates unread bell badges instantly without page refresh.</li>
-                                    <li>Toast popups auto-dismiss after 4 seconds.</li>
+                                    <li>Native Browser Notifications request permission & pop up when enabled.</li>
                                     <li>Clicking a notification marks it as read and redirects to entity.</li>
                                 </ul>
+
+                                <button
+                                    onClick={async () => {
+                                        const success = await showBrowserNotification({
+                                            title: "Test Admin Notification",
+                                            message: "This is a test notification from Megabyte Circuits Admin.",
+                                            action_url: "/settings/notifications"
+                                        });
+                                        if (success) {
+                                            toast.success("Test browser notification displayed!");
+                                        } else {
+                                            toast.info("Browser notification requested or not allowed by browser permissions.");
+                                        }
+                                    }}
+                                    className="w-full mt-3 py-2.5 px-3.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-500/20 shadow-2xs"
+                                >
+                                    <Bell className="w-3.5 h-3.5" />
+                                    <span>Test Browser Notification</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -358,29 +378,29 @@ export default function NotificationSettingsPage() {
             {/* Manual Cleanup Modal */}
             <Dialog.Root open={showCleanupModal} onOpenChange={setShowCleanupModal}>
                 <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 animate-fade-in" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl z-50 space-y-5 focus:outline-none">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-rose-400 flex items-center gap-2">
-                                <ShieldAlert className="w-5 h-5 text-rose-400" />
+                    <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fade-in" />
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl z-50 space-y-5 focus:outline-none">
+                        <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                            <h3 className="text-base font-bold text-rose-500 flex items-center gap-2">
+                                <ShieldAlert className="w-5 h-5 text-rose-500" />
                                 Purge Old Notifications
                             </h3>
-                            <Dialog.Close className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                            <Dialog.Close className="p-1.5 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                                 <X className="w-4 h-4" />
                             </Dialog.Close>
                         </div>
 
                         <div className="space-y-3 text-xs">
-                            <p className="text-slate-300 leading-relaxed">
+                            <p className="text-muted-foreground leading-relaxed font-medium">
                                 Permanently delete read notifications older than the selected retention period.
                             </p>
 
                             <div className="space-y-1.5">
-                                <label className="text-slate-300 font-semibold block">Delete notifications older than:</label>
+                                <label className="text-foreground font-bold block">Delete notifications older than:</label>
                                 <select
                                     value={cleanupDays}
                                     onChange={(e) => setCleanupDays(Number(e.target.value))}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
+                                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground text-xs font-bold focus:outline-none focus:border-emerald-500 cursor-pointer"
                                 >
                                     <option value={7}>7 Days</option>
                                     <option value={15}>15 Days</option>
@@ -391,17 +411,17 @@ export default function NotificationSettingsPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
+                        <div className="flex justify-end gap-3 pt-3 border-t border-border/80">
                             <button
                                 onClick={() => setShowCleanupModal(false)}
-                                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                                className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-bold transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 disabled={cleaning}
                                 onClick={handleRunCleanup}
-                                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-extrabold text-xs transition-colors cursor-pointer"
+                                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-black text-xs transition-colors cursor-pointer shadow-xs"
                             >
                                 {cleaning ? "Purging..." : "Purge Now"}
                             </button>
