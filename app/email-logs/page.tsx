@@ -19,9 +19,8 @@ import {
     Settings,
     Sparkles,
     Eye,
-    Code,
-    FileText,
-    ExternalLink
+    Check,
+    RotateCcw
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
@@ -110,7 +109,7 @@ function EmailLogsContent() {
 
     // Pagination
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(25);
+    const [pageSize, setPageSize] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
@@ -401,302 +400,289 @@ function EmailLogsContent() {
         const s = (status || "").toLowerCase();
         if (s === "sent") {
             return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     Sent
                 </span>
             );
         }
         if (s === "failed") {
             return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-red-50 dark:bg-rose-500/10 text-red-700 dark:text-rose-400 border border-red-200 dark:border-rose-500/20">
-                    <AlertCircle className="w-3 h-3 text-red-600 dark:text-rose-400" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-red-500/10 text-red-600 border border-red-500/20 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                     Failed
                 </span>
             );
         }
         if (s === "queued") {
             return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
-                    <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                     Queued
                 </span>
             );
         }
         return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-                <RefreshCw className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 border border-blue-500/20 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                 {status}
             </span>
         );
     };
 
+    const actionHeaderButtons = (
+        <div className="flex flex-wrap items-center gap-2.5">
+            <button
+                onClick={handleExport}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-black transition-all text-xs font-extrabold uppercase tracking-wider cursor-pointer shadow-2xs"
+            >
+                <Download className="w-4 h-4" />
+                Export CSV
+            </button>
+
+            <button
+                onClick={() => {
+                    fetchSettings();
+                    setShowSettings(true);
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-muted/40 text-foreground border border-border/80 rounded-xl hover:bg-muted transition-all text-xs font-extrabold uppercase tracking-wider cursor-pointer shadow-2xs"
+            >
+                <Settings className="w-4 h-4 text-emerald-500" />
+                Retention Settings
+            </button>
+
+            <button
+                onClick={() => setShowCleanupModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500 hover:text-white transition-all text-xs font-extrabold uppercase tracking-wider cursor-pointer shadow-2xs"
+            >
+                <Trash2 className="w-4 h-4" />
+                Purge Old Logs
+            </button>
+        </div>
+    );
+
     return (
         <DashboardLayout
             title="Email Logs & Audit Trail"
             subtitle="Monitor email deliveries, inspect sent messages, debug failures, and configure retention policies."
+            action={actionHeaderButtons}
         >
-            <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
-                {/* Header Title & Action Buttons Banner */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-[#0b0f19] p-5 rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-2xs">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
-                            <Mail className="w-6 h-6 text-emerald-500" />
-                            Email Logs & Audit Trail
-                        </h1>
-                        <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium mt-0.5">
-                            Track email dispatches, preview body contents, inspect errors, and manage log archives.
-                        </p>
-                    </div>
+            {loading ? (
+                <TableSkeleton rows={8} />
+            ) : (
+                <div className="space-y-5 animate-in fade-in duration-300">
+                    {/* KPI Stats Cards Row matching Inventory Page */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                <Mail className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Logged Emails</p>
+                                <h3 className="text-2xl font-black text-foreground mt-0.5">{stats.total.toLocaleString()}</h3>
+                            </div>
+                        </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <button
-                            onClick={handleExport}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 border border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all cursor-pointer shadow-2xs"
-                        >
-                            <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                            Export CSV
-                        </button>
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sent Successfully</p>
+                                <h3 className="text-2xl font-black text-emerald-500 mt-0.5">{stats.sent.toLocaleString()}</h3>
+                                <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.sent_today} sent today</p>
+                            </div>
+                        </div>
 
-                        <button
-                            onClick={() => {
-                                fetchSettings();
-                                setShowSettings(true);
-                            }}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 border border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all cursor-pointer shadow-2xs"
-                        >
-                            <Settings className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                            Retention Settings
-                        </button>
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Failed Deliveries</p>
+                                <h3 className="text-2xl font-black text-rose-500 mt-0.5">{stats.failed.toLocaleString()}</h3>
+                                <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-0.5">{stats.failed_today} failed today</p>
+                            </div>
+                        </div>
 
-                        <button
-                            onClick={() => setShowCleanupModal(true)}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-red-50 dark:bg-rose-500/10 hover:bg-red-100 dark:hover:bg-rose-500/20 text-red-700 dark:text-rose-400 border border-red-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-2xs"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Purge Old Logs
-                        </button>
-                    </div>
-                </div>
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                <Clock className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Queued / Processing</p>
+                                <h3 className="text-2xl font-black text-amber-500 mt-0.5">{(stats.queued + stats.processing).toLocaleString()}</h3>
+                            </div>
+                        </div>
 
-                {/* Statistics Overview KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0b0f19] border border-gray-200/80 dark:border-white/10 shadow-2xs space-y-1">
-                        <span className="text-xs font-bold text-gray-500 dark:text-zinc-400">Total Logged Emails</span>
-                        <div className="flex items-baseline justify-between pt-1">
-                            <span className="text-2xl font-black text-gray-900 dark:text-white">{stats.total.toLocaleString()}</span>
-                            <Mail className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
+                        <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                                <Sparkles className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Retention Policy</p>
+                                <h3 className="text-lg font-black text-foreground mt-0.5">{retentionDays === "0" ? "Infinite" : `${retentionDays} Days`}</h3>
+                                <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{loggingEnabled ? "Logging Active" : "Disabled"}</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-500/20 shadow-2xs space-y-1">
-                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Sent Successfully</span>
-                        <div className="flex items-baseline justify-between pt-1">
-                            <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">{stats.sent.toLocaleString()}</span>
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <span className="text-[11px] font-semibold text-emerald-600/90 dark:text-emerald-400/80 block pt-0.5">{stats.sent_today} sent today</span>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-red-50/50 dark:bg-rose-950/20 border border-red-200/80 dark:border-rose-500/20 shadow-2xs space-y-1">
-                        <span className="text-xs font-bold text-red-700 dark:text-rose-400">Failed Deliveries</span>
-                        <div className="flex items-baseline justify-between pt-1">
-                            <span className="text-2xl font-black text-red-700 dark:text-rose-400">{stats.failed.toLocaleString()}</span>
-                            <AlertCircle className="w-5 h-5 text-red-600 dark:text-rose-400" />
-                        </div>
-                        <span className="text-[11px] font-semibold text-red-600/90 dark:text-rose-400/80 block pt-0.5">{stats.failed_today} failed today</span>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-500/20 shadow-2xs space-y-1">
-                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">Queued / Processing</span>
-                        <div className="flex items-baseline justify-between pt-1">
-                            <span className="text-2xl font-black text-amber-700 dark:text-amber-400">{(stats.queued + stats.processing).toLocaleString()}</span>
-                            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0b0f19] border border-gray-200/80 dark:border-white/10 shadow-2xs space-y-1">
-                        <span className="text-xs font-bold text-gray-500 dark:text-zinc-400">Retention Policy</span>
-                        <div className="flex items-baseline justify-between pt-1">
-                            <span className="text-lg font-extrabold text-gray-900 dark:text-zinc-100">{retentionDays === "0" ? "Infinite" : `${retentionDays} Days`}</span>
-                            <Sparkles className="w-5 h-5 text-emerald-500" />
-                        </div>
-                        <span className="text-[11px] font-medium text-gray-500 dark:text-zinc-400 block pt-0.5">
-                            {loggingEnabled ? "Logging Active" : "Logging Disabled"}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Filter & Search Toolbar */}
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#0b0f19] border border-gray-200/80 dark:border-white/10 shadow-2xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                    {/* Search Input */}
-                    <div className="relative flex-1 min-w-[280px]">
-                        <Search className="w-4 h-4 text-gray-400 dark:text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            placeholder="Search recipient, subject, or template..."
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setPage(1);
-                            }}
-                            className="w-full pl-10 pr-9 py-2 rounded-xl bg-gray-50 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-700/80 text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                        />
-                        {search && (
-                            <button
-                                onClick={() => {
-                                    setSearch("");
+                    {/* Filter Bar Card matching Inventory Page */}
+                    <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="relative w-full md:w-80">
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                            <input
+                                type="search"
+                                placeholder="Search recipient, subject, or template..."
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
                                     setPage(1);
                                 }}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Filters Row */}
-                    <div className="flex flex-wrap items-center gap-3">
-                        {/* Status Select */}
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value);
-                                setPage(1);
-                            }}
-                            className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-700/80 text-xs font-semibold text-gray-700 dark:text-zinc-300 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                        >
-                            <option value="all">All Statuses</option>
-                            <option value="sent">Sent</option>
-                            <option value="failed">Failed</option>
-                            <option value="queued">Queued</option>
-                            <option value="processing">Processing</option>
-                        </select>
-
-                        {/* Email Type Filter */}
-                        <select
-                            value={emailTypeFilter}
-                            onChange={(e) => {
-                                setEmailTypeFilter(e.target.value);
-                                setPage(1);
-                            }}
-                            className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-700/80 text-xs font-semibold text-gray-700 dark:text-zinc-300 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                        >
-                            <option value="all">All Email Types</option>
-                            <option value="order">Order Notifications</option>
-                            <option value="inventory">Inventory Alerts</option>
-                            <option value="customer">Customer Mail</option>
-                            <option value="system">System Mail</option>
-                        </select>
-
-                        {/* Date Range Popovers */}
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-700/80 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer">
-                                    <CalendarIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    <span>{startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}</span>
-                                </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={startDate}
-                                    onSelect={(d) => {
-                                        setStartDate(d);
+                                className="w-full pl-9 pr-8 py-2 bg-muted/30 border border-border/80 rounded-xl text-xs text-foreground focus:outline-hidden focus:border-emerald-500 font-medium"
+                            />
+                            {search && (
+                                <button
+                                    onClick={() => {
+                                        setSearch("");
                                         setPage(1);
                                     }}
-                                />
-                            </PopoverContent>
-                        </Popover>
-
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-700/80 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer">
-                                    <CalendarIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    <span>{endDate ? format(endDate, "MMM dd, yyyy") : "End Date"}</span>
+                                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="w-3.5 h-3.5" />
                                 </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={endDate}
-                                    onSelect={(d) => {
-                                        setEndDate(d);
-                                        setPage(1);
-                                    }}
-                                />
-                            </PopoverContent>
-                        </Popover>
+                            )}
+                        </div>
 
-                        {(startDate || endDate || statusFilter !== "all" || emailTypeFilter !== "all" || search) && (
-                            <button
-                                onClick={() => {
-                                    setSearch("");
-                                    setStatusFilter("all");
-                                    setEmailTypeFilter("all");
-                                    setStartDate(undefined);
-                                    setEndDate(undefined);
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value);
                                     setPage(1);
                                 }}
-                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-300 transition-colors cursor-pointer"
-                                title="Reset all filters"
+                                className="px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
-                                <RefreshCw className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-                </div>
+                                <option value="all">All Statuses</option>
+                                <option value="sent">Sent</option>
+                                <option value="failed">Failed</option>
+                                <option value="queued">Queued</option>
+                                <option value="processing">Processing</option>
+                            </select>
 
-                {/* Bulk Actions Bar */}
-                {selectedIds.length > 0 && (
-                    <div className="p-3 px-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-between text-xs font-semibold">
-                        <span className="text-emerald-800 dark:text-emerald-400">
-                            {selectedIds.length} email log item{selectedIds.length > 1 ? "s" : ""} selected
-                        </span>
-                        <div className="flex items-center gap-3">
+                            <select
+                                value={emailTypeFilter}
+                                onChange={(e) => {
+                                    setEmailTypeFilter(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer shadow-xs"
+                            >
+                                <option value="all">All Email Types</option>
+                                <option value="order">Order Notifications</option>
+                                <option value="inventory">Inventory Alerts</option>
+                                <option value="customer">Customer Mail</option>
+                                <option value="system">System Mail</option>
+                            </select>
+
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <button className="inline-flex items-center gap-2 px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs hover:bg-muted transition-colors cursor-pointer shadow-2xs">
+                                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>{startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}</span>
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-card border-border text-foreground" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={startDate}
+                                        onSelect={(d) => {
+                                            setStartDate(d);
+                                            setPage(1);
+                                        }}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <button className="inline-flex items-center gap-2 px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs hover:bg-muted transition-colors cursor-pointer shadow-2xs">
+                                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>{endDate ? format(endDate, "MMM dd, yyyy") : "End Date"}</span>
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-card border-border text-foreground" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={endDate}
+                                        onSelect={(d) => {
+                                            setEndDate(d);
+                                            setPage(1);
+                                        }}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+
+                            {(startDate || endDate || statusFilter !== "all" || emailTypeFilter !== "all" || search) && (
+                                <button
+                                    onClick={() => {
+                                        setSearch("");
+                                        setStatusFilter("all");
+                                        setEmailTypeFilter("all");
+                                        setStartDate(undefined);
+                                        setEndDate(undefined);
+                                        setPage(1);
+                                    }}
+                                    className="p-2 bg-muted/40 border border-border/80 rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                    title="Reset all filters"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Bulk Selection Notice */}
+                    {selectedIds.length > 0 && (
+                        <div className="p-3.5 px-5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            <span>{selectedIds.length} email log item{selectedIds.length > 1 ? "s" : ""} selected</span>
                             <button
                                 onClick={handleBulkDelete}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 text-red-700 dark:text-rose-400 border border-red-200 dark:border-rose-500/30 transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-lg text-xs font-black uppercase tracking-wider cursor-pointer transition-all"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 Delete Selected
                             </button>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Data Table / Skeleton Loader */}
-                <div className="rounded-2xl bg-white dark:bg-[#0b0f19] border border-gray-200/80 dark:border-white/10 shadow-2xs overflow-hidden">
-                    {loading ? (
-                        <TableSkeleton rows={8} />
-                    ) : (
+                    {/* Data Table Component */}
+                    <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-xs">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-gray-50/80 dark:bg-zinc-900/60 text-gray-500 dark:text-zinc-400 uppercase tracking-wider font-extrabold border-b border-gray-200 dark:border-zinc-800">
-                                    <tr>
-                                        <th className="p-4 w-10 text-center">
+                            <table className="w-full text-xs text-left">
+                                <thead>
+                                    <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
+                                        <th className="py-3.5 px-5 w-10 text-center">
                                             <input
                                                 type="checkbox"
                                                 checked={logs.length > 0 && selectedIds.length === logs.length}
                                                 onChange={handleSelectAll}
-                                                className="rounded border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-emerald-600 focus:ring-emerald-500/30"
+                                                className="rounded border-border bg-card text-emerald-500 focus:ring-emerald-500/30"
                                             />
                                         </th>
-                                        <th className="p-4">ID / Date</th>
-                                        <th className="p-4">Recipient</th>
-                                        <th className="p-4">Subject</th>
-                                        <th className="p-4">Template / Type</th>
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4 text-right">Actions</th>
+                                        <th className="py-3.5 px-5">ID / Date</th>
+                                        <th className="py-3.5 px-5">Recipient</th>
+                                        <th className="py-3.5 px-5">Subject</th>
+                                        <th className="py-3.5 px-5">Template / Type</th>
+                                        <th className="py-3.5 px-5">Status</th>
+                                        <th className="py-3.5 px-5 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200/70 dark:divide-zinc-800/60 text-gray-700 dark:text-zinc-300">
+                                <tbody className="divide-y divide-border/40">
                                     {logs.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="p-12 text-center text-gray-500 dark:text-zinc-500 space-y-3">
-                                                <Mail className="w-10 h-10 mx-auto text-gray-400 dark:text-zinc-600 opacity-60" />
-                                                <p className="font-bold text-gray-700 dark:text-zinc-300">No email logs found</p>
-                                                <p className="text-xs text-gray-500 dark:text-zinc-500">Try adjusting your filters or search terms.</p>
+                                            <td colSpan={7} className="text-center py-12 text-muted-foreground font-medium">
+                                                No email logs found matching your search.
                                             </td>
                                         </tr>
                                     ) : (
@@ -706,76 +692,69 @@ function EmailLogsContent() {
                                             const recipientName = log.recipient_name || log.customer?.name || null;
 
                                             return (
-                                                <tr
-                                                    key={log.id}
-                                                    className={`hover:bg-gray-50/70 dark:hover:bg-zinc-800/40 transition-colors ${
-                                                        isSelected ? "bg-emerald-50/50 dark:bg-emerald-950/20" : ""
-                                                    }`}
-                                                >
-                                                    <td className="p-4 text-center">
+                                                <tr key={log.id} className={`hover:bg-muted/20 transition-colors ${isSelected ? "bg-emerald-500/10" : ""}`}>
+                                                    <td className="py-4 px-5 text-center">
                                                         <input
                                                             type="checkbox"
                                                             checked={isSelected}
                                                             onChange={() => handleSelectOne(log.id)}
-                                                            className="rounded border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-emerald-600 focus:ring-emerald-500/30"
+                                                            className="rounded border-border bg-card text-emerald-500 focus:ring-emerald-500/30"
                                                         />
                                                     </td>
 
-                                                    <td className="p-4 font-mono text-[11px]">
-                                                        <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">#{log.id}</span>
-                                                        <div className="text-gray-500 dark:text-zinc-400 text-[11px] font-sans mt-0.5">
+                                                    <td className="py-4 px-5 font-mono text-xs whitespace-nowrap">
+                                                        <span className="font-black text-emerald-600 dark:text-emerald-400">#{log.id}</span>
+                                                        <p className="text-[11px] text-muted-foreground font-sans mt-0.5">
                                                             {formatDate(log.sent_at || log.created_at)}
-                                                        </div>
+                                                        </p>
                                                     </td>
 
-                                                    <td className="p-4">
-                                                        <div className="font-bold text-gray-900 dark:text-white text-xs">
-                                                            {recipientName || recipientEmail}
-                                                        </div>
+                                                    <td className="py-4 px-5 whitespace-nowrap">
+                                                        <p className="font-bold text-foreground text-sm">{recipientName || recipientEmail}</p>
                                                         {recipientName && (
-                                                            <div className="text-gray-500 dark:text-zinc-400 text-[11px] font-mono">
-                                                                {recipientEmail}
-                                                            </div>
+                                                            <p className="text-xs font-mono text-muted-foreground">{recipientEmail}</p>
                                                         )}
                                                     </td>
 
-                                                    <td className="p-4 max-w-[280px]">
-                                                        <span className="font-semibold text-gray-800 dark:text-zinc-200 line-clamp-1" title={log.subject}>
+                                                    <td className="py-4 px-5 max-w-xs">
+                                                        <p className="font-bold text-foreground text-xs truncate" title={log.subject}>
                                                             {log.subject || "No Subject"}
-                                                        </span>
+                                                        </p>
                                                         {log.order && (
-                                                            <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-mono text-[10px] border border-blue-200 dark:border-blue-500/20">
+                                                            <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono text-[10px] font-bold border border-blue-500/20">
                                                                 Order #{log.order.order_number}
                                                             </span>
                                                         )}
                                                     </td>
 
-                                                    <td className="p-4">
-                                                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 font-mono text-[11px] border border-gray-200 dark:border-zinc-700">
+                                                    <td className="py-4 px-5 whitespace-nowrap">
+                                                        <span className="inline-block px-2.5 py-1 rounded-md bg-muted text-foreground font-mono text-xs font-bold border border-border/80">
                                                             {log.template_key || log.email_type || "General"}
                                                         </span>
                                                     </td>
 
-                                                    <td className="p-4">
+                                                    <td className="py-4 px-5 whitespace-nowrap">
                                                         {renderStatusBadge(log.status)}
                                                     </td>
 
-                                                    <td className="p-4 text-right space-x-2">
-                                                        <button
-                                                            onClick={() => fetchLogDetail(log)}
-                                                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-emerald-700 dark:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                                            title="View Email & Details"
-                                                        >
-                                                            <Eye className="w-4 h-4" />
-                                                        </button>
+                                                    <td className="py-4 px-5 text-right whitespace-nowrap">
+                                                        <div className="inline-flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                onClick={() => fetchLogDetail(log)}
+                                                                title="View Email & Details"
+                                                                className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-black transition-all cursor-pointer shadow-2xs"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
 
-                                                        <button
-                                                            onClick={() => handleDeleteSingle(log.id)}
-                                                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-rose-900/40 text-gray-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-rose-400 transition-colors cursor-pointer"
-                                                            title="Delete Log"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                            <button
+                                                                onClick={() => handleDeleteSingle(log.id)}
+                                                                title="Delete Email Log"
+                                                                className="p-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -784,122 +763,110 @@ function EmailLogsContent() {
                                 </tbody>
                             </table>
                         </div>
-                    )}
 
-                    {/* Pagination Footer */}
-                    <div className="p-4 border-t border-gray-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 dark:text-zinc-400">
-                        <div className="flex items-center gap-3">
-                            <span>Showing {logs.length} of {totalItems} logs</span>
-                            <select
-                                value={pageSize}
-                                onChange={(e) => {
-                                    setPageSize(Number(e.target.value));
-                                    setPage(1);
-                                }}
-                                className="px-2 py-1 rounded-lg bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 text-xs focus:outline-none"
-                            >
-                                {PAGE_SIZE_OPTIONS.map((opt) => (
-                                    <option key={opt} value={opt}>
-                                        {opt} / page
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Pagination Footer matching Inventory Page */}
+                        <div className="px-5 py-4 border-t border-border/80 flex items-center justify-between text-xs text-muted-foreground font-medium">
+                            <div>
+                                Showing <span className="font-bold text-foreground">{logs.length > 0 ? (page - 1) * pageSize + 1 : 0}</span> to <span className="font-bold text-foreground">{Math.min(page * pageSize, totalItems)}</span> of <span className="font-bold text-foreground">{totalItems}</span> email logs
+                            </div>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                disabled={page <= 1}
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                className="p-2 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-40 text-gray-700 dark:text-zinc-300 transition-colors cursor-pointer"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <span className="font-extrabold text-gray-900 dark:text-white">
-                                Page {page} of {totalPages || 1}
-                            </span>
-                            <button
-                                disabled={page >= totalPages}
-                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                className="p-2 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-40 text-gray-700 dark:text-zinc-300 transition-colors cursor-pointer"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted text-foreground font-bold text-xs disabled:opacity-40 transition-colors cursor-pointer"
+                                >
+                                    <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                                </button>
+
+                                <span className="font-bold text-foreground text-xs">
+                                    Page {page} of {totalPages || 1}
+                                </span>
+
+                                <button
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted text-foreground font-bold text-xs disabled:opacity-40 transition-colors cursor-pointer"
+                                >
+                                    Next <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Email Detail & HTML Preview Modal */}
             <Dialog.Root open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 animate-fade-in" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl z-50 flex flex-col space-y-4 focus:outline-none overflow-hidden">
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-card border border-border rounded-3xl p-6 shadow-2xl z-50 flex flex-col space-y-4 focus:outline-none overflow-hidden">
                         {selectedLog && (
                             <>
                                 {/* Modal Header */}
-                                <div className="flex items-start justify-between border-b border-gray-200 dark:border-zinc-800 pb-4">
+                                <div className="flex items-start justify-between border-b border-border/80 pb-4">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">Log #{selectedLog.id}</span>
+                                            <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">Log #{selectedLog.id}</span>
                                             {renderStatusBadge(selectedLog.status)}
                                             {selectedLog.is_test && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
+                                                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
                                                     Test Mail
                                                 </span>
                                             )}
                                         </div>
-                                        <h2 className="text-lg font-extrabold text-gray-900 dark:text-white line-clamp-1">{selectedLog.subject || "No Subject"}</h2>
-                                        <p className="text-xs text-gray-500 dark:text-zinc-400">
-                                            To: <span className="font-mono font-bold text-gray-800 dark:text-zinc-200">{selectedLog.to || selectedLog.recipient_email}</span> | Sent: {formatDate(selectedLog.sent_at || selectedLog.created_at)}
+                                        <h2 className="text-lg font-black text-foreground truncate">{selectedLog.subject || "No Subject"}</h2>
+                                        <p className="text-xs text-muted-foreground font-medium">
+                                            To: <span className="font-mono font-bold text-foreground">{selectedLog.to || selectedLog.recipient_email}</span> | Sent: {formatDate(selectedLog.sent_at || selectedLog.created_at)}
                                         </p>
                                     </div>
                                     <button
                                         onClick={() => setSelectedLog(null)}
-                                        className="p-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 transition-colors"
+                                        className="p-2 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
 
                                 {/* Modal Tabs */}
-                                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-zinc-800 pb-2">
+                                <div className="flex items-center gap-2 border-b border-border/80 pb-2">
                                     <button
                                         onClick={() => setActiveTab("html")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                                             activeTab === "html"
-                                                ? "bg-emerald-600 text-white shadow-xs"
-                                                : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700"
+                                                ? "bg-emerald-500 text-black shadow-xs"
+                                                : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                                         }`}
                                     >
                                         HTML Preview
                                     </button>
                                     <button
                                         onClick={() => setActiveTab("text")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                                             activeTab === "text"
-                                                ? "bg-emerald-600 text-white shadow-xs"
-                                                : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700"
+                                                ? "bg-emerald-500 text-black shadow-xs"
+                                                : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                                         }`}
                                     >
                                         Text Content
                                     </button>
                                     <button
                                         onClick={() => setActiveTab("details")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                                             activeTab === "details"
-                                                ? "bg-emerald-600 text-white shadow-xs"
-                                                : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700"
+                                                ? "bg-emerald-500 text-black shadow-xs"
+                                                : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                                         }`}
                                     >
-                                        Metadata & Headers
+                                        Metadata
                                     </button>
                                     {selectedLog.error_message && (
                                         <button
                                             onClick={() => setActiveTab("error")}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                                                 activeTab === "error"
-                                                    ? "bg-red-600 text-white shadow-xs"
-                                                    : "bg-red-50 dark:bg-rose-500/10 text-red-600 dark:text-rose-400 hover:bg-red-100 dark:hover:bg-rose-500/20"
+                                                    ? "bg-rose-500 text-white shadow-xs"
+                                                    : "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20"
                                             }`}
                                         >
                                             Error Log
@@ -908,51 +875,51 @@ function EmailLogsContent() {
                                 </div>
 
                                 {/* Modal Body Content */}
-                                <div className="flex-1 min-h-[300px] overflow-y-auto pr-1 space-y-4">
+                                <div className="flex-1 min-h-[300px] overflow-y-auto space-y-4">
                                     {detailLoading ? (
                                         <div className="p-8 text-center space-y-3">
                                             <RefreshCw className="w-6 h-6 animate-spin mx-auto text-emerald-500" />
-                                            <p className="text-xs font-bold text-gray-500 dark:text-zinc-400">Loading email content...</p>
+                                            <p className="text-xs font-bold text-muted-foreground">Loading email content...</p>
                                         </div>
                                     ) : activeTab === "html" ? (
                                         selectedLog.body ? (
                                             <iframe
                                                 srcDoc={selectedLog.body}
-                                                className="w-full h-[450px] rounded-xl border border-gray-200 dark:border-zinc-800 bg-white"
+                                                className="w-full h-[450px] rounded-xl border border-border/80 bg-white"
                                                 title="Email Body Preview"
                                             />
                                         ) : (
-                                            <div className="p-8 text-center text-gray-500 dark:text-zinc-400 text-xs">
+                                            <div className="p-8 text-center text-muted-foreground text-xs font-medium">
                                                 No HTML body content recorded for this log.
                                             </div>
                                         )
                                     ) : activeTab === "text" ? (
-                                        <pre className="p-4 rounded-xl bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 font-mono text-xs text-gray-800 dark:text-zinc-300 whitespace-pre-wrap">
+                                        <pre className="p-4 rounded-xl bg-muted/40 border border-border/80 font-mono text-xs text-foreground whitespace-pre-wrap">
                                             {selectedLog.text_body || selectedLog.body || "No text body content available."}
                                         </pre>
                                     ) : activeTab === "details" ? (
                                         <div className="space-y-4 text-xs">
-                                            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800">
+                                            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-muted/30 border border-border/80">
                                                 <div>
-                                                    <span className="font-bold text-gray-500 dark:text-zinc-500 block">From:</span>
-                                                    <span className="font-mono text-gray-900 dark:text-white">{selectedLog.from_name ? `${selectedLog.from_name} <${selectedLog.from_email}>` : selectedLog.from_email}</span>
+                                                    <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">From:</span>
+                                                    <span className="font-mono text-foreground font-bold">{selectedLog.from_name ? `${selectedLog.from_name} <${selectedLog.from_email}>` : selectedLog.from_email}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-500 dark:text-zinc-500 block">To:</span>
-                                                    <span className="font-mono text-gray-900 dark:text-white">{selectedLog.to || selectedLog.recipient_email}</span>
+                                                    <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">To:</span>
+                                                    <span className="font-mono text-foreground font-bold">{selectedLog.to || selectedLog.recipient_email}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-500 dark:text-zinc-500 block">Template Key:</span>
-                                                    <span className="font-mono text-emerald-600 dark:text-emerald-400">{selectedLog.template_key || "N/A"}</span>
+                                                    <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Template Key:</span>
+                                                    <span className="font-mono text-emerald-600 font-bold">{selectedLog.template_key || "N/A"}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-500 dark:text-zinc-500 block">Provider:</span>
-                                                    <span className="font-mono text-gray-900 dark:text-white">{selectedLog.provider || "SMTP / Default"}</span>
+                                                    <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Provider:</span>
+                                                    <span className="font-mono text-foreground font-bold">{selectedLog.provider || "SMTP / Default"}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="p-4 rounded-xl bg-red-50 dark:bg-rose-950/20 border border-red-200 dark:border-rose-500/20 text-red-700 dark:text-rose-400 font-mono text-xs whitespace-pre-wrap">
+                                        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 font-mono text-xs whitespace-pre-wrap">
                                             {selectedLog.error_message}
                                         </div>
                                     )}
@@ -967,37 +934,37 @@ function EmailLogsContent() {
             <Dialog.Root open={showSettings} onOpenChange={setShowSettings}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl z-50 space-y-4 focus:outline-none">
-                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 pb-3">
-                            <h3 className="text-base font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl z-50 space-y-4 focus:outline-none">
+                        <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                            <h3 className="text-base font-black text-foreground flex items-center gap-2">
                                 <Settings className="w-5 h-5 text-emerald-500" />
                                 Retention & Logging Settings
                             </h3>
-                            <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200">
+                            <button onClick={() => setShowSettings(false)} className="text-muted-foreground hover:text-foreground">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         <div className="space-y-4 text-xs">
-                            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700">
+                            <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/80">
                                 <div>
-                                    <span className="font-bold text-gray-900 dark:text-white block">Enable Email Logging</span>
-                                    <span className="text-[11px] text-gray-500 dark:text-zinc-400">Save dispatches to audit database</span>
+                                    <span className="font-bold text-foreground block">Enable Email Logging</span>
+                                    <span className="text-[11px] text-muted-foreground">Save dispatches to audit database</span>
                                 </div>
                                 <input
                                     type="checkbox"
                                     checked={loggingEnabled}
                                     onChange={(e) => setLoggingEnabled(e.target.checked)}
-                                    className="h-5 w-5 rounded border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-emerald-600 focus:ring-emerald-500"
+                                    className="h-5 w-5 rounded border-border bg-card text-emerald-500 focus:ring-emerald-500"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="font-bold text-gray-700 dark:text-zinc-300">Retention Period (Days)</label>
+                                <label className="font-bold text-foreground">Retention Period (Days)</label>
                                 <select
                                     value={retentionDays}
                                     onChange={(e) => setRetentionDays(e.target.value)}
-                                    className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 text-xs font-semibold text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                                    className="w-full p-2.5 rounded-xl bg-muted/40 border border-border/80 text-xs font-bold text-foreground focus:outline-none focus:border-emerald-500"
                                 >
                                     <option value="7">7 Days</option>
                                     <option value="15">15 Days</option>
@@ -1011,17 +978,17 @@ function EmailLogsContent() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-zinc-800">
+                        <div className="flex justify-end gap-2 pt-2 border-t border-border/80">
                             <button
                                 onClick={() => setShowSettings(false)}
-                                className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 text-foreground transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSaveSettings}
                                 disabled={settingsLoading}
-                                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+                                className="px-4 py-2 rounded-xl text-xs font-black bg-emerald-500 hover:bg-emerald-600 text-black transition-colors disabled:opacity-50"
                             >
                                 {settingsLoading ? "Saving..." : "Save Settings"}
                             </button>
@@ -1034,27 +1001,27 @@ function EmailLogsContent() {
             <Dialog.Root open={showCleanupModal} onOpenChange={setShowCleanupModal}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl z-50 space-y-4 focus:outline-none">
-                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 pb-3">
-                            <h3 className="text-base font-extrabold text-red-600 dark:text-rose-400 flex items-center gap-2">
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl z-50 space-y-4 focus:outline-none">
+                        <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                            <h3 className="text-base font-black text-rose-500 flex items-center gap-2">
                                 <Trash2 className="w-5 h-5" />
                                 Purge Historical Logs
                             </h3>
-                            <button onClick={() => setShowCleanupModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200">
+                            <button onClick={() => setShowCleanupModal(false)} className="text-muted-foreground hover:text-foreground">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="space-y-3 text-xs text-gray-600 dark:text-zinc-300">
+                        <div className="space-y-3 text-xs text-muted-foreground">
                             <p>
                                 Purging removes read or historical email logs created older than the specified number of days from the database.
                             </p>
                             <div className="space-y-1.5 pt-2">
-                                <label className="font-bold text-gray-700 dark:text-zinc-200">Purge logs older than:</label>
+                                <label className="font-bold text-foreground">Purge logs older than:</label>
                                 <select
                                     value={cleanupDays}
                                     onChange={(e) => setCleanupDays(Number(e.target.value))}
-                                    className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 text-xs font-semibold text-gray-900 dark:text-white focus:outline-none focus:border-red-500"
+                                    className="w-full p-2.5 rounded-xl bg-muted/40 border border-border/80 text-xs font-bold text-foreground focus:outline-none focus:border-rose-500"
                                 >
                                     <option value={7}>7 Days</option>
                                     <option value={15}>15 Days</option>
@@ -1065,17 +1032,17 @@ function EmailLogsContent() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-zinc-800">
+                        <div className="flex justify-end gap-2 pt-2 border-t border-border/80">
                             <button
                                 onClick={() => setShowCleanupModal(false)}
-                                className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 text-foreground transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleRunCleanup}
                                 disabled={cleaning}
-                                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
+                                className="px-4 py-2 rounded-xl text-xs font-black bg-rose-500 hover:bg-rose-600 text-white transition-colors disabled:opacity-50"
                             >
                                 {cleaning ? "Purging..." : "Purge Logs Now"}
                             </button>
