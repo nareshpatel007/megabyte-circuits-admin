@@ -25,10 +25,32 @@ export default function GerberBoardPreview({
     className = "w-full h-full"
 }: GerberBoardPreviewProps) {
     const [imgError, setImgError] = useState(false);
+    const colorMapHex: Record<string, string> = {
+        "#52c41a": "green",
+        "#722ed1": "purple",
+        "#f5222d": "red",
+        "#fadb14": "yellow",
+        "#1677ff": "blue",
+        "#ffffff": "white",
+        "#000000": "black"
+    };
+
+    const rawColor = (pcbColor || "green").toLowerCase().trim();
+    const colorSlug = colorMapHex[rawColor] || rawColor;
+    const validColors = ["green", "purple", "red", "yellow", "blue", "white", "black"];
+    const effectiveColor = validColors.includes(colorSlug) ? colorSlug : "green";
 
     let effectiveSrc = previewData;
-    if (gerberFileId && (!effectiveSrc || effectiveSrc.startsWith("/projects/"))) {
-        effectiveSrc = `/api/gerber/${gerberFileId}/preview/front`;
+    if (gerberFileId) {
+        if (!effectiveSrc || effectiveSrc.includes("/preview/front") || effectiveSrc.startsWith("/projects/")) {
+            effectiveSrc = `/api/gerber/${gerberFileId}/preview/front?color=${effectiveColor}`;
+        }
+    } else if (effectiveSrc && effectiveSrc.includes("/preview/front")) {
+        if (effectiveSrc.includes("?color=")) {
+            effectiveSrc = effectiveSrc.replace(/\?color=[a-z]+/, `?color=${effectiveColor}`);
+        } else {
+            effectiveSrc = `${effectiveSrc}?color=${effectiveColor}`;
+        }
     }
 
     if (effectiveSrc && (effectiveSrc.includes("<svg") || effectiveSrc.trim().startsWith("<svg"))) {
