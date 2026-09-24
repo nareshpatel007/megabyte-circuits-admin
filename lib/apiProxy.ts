@@ -96,6 +96,20 @@ export async function handleApiProxy(
         const targetUrl = `${apiUrl}${path}${searchParams ? searchParams : ""}`;
 
         const apiRes = await fetch(targetUrl, fetchOptions);
+
+        const contentType = apiRes.headers.get("content-type") || "";
+        if (contentType.includes("text/event-stream")) {
+            return new NextResponse(apiRes.body, {
+                status: apiRes.status,
+                headers: {
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache, no-transform",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            });
+        }
+
         const buffer = await apiRes.arrayBuffer();
 
         const responseHeaders = new Headers();
