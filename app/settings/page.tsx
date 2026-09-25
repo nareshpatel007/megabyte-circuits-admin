@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2, RefreshCw, Calculator } from "lucide-react";
+import { Eye, EyeOff, Save, AlertTriangle, Plus, Trash2, Edit2, Check, X, MoveVertical, Loader2, RefreshCw, Calculator, Mail, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
@@ -265,6 +265,64 @@ export default function SettingsPage() {
         }
     };
 
+    const [testRecipientEmail, setTestRecipientEmail] = useState("");
+    const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+    const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+
+    const handleSendTestEmail = async () => {
+        if (!testRecipientEmail || !testRecipientEmail.trim()) {
+            toast.error("Please enter a test recipient email address.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(testRecipientEmail.trim())) {
+            toast.error("Invalid recipient email format.");
+            return;
+        }
+
+        setIsSendingTestEmail(true);
+        setTestEmailResult(null);
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            const payload = {
+                recipient_email: testRecipientEmail.trim(),
+                MAIL_HOST: creds.MAIL_HOST || "",
+                MAIL_PORT: creds.MAIL_PORT || "",
+                MAIL_USERNAME: creds.MAIL_USERNAME || "",
+                MAIL_PASSWORD: creds.MAIL_PASSWORD || "",
+                MAIL_ENCRYPTION: creds.MAIL_ENCRYPTION || "",
+                MAIL_FROM_ADDRESS: creds.MAIL_FROM_ADDRESS || "",
+                MAIL_FROM_NAME: creds.MAIL_FROM_NAME || "",
+                MAIL_BCC_ADDRESS: creds.MAIL_BCC_ADDRESS || "",
+            };
+
+            const res = await fetch("/api/admin/credentials/test-smtp", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success(data.message || "Test email sent successfully!");
+                setTestEmailResult({ success: true, message: data.message });
+            } else {
+                toast.error(data.message || "Failed to send test email.");
+                setTestEmailResult({ success: false, message: data.message || "Failed to send test email." });
+            }
+        } catch (err: any) {
+            toast.error("Error sending test email. Please check server connection.");
+            setTestEmailResult({ success: false, message: err.message || "Error sending test email." });
+        } finally {
+            setIsSendingTestEmail(false);
+        }
+    };
+
     if (loadingCredentials) {
         return (
             <DashboardLayout title="General Settings" subtitle="Configure system credentials, integrations, and server settings">
@@ -493,6 +551,69 @@ export default function SettingsPage() {
                                 value={creds.MAIL_BCC_ADDRESS || ""}
                                 onChange={(val) => handleChange("MAIL_BCC_ADDRESS", val)}
                             />
+                        </div>
+
+                        {/* Send Test Email Section */}
+                        <div className="mt-6 pt-5 border-t border-border/60">
+                            <div className="bg-muted/30 border border-border/60 rounded-xl p-4 md:p-5 space-y-4">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <Mail className="w-4 h-4 text-emerald-500" />
+                                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Test SMTP Credentials & Send Email</h4>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1 font-medium">
+                                        Enter a custom recipient email address to send a test email using the credentials entered above (or saved credentials).
+                                    </p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="email"
+                                            placeholder="Enter test recipient email (e.g. yourname@example.com)"
+                                            value={testRecipientEmail}
+                                            onChange={(e) => setTestRecipientEmail(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === "Enter") handleSendTestEmail(); }}
+                                            className="w-full px-3.5 py-2.5 text-sm bg-background/80 border border-border/85 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={isSendingTestEmail}
+                                        onClick={handleSendTestEmail}
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs disabled:opacity-50 shrink-0 h-[42px]"
+                                    >
+                                        {isSendingTestEmail ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Sending Test...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="w-4 h-4" />
+                                                Send Test Email
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {testEmailResult && (
+                                    <div className={`p-3.5 rounded-xl border text-xs font-medium flex items-start gap-2.5 transition-all ${
+                                        testEmailResult.success 
+                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400" 
+                                            : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
+                                    }`}>
+                                        {testEmailResult.success ? (
+                                            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+                                        )}
+                                        <div className="flex-1">
+                                            <p className="font-bold">{testEmailResult.success ? "Success" : "Test Failed"}</p>
+                                            <p className="mt-0.5 opacity-90 break-words">{testEmailResult.message}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </SettingsSection>
 
