@@ -102,10 +102,55 @@ function EmailLogsContent() {
 
     // Filters
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [emailTypeFilter, setEmailTypeFilter] = useState("all");
-    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [tempStartDate, setTempStartDate] = useState("");
+    const [tempEndDate, setTempEndDate] = useState("");
+    const [activePreset, setActivePreset] = useState<string | null>(null);
+    const [popoverOpen, setPopoverOpen] = useState(false);
+
+    // Debounce search input to call API after user stops typing
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const getLast5MonthsOptions = () => {
+        const options: { label: string; start: string; end: string; key: string }[] = [];
+        const now = new Date();
+        for (let i = 0; i < 5; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const start = `${yyyy}-${mm}-01`;
+            const lastDay = new Date(yyyy, d.getMonth() + 1, 0).getDate();
+            const end = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+            options.push({ label, start, end, key: `month_${i}` });
+        }
+        return options;
+    };
+
+    const MONTH_OPTIONS = getLast5MonthsOptions();
+
+    const formatDateShort = (dStr: string) => {
+        if (!dStr) return "";
+        try {
+            const parts = dStr.split('-');
+            if (parts.length === 3) {
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            }
+            return dStr;
+        } catch {
+            return dStr;
+        }
+    };
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -148,11 +193,11 @@ function EmailLogsContent() {
             params.append("page", page.toString());
             params.append("per_page", pageSize.toString());
 
-            if (search.trim()) params.append("search", search.trim());
+            if (debouncedSearch.trim()) params.append("search", debouncedSearch.trim());
             if (statusFilter !== "all") params.append("status", statusFilter);
             if (emailTypeFilter !== "all") params.append("email_type", emailTypeFilter);
-            if (startDate) params.append("start_date", format(startDate, "yyyy-MM-dd"));
-            if (endDate) params.append("end_date", format(endDate, "yyyy-MM-dd"));
+            if (startDate) params.append("start_date", startDate);
+            if (endDate) params.append("end_date", endDate);
 
             const res = await fetch(`/api/admin/email-logs?${params.toString()}`, {
                 headers: getAuthHeaders()
@@ -184,7 +229,7 @@ function EmailLogsContent() {
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, search, statusFilter, emailTypeFilter, startDate, endDate]);
+    }, [page, pageSize, debouncedSearch, statusFilter, emailTypeFilter, startDate, endDate]);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -320,8 +365,8 @@ function EmailLogsContent() {
             if (search.trim()) params.append("search", search.trim());
             if (statusFilter !== "all") params.append("status", statusFilter);
             if (emailTypeFilter !== "all") params.append("email_type", emailTypeFilter);
-            if (startDate) params.append("start_date", format(startDate, "yyyy-MM-dd"));
-            if (endDate) params.append("end_date", format(endDate, "yyyy-MM-dd"));
+            if (startDate) params.append("start_date", startDate);
+            if (endDate) params.append("end_date", endDate);
 
             const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/email-logs/export?${params.toString()}`, {
@@ -585,41 +630,148 @@ function EmailLogsContent() {
                                 <option value="system">System Mail</option>
                             </select>
 
-                            <Popover>
+                            {/* Popover Date Range & Presets Selector */}
+                            <Popover open={popoverOpen} onOpenChange={(open) => {
+                                setPopoverOpen(open);
+                                if (open) {
+                                    setTempStartDate(startDate);
+                                    setTempEndDate(endDate);
+                                }
+                            }}>
                                 <PopoverTrigger asChild>
-                                    <button className="inline-flex items-center gap-2 px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs hover:bg-muted transition-colors cursor-pointer shadow-2xs">
-                                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
-                                        <span>{startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}</span>
+                                    <button className="h-9 inline-flex items-center justify-between gap-2 px-3.5 bg-muted/40 border border-border/80 rounded-xl text-xs font-bold text-foreground hover:bg-muted focus:outline-none transition-colors cursor-pointer shadow-2xs shrink-0 whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                            <CalendarIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                            <span>
+                                                {activePreset
+                                                    ? MONTH_OPTIONS.find(m => m.key === activePreset)?.label || "Date Filter"
+                                                    : startDate && endDate
+                                                        ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
+                                                        : startDate
+                                                            ? `From ${formatDateShort(startDate)}`
+                                                            : endDate
+                                                                ? `Until ${formatDateShort(endDate)}`
+                                                                : "Date Filter"}
+                                            </span>
+                                        </div>
+                                        {(startDate || endDate) && (
+                                            <span
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setStartDate("");
+                                                    setEndDate("");
+                                                    setTempStartDate("");
+                                                    setTempEndDate("");
+                                                    setActivePreset(null);
+                                                    setPage(1);
+                                                }}
+                                                className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                                                title="Clear date filter"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
                                     </button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 bg-card border-border text-foreground" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={startDate}
-                                        onSelect={(d) => {
-                                            setStartDate(d);
-                                            setPage(1);
-                                        }}
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                                <PopoverContent
+                                    className="z-50 w-80 sm:w-[360px] p-4 bg-card border border-border/80 rounded-2xl shadow-xl space-y-4 text-foreground"
+                                    align="end"
+                                    sideOffset={8}
+                                >
+                                    <div className="flex items-center justify-between pb-2.5 border-b border-border/60">
+                                        <span className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                            <CalendarIcon className="w-4 h-4 text-emerald-500" /> Select Date Range
+                                        </span>
+                                    </div>
 
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <button className="inline-flex items-center gap-2 px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs hover:bg-muted transition-colors cursor-pointer shadow-2xs">
-                                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
-                                        <span>{endDate ? format(endDate, "MMM dd, yyyy") : "End Date"}</span>
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 bg-card border-border text-foreground" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={endDate}
-                                        onSelect={(d) => {
-                                            setEndDate(d);
-                                            setPage(1);
-                                        }}
-                                    />
+                                    {/* Side by Side Start & End Date Inputs */}
+                                    <div>
+                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-1.5">Custom Date Range</span>
+                                        <div className="grid grid-cols-2 gap-2.5">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={tempStartDate}
+                                                    onChange={(e) => {
+                                                        setTempStartDate(e.target.value);
+                                                        setActivePreset(null);
+                                                    }}
+                                                    className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs h-9"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-muted-foreground block mb-1">End Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={tempEndDate}
+                                                    onChange={(e) => {
+                                                        setTempEndDate(e.target.value);
+                                                        setActivePreset(null);
+                                                    }}
+                                                    className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs h-9"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Last 5 Months Quick Options */}
+                                    <div className="pt-2 border-t border-border/60">
+                                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-2">Last 5 Months</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {MONTH_OPTIONS.map((m) => {
+                                                const isActive = activePreset === m.key;
+                                                return (
+                                                    <button
+                                                        key={m.key}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActivePreset(m.key);
+                                                            setTempStartDate(m.start);
+                                                            setTempEndDate(m.end);
+                                                        }}
+                                                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all h-auto cursor-pointer ${isActive
+                                                            ? "bg-emerald-600 text-white border border-emerald-600 shadow-xs"
+                                                            : "bg-muted/40 hover:bg-muted text-foreground border border-border/60"
+                                                            }`}
+                                                    >
+                                                        {m.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons: Reset & Apply */}
+                                    <div className="pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setTempStartDate("");
+                                                setTempEndDate("");
+                                                setStartDate("");
+                                                setEndDate("");
+                                                setActivePreset(null);
+                                                setPage(1);
+                                                setPopoverOpen(false);
+                                            }}
+                                            className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-border/80 text-foreground hover:bg-muted h-auto cursor-pointer"
+                                        >
+                                            Reset
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setStartDate(tempStartDate);
+                                                setEndDate(tempEndDate);
+                                                setPage(1);
+                                                setPopoverOpen(false);
+                                            }}
+                                            className="px-4 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs h-auto cursor-pointer"
+                                        >
+                                            Apply
+                                        </button>
+                                    </div>
                                 </PopoverContent>
                             </Popover>
 
@@ -629,8 +781,11 @@ function EmailLogsContent() {
                                         setSearch("");
                                         setStatusFilter("all");
                                         setEmailTypeFilter("all");
-                                        setStartDate(undefined);
-                                        setEndDate(undefined);
+                                        setStartDate("");
+                                        setEndDate("");
+                                        setTempStartDate("");
+                                        setTempEndDate("");
+                                        setActivePreset(null);
                                         setPage(1);
                                     }}
                                     className="p-2 bg-muted/40 border border-border/80 rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -670,7 +825,7 @@ function EmailLogsContent() {
                                                 className="rounded border-border bg-card text-emerald-500 focus:ring-emerald-500/30"
                                             />
                                         </th>
-                                        <th className="py-3.5 px-5">ID / Date</th>
+                                        <th className="py-3.5 px-5">Date & Time</th>
                                         <th className="py-3.5 px-5">Recipient</th>
                                         <th className="py-3.5 px-5">Subject</th>
                                         <th className="py-3.5 px-5">Template / Type</th>
@@ -702,9 +857,8 @@ function EmailLogsContent() {
                                                         />
                                                     </td>
 
-                                                    <td className="py-4 px-5 font-mono text-xs whitespace-nowrap">
-                                                        <span className="font-black text-emerald-600 dark:text-emerald-400">#{log.id}</span>
-                                                        <p className="text-[11px] text-muted-foreground font-sans mt-0.5">
+                                                    <td className="py-4 px-5 text-xs whitespace-nowrap">
+                                                        <p className="font-bold text-foreground text-xs">
                                                             {formatDate(log.sent_at || log.created_at)}
                                                         </p>
                                                     </td>
