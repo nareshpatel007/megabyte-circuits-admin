@@ -49,7 +49,7 @@ export default function JlcpcbManagementPage() {
     const [addingGst, setAddingGst] = useState(false);
 
     // Live calculation preview input state
-    const [samplePcbUsd, setSamplePcbUsd] = useState<number>(75);
+    const [samplePcbUsd, setSamplePcbUsd] = useState<number>(1);
     const [sampleQty, setSampleQty] = useState<number>(1);
     const [fetchingFx, setFetchingFx] = useState(false);
 
