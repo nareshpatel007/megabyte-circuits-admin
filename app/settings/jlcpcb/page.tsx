@@ -325,19 +325,6 @@ export default function JlcpcbManagementPage() {
                                             <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
                                                 USD → INR Exchange Rate (₹)
                                             </label>
-                                            <button
-                                                type="button"
-                                                disabled={fetchingFx}
-                                                onClick={handleFetchExchangeRate}
-                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer disabled:opacity-50"
-                                            >
-                                                {fetchingFx ? (
-                                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                                ) : (
-                                                    <RefreshCw className="w-3 h-3" />
-                                                )}
-                                                Fetch Live Rate
-                                            </button>
                                         </div>
                                         <div className="flex gap-2">
                                             <input
@@ -359,7 +346,7 @@ export default function JlcpcbManagementPage() {
                                                 ) : (
                                                     <RefreshCw className="w-4 h-4" />
                                                 )}
-                                                <span>Fetch API</span>
+                                                <span>Fetch Rate</span>
                                             </button>
                                         </div>
                                     </div>
