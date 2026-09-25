@@ -15,6 +15,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrdersSkeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { getStatusColor } from "@/lib/status-colors";
 
 interface StatusItem {
     id: number;
@@ -126,6 +127,9 @@ export default function OrdersPage() {
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<number>(10);
+    const [totalOrders, setTotalOrders] = useState<number>(0);
+    const [totalRecords, setTotalRecords] = useState<number>(0);
+    const [apiStats, setApiStats] = useState<any>(null);
 
     // Quick preview modal state
     const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
@@ -820,7 +824,7 @@ export default function OrdersPage() {
             const token = localStorage.getItem("admin_token");
             const headers = { Authorization: `Bearer ${token}` };
 
-            let url = `/api/admin/orders?sort_by=delivery_date&sort_order=desc&per_page=${pageSize}&limit=${pageSize}`;
+            let url = `/api/admin/orders?sort_by=delivery_date&sort_order=desc&per_page=${pageSize}&page=${page}`;
             if (startDate) url += `&start_date=${startDate}`;
             if (endDate) url += `&end_date=${endDate}`;
             if (searchQuery.trim()) {
@@ -845,9 +849,22 @@ export default function OrdersPage() {
             }
 
             if (ordersData.status || ordersData.success) {
-                setOrders(ordersData.data || []);
+                const items = ordersData.data || [];
+                setOrders(items);
+                const tCount = ordersData.total ?? ordersData.total_count ?? items.length;
+                const rCount = ordersData.total_records ?? tCount;
+                setTotalOrders(tCount);
+                setTotalRecords(rCount);
+                if (ordersData.stats) {
+                    setApiStats(ordersData.stats);
+                } else {
+                    setApiStats(null);
+                }
             } else {
                 setOrders([]);
+                setTotalOrders(0);
+                setTotalRecords(0);
+                setApiStats(null);
             }
         } catch (err) {
             console.error("Failed to load orders data:", err);
@@ -860,7 +877,7 @@ export default function OrdersPage() {
 
     useEffect(() => {
         fetchData(debouncedSearch);
-    }, [debouncedSearch, startDate, endDate, statusFilter, pageSize]);
+    }, [debouncedSearch, startDate, endDate, statusFilter, pageSize, page]);
 
     const handleResetFilter = () => {
         setSearch("");
@@ -971,8 +988,8 @@ export default function OrdersPage() {
         return matchSearch && matchStatus;
     });
 
-    const totalPages = Math.ceil(filtered.length / pageSize);
-    const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+    const totalPages = Math.max(1, Math.ceil(totalOrders / (pageSize > 0 ? pageSize : 10)));
+    const paginated = orders;
 
 
     // Open change status modal
@@ -1118,14 +1135,14 @@ export default function OrdersPage() {
         </div>
     );
 
-    // Dynamic statistics based on current filtered orders
-    const statsTotalOrders = filtered.length;
-    const statsActiveOrders = filtered.filter((o) => !['completed', 'shipped', 'delivered', 'cancelled', 'canceled'].includes((o.status || '').toLowerCase())).length;
-    const statsCompletedOrders = filtered.filter((o) => ['completed', 'shipped', 'delivered'].includes((o.status || '').toLowerCase())).length;
-    const statsTotalOrderValue = filtered.reduce((sum, o) => sum + (Number(o.order_value) || 0), 0);
+    // Dynamic statistics based on current filtered orders or server-calculated stats
+    const statsTotalOrders = apiStats?.total_orders ?? totalOrders;
+    const statsActiveOrders = apiStats?.active_orders ?? orders.filter((o) => !['completed', 'shipped', 'delivered', 'cancelled', 'canceled'].includes((o.status || '').toLowerCase())).length;
+    const statsCompletedOrders = apiStats?.completed_orders ?? orders.filter((o) => ['completed', 'shipped', 'delivered'].includes((o.status || '').toLowerCase())).length;
+    const statsTotalOrderValue = apiStats?.total_value ?? orders.reduce((sum, o) => sum + (Number(o.order_value) || 0), 0);
 
     // Quantity calculations excluding Part orders
-    const nonPartFilteredOrders = filtered.filter((o) => getMetaValue(o, 'product_type', 'pcb').toLowerCase() !== 'part');
+    const nonPartFilteredOrders = orders.filter((o) => getMetaValue(o, 'product_type', 'pcb').toLowerCase() !== 'part');
     const statsTotalQty = nonPartFilteredOrders.reduce((sum, o) => sum + (parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0), 0);
     const statsLaunchQty = nonPartFilteredOrders.reduce((sum, o) => {
         const totalQ = parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0;
@@ -1147,7 +1164,7 @@ export default function OrdersPage() {
     return (
         <DashboardLayout
             title="Orders"
-            subtitle={`${filtered.length} orders listed (${orders.length} total recorded)`}
+            subtitle={`${totalOrders} orders listed${totalRecords ? ` (${totalRecords} total recorded)` : ""}`}
             action={headerActions}
         >
             {loading ? (
@@ -1482,7 +1499,7 @@ export default function OrdersPage() {
                                             paginated.map((order) => {
                                                 const orderStatusStr = (order?.status || 'Pending').toString().toLowerCase();
                                                 const matchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === orderStatusStr);
-                                                const statusColor = matchedStatus?.color || "#10b981";
+                                                const statusColor = getStatusColor(order.status, matchedStatus);
                                                 const pcbColorVal = getMetaValue(order, 'pcb_color', getMetaValue(order, 'solder_mask', 'Green'));
                                                 const orderNumColor = getPcbColorCode(pcbColorVal);
                                                 const layerCount = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
@@ -1742,9 +1759,9 @@ export default function OrdersPage() {
                         <div className="p-3 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-medium bg-card">
                             <div className="flex items-center gap-3">
                                 <span>
-                                    Showing <strong className="text-foreground">{filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}</strong> to{" "}
-                                    <strong className="text-foreground">{Math.min(page * pageSize, filtered.length)}</strong> of{" "}
-                                    <strong className="text-foreground">{filtered.length}</strong> orders
+                                    Showing <strong className="text-foreground">{totalOrders === 0 ? 0 : (page - 1) * pageSize + 1}</strong> to{" "}
+                                    <strong className="text-foreground">{Math.min(page * pageSize, totalOrders)}</strong> of{" "}
+                                    <strong className="text-foreground">{totalOrders}</strong> orders
                                 </span>
                                 <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-border/60">
                                     <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">Rows per page:</span>
@@ -1760,12 +1777,15 @@ export default function OrdersPage() {
                                         <option value={20}>20</option>
                                         <option value={50}>50</option>
                                         <option value={100}>100</option>
+                                        <option value={250}>250</option>
+                                        <option value={500}>500</option>
+                                        <option value={1000}>1000</option>
                                     </select>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    disabled={page === 1}
+                                    disabled={page <= 1}
                                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                                 >

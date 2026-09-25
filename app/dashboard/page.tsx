@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
 import { useAuth } from "@/lib/auth-context";
+import { getStatusColor } from "@/lib/status-colors";
 
 interface StatusItem {
     id: number;
@@ -471,9 +472,11 @@ export default function DashboardPage() {
                                                     paddingAngle={4}
                                                     dataKey="value"
                                                 >
-                                                    {donutData.map((_, index) => (
-                                                        <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                                                    ))}
+                                                    {donutData.map((entry, index) => {
+                                                        const matched = statuses.find(s => s && s.name && s.name.trim().toLowerCase() === entry.name.trim().toLowerCase());
+                                                        const color = getStatusColor(entry.name, matched, index);
+                                                        return <Cell key={index} fill={color} />;
+                                                    })}
                                                 </Pie>
                                                 <Tooltip
                                                     contentStyle={{
@@ -489,7 +492,17 @@ export default function DashboardPage() {
                                                 <Legend
                                                     iconType="circle"
                                                     iconSize={8}
-                                                    wrapperStyle={{ fontSize: "11px", fontWeight: 500, color: "#64748b" }}
+                                                    wrapperStyle={{ fontSize: "11px", fontWeight: 500 }}
+                                                    formatter={(value: string, entry: any) => {
+                                                        const matched = statuses.find(s => s && s.name && s.name.trim().toLowerCase() === value.trim().toLowerCase());
+                                                        const idx = donutData.findIndex(d => d.name === value);
+                                                        const color = entry?.color || getStatusColor(value, matched, idx >= 0 ? idx : 0);
+                                                        return (
+                                                            <span className="text-xs font-bold" style={{ color }}>
+                                                                {value}
+                                                            </span>
+                                                        );
+                                                    }}
                                                 />
                                             </PieChart>
                                         </ResponsiveContainer>
@@ -530,7 +543,7 @@ export default function DashboardPage() {
                                         recentOrders.map((order, index) => {
                                             const orderStatusStr = (order?.status || 'Pending').toString().toLowerCase();
                                             const matchedStatus = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === orderStatusStr);
-                                            const statusColor = matchedStatus?.color || "#10b981";
+                                            const statusColor = getStatusColor(order.status, matchedStatus, index);
 
                                             const getMetaVal = (key: string, fallback = "") => {
                                                 if (!order.metas) return fallback;
