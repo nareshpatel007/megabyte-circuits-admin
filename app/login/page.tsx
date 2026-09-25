@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
@@ -118,9 +119,9 @@ export default function LoginPage() {
                                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest block">
                                     Password
                                 </label>
-                                <a href="#" className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                                <Link href="/forgot-password" className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
                                     Forgot password?
-                                </a>
+                                </Link>
                             </div>
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
