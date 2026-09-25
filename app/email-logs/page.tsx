@@ -85,6 +85,13 @@ const formatDate = (dateString?: string | null) => {
     }
 };
 
+const formatRetentionDisplay = (days: string) => {
+    if (!days) return "N/A";
+    const d = String(days).toLowerCase().trim();
+    if (d === "0" || d === "never" || d === "infinite") return "Infinite";
+    return `${days} Days`;
+};
+
 function EmailLogsContent() {
     const searchParams = useSearchParams();
 
@@ -248,6 +255,12 @@ function EmailLogsContent() {
                     sent_today: s.today_count ?? s.sent_today ?? 0,
                     failed_today: s.today_failed ?? s.failed_today ?? 0
                 });
+                if (s.retention_days !== undefined && s.retention_days !== null) {
+                    setRetentionDays(String(s.retention_days));
+                }
+                if (s.logging_enabled !== undefined && s.logging_enabled !== null) {
+                    setLoggingEnabled(Boolean(s.logging_enabled));
+                }
             }
         } catch (err) {
             console.error("Fetch email log stats error:", err);
@@ -299,6 +312,10 @@ function EmailLogsContent() {
     useEffect(() => {
         fetchStats();
     }, [fetchStats]);
+
+    useEffect(() => {
+        fetchSettings();
+    }, [fetchSettings]);
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
@@ -407,6 +424,8 @@ function EmailLogsContent() {
             if (data.success || data.status) {
                 toast.success("Email log retention settings updated");
                 setShowSettings(false);
+                fetchSettings();
+                fetchStats();
             } else {
                 toast.error(data.message || "Failed to save settings");
             }
@@ -566,7 +585,7 @@ function EmailLogsContent() {
                             </div>
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Retention Policy</p>
-                                <h3 className="text-lg font-black text-foreground mt-0.5">{retentionDays === "0" ? "Infinite" : `${retentionDays} Days`}</h3>
+                                <h3 className="text-lg font-black text-foreground mt-0.5">{formatRetentionDisplay(retentionDays)}</h3>
                                 <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{loggingEnabled ? "Logging Active" : "Disabled"}</p>
                             </div>
                         </div>
