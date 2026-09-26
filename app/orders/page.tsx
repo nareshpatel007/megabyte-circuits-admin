@@ -1575,11 +1575,28 @@ export default function OrdersPage() {
                                                                     #{order.order_number}
                                                                 </span>
                                                             )}
-                                                            {order.combo && String(order.combo).trim() !== "" && (
-                                                                <div className="mt-1">
-                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                                                        <Layers className="w-2.5 h-2.5" /> Combo: {order.combo}
-                                                                    </span>
+                                                            {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
+                                                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                                                    {(() => {
+                                                                        const comboList = Array.isArray(order.combo_orders) && order.combo_orders.length > 0
+                                                                            ? order.combo_orders.map(c => c.order_number)
+                                                                            : String(order.combo || '').split(/[\+,\s]+/).filter(Boolean);
+
+                                                                        if (comboList.length === 0) return null;
+
+                                                                        return (
+                                                                            <span
+                                                                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs hover:bg-indigo-100 transition-colors"
+                                                                                title={`Combo Orders: ${comboList.join(', ')}`}
+                                                                            >
+                                                                                <Layers className="w-2.5 h-2.5 text-indigo-500 shrink-0" />
+                                                                                <span className="font-semibold text-indigo-600">Combo:</span>
+                                                                                <span className="font-mono font-bold text-indigo-800">
+                                                                                    {comboList.map(c => (c.startsWith('#') || c.startsWith('M') ? c : `#${c}`)).join(', ')}
+                                                                                </span>
+                                                                            </span>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             )}
                                                         </td>

@@ -78,6 +78,7 @@ interface ApiOrder {
     q_no?: string | number | null;
     c_g?: string | null;
     combo?: string | null;
+    combo_orders?: Array<{ id: number; order_number: string; status?: string }>;
     bill_number?: string | null;
     board_name: string;
     gerber_file_id?: number | string | null;
@@ -434,6 +435,14 @@ export default function OrderDetailPage() {
                 {isJlcpcbOrder && (
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
                         JLCPCB Order
+                    </span>
+                )}
+                {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200/80 inline-flex items-center gap-1">
+                        <Layers className="w-3 h-3 text-indigo-500" />
+                        Combo: {Array.isArray(order.combo_orders) && order.combo_orders.length > 0
+                            ? order.combo_orders.map(c => c.order_number).join(', ')
+                            : order.combo}
                     </span>
                 )}
             </div>

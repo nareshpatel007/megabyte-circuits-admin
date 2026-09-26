@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, X, Check, Loader2, Layers } from "lucide-react";
+import { Search, X, Check, Loader2, Layers, ChevronDown } from "lucide-react";
 
 export interface ComboOrderItem {
     id: number;
@@ -23,7 +23,7 @@ export function ComboSelect({
     currentOrderNumber,
     value = [],
     onChange,
-    placeholder = "Search and select combo orders..."
+    placeholder = "Select combo orders..."
 }: ComboSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -31,15 +31,24 @@ export function ComboSelect({
     const [options, setOptions] = useState<ComboOrderItem[]>([]);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown when clicking outside
+    // Close dropdown when clicking outside or pressing Escape
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setIsOpen(false);
+            }
+        }
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
     }, []);
 
     // Fetch matching orders from API
@@ -86,7 +95,6 @@ export function ComboSelect({
     }, [searchQuery, isOpen]);
 
     const handleToggle = (item: ComboOrderItem) => {
-        // Exclude current order
         if (
             (currentOrderId && item.id === currentOrderId) ||
             (currentOrderNumber && item.order_number.toUpperCase() === currentOrderNumber.toUpperCase())
@@ -121,51 +129,58 @@ export function ComboSelect({
     return (
         <div ref={containerRef} className="relative w-full">
             {/* Selected items tags & input trigger */}
-            <div
-                onClick={() => setIsOpen(true)}
-                className="w-full min-h-[42px] px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl flex flex-wrap items-center gap-1.5 cursor-pointer shadow-xs focus-within:ring-2 focus-within:ring-blue-500"
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full min-h-[40px] px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 shadow-xs flex items-center justify-between hover:border-slate-400 transition-all focus:outline-none ${
+                    isOpen ? "ring-2 ring-purple-500/20 border-purple-500 shadow-sm" : ""
+                }`}
             >
-                {value.length > 0 ? (
-                    value.map((item) => (
-                        <span
-                            key={item.id || item.order_number}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                        >
-                            <Layers className="w-3 h-3 text-blue-500" />
-                            {item.order_number}
-                            <button
-                                type="button"
-                                onClick={(e) => handleRemove(e, item)}
-                                className="hover:text-blue-900 dark:hover:text-white transition-colors p-0.5 rounded-full hover:bg-blue-200/50"
+                <div className="flex flex-wrap items-center gap-1.5 max-w-[calc(100%-24px)]">
+                    {value.length > 0 ? (
+                        value.map((item) => (
+                            <span
+                                key={item.id || item.order_number}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs"
                             >
-                                <X className="w-3 h-3" />
-                            </button>
-                        </span>
-                    ))
-                ) : (
-                    <span className="text-slate-400 dark:text-slate-500 font-normal">{placeholder}</span>
-                )}
-            </div>
+                                <Layers className="w-3 h-3 text-purple-500 shrink-0" />
+                                <span className="font-mono">{item.order_number}</span>
+                                <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => handleRemove(e, item)}
+                                    className="hover:text-purple-900 transition-colors p-0.5 rounded-md hover:bg-purple-200/60 ml-0.5 cursor-pointer"
+                                >
+                                    <X className="w-3 h-3" />
+                                </span>
+                            </span>
+                        ))
+                    ) : (
+                        <span className="text-slate-400 font-normal truncate">{placeholder}</span>
+                    )}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ml-1 ${isOpen ? "rotate-180 text-purple-600" : ""}`} />
+            </button>
 
             {/* Dropdown menu */}
             {isOpen && (
-                <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden text-xs">
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200/90 rounded-xl shadow-2xl overflow-hidden text-xs max-w-full">
                     {/* Search box inside dropdown */}
-                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-850">
-                        <Search className="w-3.5 h-3.5 text-slate-400" />
+                    <div className="p-2.5 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2">
+                        <Search className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search by order # or customer..."
                             autoFocus
-                            className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                            className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none font-medium"
                         />
                         {searchQuery && (
                             <button
                                 type="button"
                                 onClick={() => setSearchQuery("")}
-                                className="text-slate-400 hover:text-slate-600"
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200/50 transition-colors"
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>
@@ -173,14 +188,14 @@ export function ComboSelect({
                     </div>
 
                     {/* Options list */}
-                    <div className="max-h-56 overflow-y-auto py-1">
+                    <div className="max-h-56 overflow-y-auto p-1.5 space-y-1">
                         {loading ? (
-                            <div className="p-4 flex items-center justify-center gap-2 text-slate-400">
-                                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                                <span>Loading orders...</span>
+                            <div className="p-4 flex items-center justify-center gap-2 text-slate-400 italic">
+                                <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                                <span>Searching orders...</span>
                             </div>
                         ) : options.length === 0 ? (
-                            <div className="p-4 text-center text-slate-400">No orders found.</div>
+                            <div className="p-4 text-center text-slate-400 italic">No matching orders found.</div>
                         ) : (
                             options.map((item) => {
                                 const selected = isSelected(item);
@@ -190,31 +205,40 @@ export function ComboSelect({
                                     <div
                                         key={item.id}
                                         onClick={() => !current && handleToggle(item)}
-                                        className={`px-3 py-2 flex items-center justify-between cursor-pointer transition-colors ${
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between cursor-pointer ${
                                             current
-                                                ? "opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800"
+                                                ? "opacity-50 cursor-not-allowed bg-slate-50 text-slate-400"
                                                 : selected
-                                                ? "bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
-                                                : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                                ? "bg-purple-50 text-purple-900 font-bold border border-purple-100"
+                                                : "hover:bg-slate-100 text-slate-800 font-medium"
                                         }`}
                                     >
-                                        <div className="flex flex-col">
-                                            <span className="font-bold flex items-center gap-1.5">
-                                                {item.order_number}
+                                        <div className="min-w-0 pr-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-slate-900 font-mono">{item.order_number}</span>
                                                 {current && (
-                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-normal">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-normal">
                                                         Current Order
                                                     </span>
                                                 )}
-                                            </span>
+                                                {item.status && !current && (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-normal">
+                                                        {item.status}
+                                                    </span>
+                                                )}
+                                            </div>
                                             {item.customer_name && (
-                                                <span className="text-[11px] text-slate-400 truncate max-w-[200px]">
+                                                <p className="text-[11px] text-slate-500 font-normal truncate mt-0.5 max-w-[220px]">
                                                     {item.customer_name}
-                                                </span>
+                                                </p>
                                             )}
                                         </div>
 
-                                        {selected && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 font-bold" />}
+                                        {selected && (
+                                            <div className="p-1 rounded-full bg-purple-100 text-purple-700 shrink-0 ml-2">
+                                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })
