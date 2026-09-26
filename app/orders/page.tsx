@@ -1246,21 +1246,17 @@ export default function OrdersPage() {
         return found ? found.meta_value : fallback;
     };
 
-    // Helper to format date as "05 Aug 2026, 11:41 am"
+    // Helper to format date as "25 Sept 2026" (date only, no time)
     const formatDate = (dateString?: string | null) => {
         if (!dateString || dateString === 'N/A') return 'N/A';
         try {
             const d = new Date(dateString);
             if (isNaN(d.getTime())) return dateString;
-            const formatted = d.toLocaleString('en-GB', {
+            return d.toLocaleDateString('en-GB', {
                 day: '2-digit',
                 month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
+                year: 'numeric'
             });
-            return formatted.replace(/\b(AM|PM)\b/gi, (m) => m.toLowerCase());
         } catch {
             return dateString || 'N/A';
         }
@@ -1921,7 +1917,7 @@ export default function OrdersPage() {
                                             <th className="py-2 px-3.5">Layers</th>
                                             <th className="py-2 px-3.5">Film</th>
                                             <th className="py-2 px-3.5">
-                                                Qty (Launch / Final / Fail)
+                                                QTY / LAUNCH / PANEL / UP / FINAL / FAIL
                                             </th>
                                             <th className="py-2 px-3.5">Order Date</th>
                                             <th className="py-2 px-3.5">Delivery Date</th>
@@ -1944,11 +1940,33 @@ export default function OrdersPage() {
                                                 const orderNumColor = getPcbColorCode(pcbColorVal);
                                                 const layerCount = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
 
-                                                const totalQty = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
-                                                const launchQty = typeof order.launch_qty === 'number' ? order.launch_qty : (parseInt(getMetaValue(order, 'launch_qty', String(totalQty))) || totalQty);
+                                                const totalQty = typeof order.order_qty === 'number' && order.order_qty > 0
+                                                    ? order.order_qty
+                                                    : (parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '0')), 10) || order.order_qty || 0);
+
+                                                const launchQty = typeof order.launch_qty === 'number'
+                                                    ? order.launch_qty
+                                                    : (parseInt(getMetaValue(order, 'launch_qty', '0'), 10) || 0);
+
+                                                const panelQty = typeof order.panel_qty === 'number'
+                                                    ? order.panel_qty
+                                                    : (parseInt(getMetaValue(order, 'panel_qty', getMetaValue(order, 'panel', getMetaValue(order, 'panels', '0'))), 10) || 0);
+
+                                                const upsQty = typeof order.ups_qty === 'number'
+                                                    ? order.ups_qty
+                                                    : (parseInt(getMetaValue(order, 'ups_qty', getMetaValue(order, 'ups', getMetaValue(order, 'up', '0'))), 10) || 0);
+
                                                 const isCompleted = ['completed', 'shipped', 'delivered'].includes(orderStatusStr);
-                                                const completedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQty : 0);
-                                                const failedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
+                                                const completedQty = typeof order.final_qty === 'number'
+                                                    ? order.final_qty
+                                                    : (typeof order.completed_qty === 'number'
+                                                        ? order.completed_qty
+                                                        : (parseInt(getMetaValue(order, 'final_qty', getMetaValue(order, 'completed_qty', '0')), 10) || 0));
+
+                                                const failedQty = typeof order.failed_qty === 'number'
+                                                    ? order.failed_qty
+                                                    : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0);
+
                                                 const pendingQty = Math.max(0, totalQty - completedQty - failedQty);
                                                 const productTypeVal = getMetaValue(order, 'product_type', 'pcb').toLowerCase();
                                                 const isPartOrder = productTypeVal === 'part';
@@ -2126,7 +2144,7 @@ export default function OrdersPage() {
                                                             })()}
                                                         </td>
 
-                                                        {/* 5. Qty (Ordered / Launch / Final / Fail) */}
+                                                        {/* 5. Qty (Ordered / Launch / Panel / Up / Final / Fail) */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <div className="flex items-center gap-1 font-bold text-xs">
                                                                 <span className="text-foreground font-extrabold" title="Ordered Quantity">
@@ -2137,8 +2155,16 @@ export default function OrdersPage() {
                                                                     {launchQty} Lnc
                                                                 </span>
                                                                 <span className="text-muted-foreground">/</span>
+                                                                <span className="text-amber-600 dark:text-amber-400 font-extrabold" title="Panel Quantity">
+                                                                    {panelQty} Panel
+                                                                </span>
+                                                                <span className="text-muted-foreground">/</span>
+                                                                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold" title="Up Quantity">
+                                                                    {upsQty} Up
+                                                                </span>
+                                                                <span className="text-muted-foreground">/</span>
                                                                 <span className="text-emerald-600 dark:text-emerald-400 font-extrabold" title="Final / Completed Quantity">
-                                                                    {completedQty} Done
+                                                                    {completedQty} Final
                                                                 </span>
                                                                 <span className="text-muted-foreground">/</span>
                                                                 <span className="text-rose-600 dark:text-rose-400 font-extrabold" title="Failed Quantity">
