@@ -11,6 +11,7 @@ import { OrderDetailSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
 import { useAuth } from "@/lib/auth-context";
 import { ComboSelect, ComboOrderItem } from "@/components/ComboSelect";
+import { OldOrderSelect, OldOrderItem } from "@/components/OldOrderSelect";
 
 interface StatusItem {
     id: number;
@@ -79,6 +80,8 @@ interface ApiOrder {
     c_g?: string | null;
     combo?: string | null;
     combo_orders?: Array<{ id: number; order_number: string; status?: string }>;
+    old_order_number?: string | null;
+    old_orders?: Array<{ id: number; order_number: string; status?: string }>;
     bill_number?: string | null;
     board_name: string;
     gerber_file_id?: number | string | null;
@@ -145,6 +148,8 @@ export default function OrderDetailPage() {
     const [qNo, setQNo] = useState("");
     const [combo, setCombo] = useState("");
     const [comboOrdersState, setComboOrdersState] = useState<ComboOrderItem[]>([]);
+    const [oldOrderNumber, setOldOrderNumber] = useState("");
+    const [oldOrdersState, setOldOrdersState] = useState<OldOrderItem[]>([]);
     const [launchQty, setLaunchQty] = useState<number>(0);
     const [panelQty, setPanelQty] = useState<number>(0);
     const [upsQty, setUpsQty] = useState<number>(0);
@@ -194,6 +199,23 @@ export default function OrderDetailPage() {
                     }));
                 }
                 setComboOrdersState(initialComboItems);
+
+                setOldOrderNumber(o.old_order_number ? String(o.old_order_number) : "");
+                let initialOldItems: OldOrderItem[] = [];
+                if (Array.isArray(o.old_orders) && o.old_orders.length > 0) {
+                    initialOldItems = o.old_orders.map((c: any) => ({
+                        id: c.id,
+                        order_number: c.order_number,
+                        status: c.status,
+                    }));
+                } else if (o.old_order_number && String(o.old_order_number).trim() !== "") {
+                    const parsed = String(o.old_order_number).split(/[\+,\s]+/).filter(Boolean);
+                    initialOldItems = parsed.map((no, idx) => ({
+                        id: 880000 + idx,
+                        order_number: no,
+                    }));
+                }
+                setOldOrdersState(initialOldItems);
                 setLaunchQty(o.launch_qty || 0);
                 setPanelQty(o.panel_qty || 0);
                 setUpsQty(o.ups_qty || 0);
@@ -250,6 +272,9 @@ export default function OrderDetailPage() {
             const comboOrderNos = comboOrdersState.map((c) => c.order_number);
             const comboStr = comboOrderNos.join(", ");
 
+            const oldOrderNos = oldOrdersState.map((c) => c.order_number);
+            const oldOrderStr = oldOrderNos.join(", ");
+
             const res = await fetch(`/api/admin/orders/${orderId}`, {
                 method: "PUT",
                 headers: {
@@ -264,6 +289,8 @@ export default function OrderDetailPage() {
                     q_no: qNo,
                     combo: comboStr,
                     combo_order_ids: comboOrderNos,
+                    old_order_number: oldOrderStr,
+                    old_order_ids: oldOrderNos,
                     launch_qty: launchQty,
                     panel_qty: panelQty,
                     ups_qty: upsQty,
@@ -458,6 +485,14 @@ export default function OrderDetailPage() {
                         Combo: {Array.isArray(order.combo_orders) && order.combo_orders.length > 0
                             ? order.combo_orders.map(c => c.order_number).join(', ')
                             : order.combo}
+                    </span>
+                )}
+                {((order.old_order_number && String(order.old_order_number).trim() !== "") || (Array.isArray(order.old_orders) && order.old_orders.length > 0)) && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200/80 inline-flex items-center gap-1">
+                        <History className="w-3 h-3 text-amber-600" />
+                        Old Order Number: {Array.isArray(order.old_orders) && order.old_orders.length > 0
+                            ? order.old_orders.map(c => c.order_number).join(', ')
+                            : order.old_order_number}
                     </span>
                 )}
             </div>
@@ -965,6 +1000,17 @@ export default function OrderDetailPage() {
                                     value={comboOrdersState}
                                     onChange={setComboOrdersState}
                                     placeholder="Select combo orders..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Old Order Number</label>
+                                <OldOrderSelect
+                                    currentOrderId={order?.id}
+                                    currentOrderNumber={order?.order_number}
+                                    value={oldOrdersState}
+                                    onChange={setOldOrdersState}
+                                    placeholder="Select old order numbers..."
                                 />
                             </div>
 

@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusColor } from "@/lib/status-colors";
 import { ComboSelect, ComboOrderItem } from "@/components/ComboSelect";
+import { OldOrderSelect, OldOrderItem } from "@/components/OldOrderSelect";
 
 interface StatusItem {
     id: number;
@@ -87,6 +88,8 @@ interface ApiOrder {
     metas?: OrderMeta[];
     status_details?: StatusItem;
     combo_orders?: Array<{ id: number; order_number: string; status: string }>;
+    old_order_number?: string | null;
+    old_orders?: Array<{ id: number; order_number: string; status: string }>;
     status_histories?: StatusHistory[];
 }
 
@@ -604,6 +607,8 @@ export default function OrdersPage() {
     const [modalQNo, setModalQNo] = useState("");
     const [modalCombo, setModalCombo] = useState("");
     const [modalComboOrders, setModalComboOrders] = useState<ComboOrderItem[]>([]);
+    const [modalOldOrderNumber, setModalOldOrderNumber] = useState("");
+    const [modalOldOrders, setModalOldOrders] = useState<OldOrderItem[]>([]);
     const [modalLaunchQty, setModalLaunchQty] = useState<number>(0);
     const [modalPanelQty, setModalPanelQty] = useState<number>(0);
     const [modalUpsQty, setModalUpsQty] = useState<number>(0);
@@ -1347,6 +1352,23 @@ export default function OrdersPage() {
         }
         setModalComboOrders(initialComboItems);
 
+        setModalOldOrderNumber(order.old_order_number ? String(order.old_order_number) : "");
+        let initialOldItems: OldOrderItem[] = [];
+        if (Array.isArray(order.old_orders) && order.old_orders.length > 0) {
+            initialOldItems = order.old_orders.map((c) => ({
+                id: c.id,
+                order_number: c.order_number,
+                status: c.status,
+            }));
+        } else if (order.old_order_number && String(order.old_order_number).trim() !== "") {
+            const parsed = String(order.old_order_number).split(/[\+,\s]+/).filter(Boolean);
+            initialOldItems = parsed.map((no, idx) => ({
+                id: 880000 + idx,
+                order_number: no,
+            }));
+        }
+        setModalOldOrders(initialOldItems);
+
         setModalLaunchQty(order.launch_qty || 0);
         setModalPanelQty(order.panel_qty || 0);
         setModalUpsQty(order.ups_qty || 0);
@@ -1427,6 +1449,9 @@ export default function OrdersPage() {
             const comboOrderNos = modalComboOrders.map((c) => c.order_number);
             const comboStr = comboOrderNos.join(", ");
 
+            const oldOrderNos = modalOldOrders.map((c) => c.order_number);
+            const oldOrderStr = oldOrderNos.join(", ");
+
             const res = await fetch(`/api/admin/orders/${statusModalOrder.id}`, {
                 method: "PUT",
                 headers: {
@@ -1442,6 +1467,8 @@ export default function OrdersPage() {
                     q_no: modalQNo,
                     combo: comboStr,
                     combo_order_ids: comboOrderNos,
+                    old_order_number: oldOrderStr,
+                    old_order_ids: oldOrderNos,
                     launch_qty: modalLaunchQty,
                     panel_qty: modalPanelQty,
                     ups_qty: modalUpsQty,
@@ -1946,6 +1973,30 @@ export default function OrdersPage() {
                                                                     })()}
                                                                 </div>
                                                             )}
+                                                            {((order.old_order_number && String(order.old_order_number).trim() !== "") || (Array.isArray(order.old_orders) && order.old_orders.length > 0)) && (
+                                                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                                                    {(() => {
+                                                                        const oldList = Array.isArray(order.old_orders) && order.old_orders.length > 0
+                                                                            ? order.old_orders.map(c => c.order_number)
+                                                                            : String(order.old_order_number || '').split(/[\+,\s]+/).filter(Boolean);
+
+                                                                        if (oldList.length === 0) return null;
+
+                                                                        return (
+                                                                            <span
+                                                                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs hover:bg-amber-100 transition-colors"
+                                                                                title={`Old Order Numbers: ${oldList.join(', ')}`}
+                                                                            >
+                                                                                <History className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                                                                <span className="font-semibold text-amber-700">Old Order:</span>
+                                                                                <span className="font-mono font-bold text-amber-900">
+                                                                                    {oldList.map(c => (c.startsWith('#') || c.startsWith('M') ? c : `#${c}`)).join(', ')}
+                                                                                </span>
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            )}
                                                         </td>
 
                                                         {/* 3. Customer */}
@@ -2364,6 +2415,19 @@ export default function OrdersPage() {
                                             placeholder="Select combo orders..."
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                        Old Order Number
+                                    </label>
+                                    <OldOrderSelect
+                                        currentOrderId={statusModalOrder?.id}
+                                        currentOrderNumber={statusModalOrder?.order_number}
+                                        value={modalOldOrders}
+                                        onChange={setModalOldOrders}
+                                        placeholder="Select old order numbers..."
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
