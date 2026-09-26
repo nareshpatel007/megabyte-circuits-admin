@@ -28,6 +28,7 @@ const PAGE_PERMISSIONS: { prefix: string; perm: string }[] = [
     { prefix: "/roles", perm: "role.view" },
     { prefix: "/settings/statuses", perm: "settings.order_status" },
     { prefix: "/settings", perm: "settings.general" },
+    { prefix: "/system-health", perm: "system_health.view" },
 ];
 
 export default function DashboardLayout({ children, title, subtitle, action }: DashboardLayoutProps) {

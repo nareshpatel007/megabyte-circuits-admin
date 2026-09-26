@@ -230,12 +230,19 @@ export default function SystemHealthPage() {
     const [sendingMail, setSendingMail] = useState<boolean>(false);
     const [testingService, setTestingService] = useState<string | null>(null);
 
+    const getAuthHeaders = (): Record<string, string> => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    };
+
     // Fetch Health Summary
     const fetchHealth = useCallback(async (isManual: boolean = false) => {
         if (isManual) setRefreshing(true);
         try {
             const url = isManual ? "/api/admin/system-health?refresh=1" : "/api/admin/system-health";
-            const res = await fetch(url);
+            const res = await fetch(url, {
+                headers: { ...getAuthHeaders() }
+            });
             const data = await res.json();
             if (data.success && data.data) {
                 setHealth(data.data);
@@ -278,7 +285,9 @@ export default function SystemHealthPage() {
                 search: logSearch,
                 limit: "150"
             });
-            const res = await fetch(`/api/admin/system-health/logs?${query.toString()}`);
+            const res = await fetch(`/api/admin/system-health/logs?${query.toString()}`, {
+                headers: { ...getAuthHeaders() }
+            });
             const data = await res.json();
             if (data.success) {
                 setLogs(data.data || []);
@@ -296,7 +305,9 @@ export default function SystemHealthPage() {
     const fetchAudit = useCallback(async () => {
         setLoadingAudit(true);
         try {
-            const res = await fetch("/api/admin/system-health/audit");
+            const res = await fetch("/api/admin/system-health/audit", {
+                headers: { ...getAuthHeaders() }
+            });
             const data = await res.json();
             if (data.success) {
                 setAuditLogs(data.data || []);
@@ -312,7 +323,9 @@ export default function SystemHealthPage() {
     const fetchFailedJobs = useCallback(async () => {
         setLoadingJobs(true);
         try {
-            const res = await fetch("/api/admin/system-health/failed-jobs");
+            const res = await fetch("/api/admin/system-health/failed-jobs", {
+                headers: { ...getAuthHeaders() }
+            });
             const data = await res.json();
             if (data.success) {
                 setFailedJobs(data.data || []);
@@ -337,7 +350,7 @@ export default function SystemHealthPage() {
         try {
             const res = await fetch("/api/admin/system-health/maintenance", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ action: actionKey }),
             });
             const data = await res.json();
@@ -363,7 +376,7 @@ export default function SystemHealthPage() {
         try {
             const res = await fetch("/api/admin/system-health/failed-jobs/action", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ operation, id }),
             });
             const data = await res.json();
@@ -390,7 +403,7 @@ export default function SystemHealthPage() {
         try {
             const res = await fetch("/api/admin/system-health/test-mail", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ recipient_email: recipientEmail }),
             });
             const data = await res.json();
@@ -412,7 +425,7 @@ export default function SystemHealthPage() {
         try {
             const res = await fetch("/api/admin/system-health/test-service", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ service: serviceKey }),
             });
             const data = await res.json();
