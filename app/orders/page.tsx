@@ -563,6 +563,8 @@ export default function OrdersPage() {
 
     // Change status modal state
     const [statusModalOrder, setStatusModalOrder] = useState<ApiOrder | null>(null);
+    const [modalOrderNumber, setModalOrderNumber] = useState("");
+    const [modalOrderNumberError, setModalOrderNumberError] = useState("");
     const [modalNewStatus, setModalNewStatus] = useState("");
     const [modalCustomerName, setModalCustomerName] = useState("");
     const [modalUserId, setModalUserId] = useState<string>("");
@@ -1363,6 +1365,8 @@ export default function OrdersPage() {
         const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
         setStatusModalOrder(order);
+        setModalOrderNumber(order.order_number ? String(order.order_number) : "");
+        setModalOrderNumberError("");
         setModalNewStatus(order.status);
         setModalCustomerName(fallbackName);
         setModalUserId(initialUserId);
@@ -1472,6 +1476,13 @@ export default function OrdersPage() {
         if (!statusModalOrder || !modalNewStatus) return;
 
         setModalBillNumberError("");
+        setModalOrderNumberError("");
+
+        if (!modalOrderNumber || modalOrderNumber.trim() === "") {
+            setModalOrderNumberError("Order number is required.");
+            toast.error("Order number cannot be empty.");
+            return;
+        }
 
         const completedStatuses = ['completed', 'delivered', 'order completed', 'production completed'];
         const isCompleted = completedStatuses.includes((modalNewStatus || '').toLowerCase().trim());
@@ -1497,6 +1508,7 @@ export default function OrdersPage() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    order_number: modalOrderNumber.trim(),
                     status: modalNewStatus,
                     user_id: modalUserId ? Number(modalUserId) : null,
                     customer_name: modalCustomerName,
@@ -1519,11 +1531,14 @@ export default function OrdersPage() {
 
             const data = await res.json();
             if (res.ok && (data.status || data.success)) {
-                toast.success(`Order #${statusModalOrder.order_number} updated successfully`);
+                toast.success(`Order #${data.data?.order_number || modalOrderNumber.trim()} updated successfully`);
                 setStatusModalOrder(null);
                 fetchData(debouncedSearch);
             } else {
-                const errMsg = data.errors?.bill_number?.[0] || data.message || "Failed to update status";
+                const errMsg = data.errors?.order_number?.[0] || data.errors?.bill_number?.[0] || data.message || "Failed to update order";
+                if (data.errors?.order_number?.[0]) {
+                    setModalOrderNumberError(data.errors.order_number[0]);
+                }
                 if (data.errors?.bill_number?.[0]) {
                     setModalBillNumberError(data.errors.bill_number[0]);
                 }
@@ -2363,6 +2378,29 @@ export default function OrdersPage() {
                             </DialogHeader>
 
                             <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                                        <span>Order Number</span>
+                                        <span className="text-rose-600 font-bold">*</span>
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        value={modalOrderNumber}
+                                        onChange={(e) => {
+                                            setModalOrderNumber(e.target.value);
+                                            if (modalOrderNumberError) setModalOrderNumberError("");
+                                        }}
+                                        placeholder="Order Number (e.g. M5000-1)..."
+                                        className={`w-full px-3.5 py-2.5 text-xs bg-white rounded-xl text-slate-900 font-bold shadow-xs h-auto ${modalOrderNumberError ? "border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500" : "border-slate-300"}`}
+                                    />
+                                    {modalOrderNumberError && (
+                                        <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                            {modalOrderNumberError}
+                                        </p>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">

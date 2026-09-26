@@ -158,6 +158,11 @@ export default function OrderDetailPage() {
     const [billNumberError, setBillNumberError] = useState("");
     const [remark, setRemark] = useState("");
 
+    // Order Number edit state
+    const [editingOrderNumber, setEditingOrderNumber] = useState(false);
+    const [orderNumberState, setOrderNumberState] = useState("");
+    const [orderNumberError, setOrderNumberError] = useState("");
+
     // Delivery date state & edit
     const [editingDeliveryDate, setEditingDeliveryDate] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState("");
@@ -178,6 +183,8 @@ export default function OrderDetailPage() {
             if (orderData.status || orderData.success) {
                 const o = orderData.data;
                 setOrder(o);
+                setOrderNumberState(o.order_number || "");
+                setOrderNumberError("");
                 setNewStatus(o.status || "");
                 setCompletedQty(o.completed_qty || 0);
                 setFailedQty(o.failed_qty || 0);
@@ -240,11 +247,60 @@ export default function OrderDetailPage() {
         }
     }, [orderId]);
 
+    const handleSaveOrderNumber = async () => {
+        const cleanNum = orderNumberState.trim();
+        if (!cleanNum) {
+            setOrderNumberError("Order number is required.");
+            toast.error("Order number cannot be empty.");
+            return;
+        }
+        setOrderNumberError("");
+        const toastId = toast.loading("Updating Order Number...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${orderId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ order_number: cleanNum })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Order Number updated successfully", { id: toastId });
+                setEditingOrderNumber(false);
+                if (data.data) {
+                    setOrder(data.data);
+                    setOrderNumberState(data.data.order_number || cleanNum);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                const errMsg = data.errors?.order_number?.[0] || data.message || "Failed to update order number";
+                if (data.errors?.order_number?.[0]) {
+                    setOrderNumberError(data.errors.order_number[0]);
+                }
+                toast.error(errMsg, { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error("Error updating order number", { id: toastId });
+        }
+    };
+
     const handleUpdateStatus = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newStatus) return;
 
         setBillNumberError("");
+        setOrderNumberError("");
+
+        if (!orderNumberState || orderNumberState.trim() === "") {
+            setOrderNumberError("Order number is required.");
+            toast.error("Order number cannot be empty.");
+            return;
+        }
+
         const completedStatuses = ['completed', 'delivered', 'order completed', 'production completed'];
         const isCompleted = completedStatuses.includes((newStatus || '').toLowerCase().trim());
 
@@ -282,6 +338,7 @@ export default function OrderDetailPage() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    order_number: orderNumberState.trim(),
                     status: newStatus,
                     status_id: matchedStatus ? matchedStatus.id : null,
                     completed_qty: completedQty,
@@ -306,9 +363,13 @@ export default function OrderDetailPage() {
             if (res.ok && (data.status || data.success)) {
                 toast.success(`Order details updated successfully`, { id: toastId });
                 setOrder(data.data);
+                setOrderNumberState(data.data?.order_number || orderNumberState.trim());
                 setRemark("");
             } else {
-                const errMsg = data.errors?.bill_number?.[0] || data.message || data.error || "Failed to update order";
+                const errMsg = data.errors?.order_number?.[0] || data.errors?.bill_number?.[0] || data.message || data.error || "Failed to update order";
+                if (data.errors?.order_number?.[0]) {
+                    setOrderNumberError(data.errors.order_number[0]);
+                }
                 if (data.errors?.bill_number?.[0]) {
                     setBillNumberError(data.errors.bill_number[0]);
                 }
@@ -454,9 +515,63 @@ export default function OrderDetailPage() {
 
     const pageHeaderTitle = (
         <div className="space-y-1">
-            <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : (isJlcpcbOrder ? "#7c3aed" : "#059669") }}>
-                Order #{order.order_number}
-            </h1>
+            <div className="flex items-center gap-3">
+                {editingOrderNumber ? (
+                    <div className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                            <input
+                                type="text"
+                                value={orderNumberState}
+                                onChange={(e) => {
+                                    setOrderNumberState(e.target.value);
+                                    if (orderNumberError) setOrderNumberError("");
+                                }}
+                                className={`px-2.5 py-1 text-sm font-black border rounded-lg bg-background text-foreground ${orderNumberError ? "border-rose-500 ring-1 ring-rose-500" : "border-emerald-500"}`}
+                                placeholder="Order Number..."
+                                autoFocus
+                            />
+                            {orderNumberError && (
+                                <span className="text-[11px] text-rose-500 font-semibold mt-0.5">{orderNumberError}</span>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleSaveOrderNumber}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                        >
+                            Save
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEditingOrderNumber(false);
+                                setOrderNumberState(order.order_number || "");
+                                setOrderNumberError("");
+                            }}
+                            className="px-2.5 py-1 bg-muted hover:bg-accent text-foreground font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : (isJlcpcbOrder ? "#7c3aed" : "#059669") }}>
+                            Order #{order.order_number}
+                        </h1>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEditingOrderNumber(true);
+                                setOrderNumberState(order.order_number || "");
+                                setOrderNumberError("");
+                            }}
+                            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                            [Edit]
+                        </button>
+                    </div>
+                )}
+            </div>
             <div className="flex items-center gap-2">
                 <span
                     className="px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider inline-flex items-center gap-1.5 text-black"
@@ -968,6 +1083,26 @@ export default function OrderDetailPage() {
                     </h3>
                     <form onSubmit={handleUpdateStatus} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5 flex items-center justify-between">
+                                    <span>Order Number</span>
+                                    <span className="text-rose-500 font-bold">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={orderNumberState}
+                                    onChange={(e) => {
+                                        setOrderNumberState(e.target.value);
+                                        if (orderNumberError) setOrderNumberError("");
+                                    }}
+                                    placeholder="Order Number (e.g. M5000-1)..."
+                                    className={`w-full px-3.5 py-2.5 text-xs bg-background border rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 ${orderNumberError ? "border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500" : "border-border/80 focus:ring-emerald-500"}`}
+                                />
+                                {orderNumberError && (
+                                    <p className="text-[11px] font-semibold text-rose-500 mt-1">{orderNumberError}</p>
+                                )}
+                            </div>
+
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1.5">New Status</label>
                                 <select
