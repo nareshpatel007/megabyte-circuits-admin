@@ -1519,14 +1519,7 @@ export default function OrdersPage() {
                                                     <tr key={order.id} className="hover:bg-muted/20 transition-colors">
                                                         {/* 1. Status */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
-                                                            <span
-                                                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs text-black"
-                                                                style={{
-                                                                    backgroundColor: statusColor,
-                                                                    color: "#000000",
-                                                                    borderColor: `${statusColor}80`
-                                                                }}
-                                                            >
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-white text-black border border-zinc-300 shadow-2xs">
                                                                 {order.status}
                                                             </span>
                                                         </td>

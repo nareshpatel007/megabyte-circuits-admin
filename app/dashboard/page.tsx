@@ -613,14 +613,7 @@ export default function DashboardPage() {
                                                                 >
                                                                     #{order.order_number}
                                                                 </span>
-                                                                <span
-                                                                    className="text-[10px] px-2.5 py-0.5 rounded-full border font-extrabold"
-                                                                    style={{
-                                                                        backgroundColor: `${statusColor}15`,
-                                                                        color: statusColor,
-                                                                        borderColor: `${statusColor}30`
-                                                                    }}
-                                                                >
+                                                                <span className="text-[10px] px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider bg-white text-black border border-zinc-300 shadow-2xs">
                                                                     {order.status}
                                                                 </span>
                                                             </div>
