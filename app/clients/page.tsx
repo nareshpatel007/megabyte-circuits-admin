@@ -20,7 +20,8 @@ import {
     Trash2,
     RefreshCw,
     AlertTriangle,
-    ShieldAlert
+    ShieldAlert,
+    GitMerge
 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -215,18 +216,27 @@ export default function ClientsPage() {
     const totalPages = Math.ceil(filtered.length / pageSize) || 1;
     const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-    const addClientButton = (
-        <Link
-            href="/clients/new"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer"
-        >
-            <UserPlus className="w-4 h-4" />
-            Add Client
-        </Link>
+    const headerActions = (
+        <div className="flex items-center gap-2">
+            <Link
+                href="/clients/merge"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 transition-all shadow-xs cursor-pointer"
+            >
+                <GitMerge className="w-4 h-4" />
+                Merge Clients
+            </Link>
+            <Link
+                href="/clients/new"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer"
+            >
+                <UserPlus className="w-4 h-4" />
+                Add Client
+            </Link>
+        </div>
     );
 
     return (
-        <DashboardLayout title="Client Management" subtitle={`${nonDeletedUsers.length} registered clients`} action={addClientButton}>
+        <DashboardLayout title="Client Management" subtitle={`${nonDeletedUsers.length} registered clients`} action={headerActions}>
             {loading ? (
                 <TableSkeleton rows={7} />
             ) : (
