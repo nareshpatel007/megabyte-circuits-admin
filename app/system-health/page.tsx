@@ -37,6 +37,8 @@ import {
 import { toast } from "sonner";
 import * as Dialog from "@radix-ui/react-dialog";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface SystemHealthData {
     overall_status: 'healthy' | 'warning' | 'critical' | 'unknown';
     timestamp: string;
@@ -430,434 +432,519 @@ export default function SystemHealthPage() {
         switch (status) {
             case 'healthy':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Healthy
                     </span>
                 );
             case 'warning':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                         <AlertTriangle className="w-3.5 h-3.5" /> Warning
                     </span>
                 );
             case 'critical':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                         <XCircle className="w-3.5 h-3.5" /> Critical
                     </span>
                 );
             default:
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20">
                         <HelpCircle className="w-3.5 h-3.5" /> Unknown
                     </span>
                 );
         }
     };
 
+    const headerActions = (
+        <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground cursor-pointer select-none bg-card px-3 py-2 rounded-xl border border-border/80 shadow-xs hover:border-border transition-all">
+                <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="rounded text-emerald-500 focus:ring-emerald-500 h-3.5 w-3.5 accent-emerald-500 cursor-pointer"
+                />
+                Auto-refresh (30s)
+            </label>
+
+            <button
+                onClick={() => fetchHealth(true)}
+                disabled={refreshing || loading}
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 text-xs font-bold rounded-xl transition-all disabled:opacity-50 shadow-md shadow-emerald-500/20 cursor-pointer"
+            >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh Now
+            </button>
+        </div>
+    );
+
     return (
-        <DashboardLayout title="System Health">
-            <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-                {/* Header Title & Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-6 rounded-2xl border border-border shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-primary/10 text-primary rounded-xl">
-                            <Activity className="w-7 h-7" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                                    System Health & Admin Recovery Center
-                                </h1>
-                                {health && getStatusBadge(health.overall_status)}
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Real-time monitoring, diagnostic metrics, and safe Laravel administrative recovery operations.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end sm:self-auto">
-                        <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer select-none bg-muted/50 px-3 py-2 rounded-xl border border-border">
-                            <input
-                                type="checkbox"
-                                checked={autoRefresh}
-                                onChange={(e) => setAutoRefresh(e.target.checked)}
-                                className="rounded text-primary focus:ring-primary h-3.5 w-3.5"
-                            />
-                            Auto-refresh (30s)
-                        </label>
-
-                        <button
-                            onClick={() => fetchHealth(true)}
-                            disabled={refreshing || loading}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 shadow-sm"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-                            Refresh Now
-                        </button>
-                    </div>
-                </div>
-
-                {/* Potential Issues Alert Banner */}
-                {health && health.potential_issues && health.potential_issues.length > 0 && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-2xl space-y-3">
-                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-sm">
-                            <AlertTriangle className="w-5 h-5 text-amber-600" />
-                            Potential System Degradations / Attention Required ({health.potential_issues.length})
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {health.potential_issues.map((issue, idx) => (
-                                <div key={idx} className="bg-background/80 p-3.5 rounded-xl border border-amber-500/20 text-xs space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-foreground flex items-center gap-1.5">
-                                            <span className={`w-2 h-2 rounded-full ${issue.type === 'critical' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
-                                            [{issue.category}] {issue.title}
-                                        </span>
-                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${issue.type === 'critical' ? 'bg-rose-500/20 text-rose-600' : 'bg-amber-500/20 text-amber-600'}`}>
-                                            {issue.type}
-                                        </span>
-                                    </div>
-                                    <p className="text-muted-foreground">{issue.description}</p>
+        <DashboardLayout
+            title="System Health"
+            subtitle="Real-time system health monitoring, diagnostic metrics, and safe Laravel administrative recovery operations"
+            action={headerActions}
+        >
+            {loading || !health ? (
+                <div className="space-y-5 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-4">
+                                <Skeleton className="w-11 h-11 rounded-xl shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-3 w-20" />
+                                    <Skeleton className="h-6 w-24" />
                                 </div>
-                            ))}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="bg-card border border-border/80 rounded-xl p-5 space-y-4 shadow-xs">
+                                <div className="flex justify-between items-center">
+                                    <Skeleton className="h-5 w-32" />
+                                    <Skeleton className="h-5 w-16 rounded-full" />
+                                </div>
+                                <Skeleton className="h-28 w-full rounded-lg" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-5 animate-in fade-in duration-300">
+                    {/* Top KPI Summary Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {/* Card 1: Overall System Status */}
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-3.5 hover:border-emerald-500/40 transition-all">
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                                health.overall_status === 'healthy' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                                health.overall_status === 'warning' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                                'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                            }`}>
+                                <Activity className="w-5.5 h-5.5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">Overall Health</p>
+                                <h3 className="text-lg font-black mt-0.5 capitalize truncate">
+                                    <span className={
+                                        health.overall_status === 'healthy' ? 'text-emerald-500' :
+                                        health.overall_status === 'warning' ? 'text-amber-500' : 'text-rose-500'
+                                    }>
+                                        {health.overall_status}
+                                    </span>
+                                </h3>
+                            </div>
+                        </div>
+
+                        {/* Card 2: Framework & PHP */}
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-3.5 hover:border-emerald-500/40 transition-all">
+                            <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0">
+                                <Server className="w-5.5 h-5.5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">Laravel & PHP</p>
+                                <h3 className="text-lg font-black text-foreground mt-0.5 truncate">
+                                    v{health.application.laravel_version}
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground font-semibold truncate">PHP v{health.application.php_version}</p>
+                            </div>
+                        </div>
+
+                        {/* Card 3: Database Connection */}
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-3.5 hover:border-emerald-500/40 transition-all">
+                            <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
+                                <Database className="w-5.5 h-5.5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">Database Latency</p>
+                                <h3 className="text-lg font-black text-emerald-500 mt-0.5 truncate">
+                                    {health.database.response_time_ms} ms
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground font-semibold truncate capitalize">{health.database.connection}</p>
+                            </div>
+                        </div>
+
+                        {/* Card 4: Queue Jobs */}
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-3.5 hover:border-emerald-500/40 transition-all">
+                            <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                <RotateCcw className="w-5.5 h-5.5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">Failed Jobs</p>
+                                <h3 className={`text-lg font-black mt-0.5 truncate ${health.queue.failed_jobs > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                    {health.queue.failed_jobs}
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground font-semibold truncate">{health.queue.pending_jobs} pending</p>
+                            </div>
+                        </div>
+
+                        {/* Card 5: Disk Storage */}
+                        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center gap-3.5 hover:border-emerald-500/40 transition-all">
+                            <div className="w-11 h-11 rounded-xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                                <HardDrive className="w-5.5 h-5.5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">Free Storage</p>
+                                <h3 className="text-lg font-black text-foreground mt-0.5 truncate">
+                                    {health.storage.disk_free_gb ? `${health.storage.disk_free_gb} GB` : 'Writable'}
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground font-semibold truncate">{health.storage.used_percentage !== null ? `${health.storage.used_percentage}% used` : 'Storage Writable'}</p>
+                            </div>
                         </div>
                     </div>
-                )}
 
-                {/* Navigation Tabs */}
-                <div className="flex border-b border-border space-x-2 sm:space-x-4 overflow-x-auto pb-1 scrollbar-none">
-                    {[
-                        { id: 'overview', label: 'System Dashboard', icon: Server },
-                        { id: 'maintenance', label: 'Maintenance & Recovery', icon: Zap },
-                        { id: 'failed-jobs', label: `Failed Queue Jobs (${health?.queue?.failed_jobs || 0})`, icon: RotateCcw },
-                        { id: 'logs', label: 'Application Logs', icon: FileText },
-                        { id: 'audit', label: 'Maintenance Audit Log', icon: Shield },
-                        { id: 'tests', label: 'Diagnostics & Connectivity', icon: Terminal },
-                    ].map((tab) => {
-                        const Icon = tab.icon;
-                        const active = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-all ${
-                                    active
-                                        ? "border-primary text-primary font-semibold"
-                                        : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                                }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                {tab.label}
-                            </button>
-                        );
-                    })}
-                </div>
+                    {/* Potential Issues Alert Banner */}
+                    {health.potential_issues && health.potential_issues.length > 0 && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl space-y-3 shadow-xs">
+                            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
+                                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                Potential System Degradations / Attention Required ({health.potential_issues.length})
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {health.potential_issues.map((issue, idx) => (
+                                    <div key={idx} className="bg-card p-3 rounded-lg border border-amber-500/20 text-xs space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                                <span className={`w-2 h-2 rounded-full ${issue.type === 'critical' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
+                                                [{issue.category}] {issue.title}
+                                            </span>
+                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${issue.type === 'critical' ? 'bg-rose-500/20 text-rose-600' : 'bg-amber-500/20 text-amber-600'}`}>
+                                                {issue.type}
+                                            </span>
+                                        </div>
+                                        <p className="text-muted-foreground text-[11px]">{issue.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filter & Navigation Tabs Bar */}
+                    <div className="bg-card border border-border/80 rounded-xl p-1.5 shadow-xs flex flex-wrap items-center gap-1.5 overflow-x-auto">
+                        {[
+                            { id: 'overview', label: 'System Dashboard', icon: Server },
+                            { id: 'maintenance', label: 'Maintenance & Recovery', icon: Zap },
+                            { id: 'failed-jobs', label: `Failed Queue Jobs (${health.queue.failed_jobs || 0})`, icon: RotateCcw },
+                            { id: 'logs', label: 'Application Logs', icon: FileText },
+                            { id: 'audit', label: 'Maintenance Audit Log', icon: Shield },
+                            { id: 'tests', label: 'Diagnostics & Connectivity', icon: Terminal },
+                        ].map((tab) => {
+                            const Icon = tab.icon;
+                            const active = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                                        active
+                                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20 shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+                                    }`}
+                                >
+                                    <Icon className="w-3.5 h-3.5" />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
 
                 {/* TAB 1: OVERVIEW DASHBOARD CARDS */}
                 {activeTab === 'overview' && (
-                    loading || !health ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
-                            {[1, 2, 3, 4, 5, 6].map(i => (
-                                <div key={i} className="h-44 bg-card rounded-2xl border border-border"></div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                                {/* Card 1: Application */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-blue-500/10 text-blue-600 rounded-lg">
-                                                <Server className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Application</h3>
+                            {/* Card 1: Application */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-blue-500/10 text-blue-600 rounded-lg">
+                                            <Server className="w-5 h-5" />
                                         </div>
-                                        {getStatusBadge(health.application.status)}
+                                        <h3 className="font-bold text-sm text-foreground">Application</h3>
                                     </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Laravel Version:</span>
-                                            <span className="font-semibold text-foreground">v{health.application.laravel_version}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>PHP Version:</span>
-                                            <span className="font-semibold text-foreground">v{health.application.php_version}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Environment:</span>
-                                            <span className="font-semibold text-foreground capitalize">{health.application.environment}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Debug Mode:</span>
-                                            <span className={`font-semibold ${health.application.debug_mode ? "text-amber-600" : "text-emerald-600"}`}>
-                                                {health.application.debug_mode ? "ON (Warning)" : "OFF (Safe)"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Server Host:</span>
-                                            <span className="font-mono text-foreground">{health.application.server_hostname}</span>
-                                        </div>
+                                    {getStatusBadge(health.application.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Laravel Version:</span>
+                                        <span className="font-semibold text-foreground">v{health.application.laravel_version}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>PHP Version:</span>
+                                        <span className="font-semibold text-foreground">v{health.application.php_version}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Environment:</span>
+                                        <span className="font-semibold text-foreground capitalize">{health.application.environment}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Debug Mode:</span>
+                                        <span className={`font-semibold ${health.application.debug_mode ? "text-amber-600" : "text-emerald-600"}`}>
+                                            {health.application.debug_mode ? "ON (Warning)" : "OFF (Safe)"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Server Host:</span>
+                                        <span className="font-mono text-foreground">{health.application.server_hostname}</span>
                                     </div>
                                 </div>
-
-                                {/* Card 2: Database Health */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
-                                                <Database className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Database Health</h3>
-                                        </div>
-                                        {getStatusBadge(health.database.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Connection Driver:</span>
-                                            <span className="font-semibold text-foreground uppercase">{health.database.connection}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Database Name:</span>
-                                            <span className="font-mono text-foreground">{health.database.database_name}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Ping Latency:</span>
-                                            <span className="font-semibold text-emerald-600">{health.database.response_time_ms} ms</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>DB Server Version:</span>
-                                            <span className="font-mono text-foreground truncate max-w-[150px]">{health.database.server_version}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 3: Cache Health */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-purple-500/10 text-purple-600 rounded-lg">
-                                                <Zap className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Cache Health</h3>
-                                        </div>
-                                        {getStatusBadge(health.cache.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Cache Driver:</span>
-                                            <span className="font-semibold text-foreground uppercase">{health.cache.driver}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Test Read/Write:</span>
-                                            <span className={`font-semibold ${health.cache.test_passed ? "text-emerald-600" : "text-rose-600"}`}>
-                                                {health.cache.test_passed ? "Passed" : "Failed"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Config / Routes Cached:</span>
-                                            <span className="font-medium text-foreground">
-                                                {health.cache.caches_status.config_cached ? "Config ✓ " : ""}{health.cache.caches_status.routes_cached ? "Routes ✓" : "Uncached"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Test Latency:</span>
-                                            <span className="font-semibold text-purple-600">{health.cache.response_time_ms} ms</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 4: Queue Health */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-amber-500/10 text-amber-600 rounded-lg">
-                                                <RotateCcw className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Queue & Workers</h3>
-                                        </div>
-                                        {getStatusBadge(health.queue.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Queue Connection:</span>
-                                            <span className="font-semibold text-foreground uppercase">{health.queue.driver}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Pending Jobs:</span>
-                                            <span className="font-semibold text-foreground">{health.queue.pending_jobs}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Failed Jobs Count:</span>
-                                            <span className={`font-semibold ${health.queue.failed_jobs > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                                                {health.queue.failed_jobs}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Last Failed:</span>
-                                            <span className="text-foreground">{health.queue.last_failed_job_at || "None"}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 5: Scheduler Health */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-lg">
-                                                <Clock className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Cron Scheduler</h3>
-                                        </div>
-                                        {getStatusBadge(health.scheduler.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Heartbeat Status:</span>
-                                            <span className="font-semibold text-foreground capitalize">{health.scheduler.status}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Last Heartbeat Pulse:</span>
-                                            <span className="font-medium text-foreground">
-                                                {health.scheduler.minutes_since_last_heartbeat !== null
-                                                    ? `${health.scheduler.minutes_since_last_heartbeat} mins ago`
-                                                    : "No Pulse Recorded"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Active Scheduled Tasks:</span>
-                                            <span className="font-semibold text-indigo-600">{health.scheduler.scheduled_tasks_count} tasks</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 6: Storage & Disk Space */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-rose-500/10 text-rose-600 rounded-lg">
-                                                <HardDrive className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Disk & Storage</h3>
-                                        </div>
-                                        {getStatusBadge(health.storage.status)}
-                                    </div>
-                                    <div className="space-y-2.5 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between items-center">
-                                            <span>Storage Writable:</span>
-                                            <span className={`font-semibold ${health.storage.is_writable ? "text-emerald-600" : "text-rose-600"}`}>
-                                                {health.storage.is_writable ? "Writable ✓" : "Read Only ✕"}
-                                            </span>
-                                        </div>
-                                        {health.storage.used_percentage !== null && (
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between text-[11px]">
-                                                    <span>Used Disk Space:</span>
-                                                    <span className="font-semibold text-foreground">{health.storage.used_percentage}% ({health.storage.disk_free_gb} GB Free)</span>
-                                                </div>
-                                                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full transition-all ${
-                                                            health.storage.used_percentage > 90 ? "bg-rose-500" : health.storage.used_percentage > 75 ? "bg-amber-500" : "bg-emerald-500"
-                                                        }`}
-                                                        style={{ width: `${health.storage.used_percentage}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Card 7: PHP Runtime & OPcache */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-cyan-500/10 text-cyan-600 rounded-lg">
-                                                <Cpu className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">PHP Runtime</h3>
-                                        </div>
-                                        {getStatusBadge(health.php.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Memory Limit:</span>
-                                            <span className="font-semibold text-foreground">{health.php.memory_limit}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Max Execution Time:</span>
-                                            <span className="font-semibold text-foreground">{health.php.max_execution_time}s</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Upload Max Filesize:</span>
-                                            <span className="font-semibold text-foreground">{health.php.upload_max_filesize}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>OPcache Status:</span>
-                                            <span className={`font-semibold ${health.php.opcache_enabled ? "text-emerald-600" : "text-muted-foreground"}`}>
-                                                {health.php.opcache_enabled ? `Enabled (${health.php.opcache_stats?.hit_rate}% hit rate)` : "Disabled"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 8: Log Monitoring */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-orange-500/10 text-orange-600 rounded-lg">
-                                                <FileText className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">Log Health</h3>
-                                        </div>
-                                        {getStatusBadge(health.logs.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        <div className="flex justify-between">
-                                            <span>Log Channel:</span>
-                                            <span className="font-semibold text-foreground uppercase">{health.logs.channel}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Log File Size:</span>
-                                            <span className="font-semibold text-foreground">{health.logs.log_size_mb} MB</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Recent Errors Count:</span>
-                                            <span className={`font-semibold ${health.logs.recent_errors_count > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                                                {health.logs.recent_errors_count}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 9: External Services */}
-                                <div className="bg-card p-5 rounded-2xl border border-border shadow-sm space-y-4 hover:border-primary/40 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
-                                                <Globe className="w-5 h-5" />
-                                            </div>
-                                            <h3 className="font-semibold text-foreground">External Services</h3>
-                                        </div>
-                                        {getStatusBadge(health.services.status)}
-                                    </div>
-                                    <div className="space-y-2 text-xs text-muted-foreground border-t border-border pt-3">
-                                        {Object.entries(health.services.services).map(([key, svc]) => (
-                                            <div key={key} className="flex justify-between items-center">
-                                                <span>{svc.name}:</span>
-                                                <span className={`font-semibold capitalize ${svc.status === 'healthy' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                                    {svc.status} {svc.response_time_ms ? `(${svc.response_time_ms}ms)` : ''}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
                             </div>
+
+                            {/* Card 2: Database Health */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
+                                            <Database className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">Database Health</h3>
+                                    </div>
+                                    {getStatusBadge(health.database.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Connection Driver:</span>
+                                        <span className="font-semibold text-foreground uppercase">{health.database.connection}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Database Name:</span>
+                                        <span className="font-mono text-foreground">{health.database.database_name}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Ping Latency:</span>
+                                        <span className="font-semibold text-emerald-600">{health.database.response_time_ms} ms</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>DB Server Version:</span>
+                                        <span className="font-mono text-foreground truncate max-w-[150px]">{health.database.server_version}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 3: Cache Health */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-purple-500/10 text-purple-600 rounded-lg">
+                                            <Zap className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">Cache Health</h3>
+                                    </div>
+                                    {getStatusBadge(health.cache.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Cache Driver:</span>
+                                        <span className="font-semibold text-foreground uppercase">{health.cache.driver}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Test Read/Write:</span>
+                                        <span className={`font-semibold ${health.cache.test_passed ? "text-emerald-600" : "text-rose-600"}`}>
+                                            {health.cache.test_passed ? "Passed" : "Failed"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Config / Routes Cached:</span>
+                                        <span className="font-medium text-foreground">
+                                            {health.cache.caches_status.config_cached ? "Config ✓ " : ""}{health.cache.caches_status.routes_cached ? "Routes ✓" : "Uncached"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Test Latency:</span>
+                                        <span className="font-semibold text-purple-600">{health.cache.response_time_ms} ms</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 4: Queue Health */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-amber-500/10 text-amber-600 rounded-lg">
+                                            <RotateCcw className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">Queue & Workers</h3>
+                                    </div>
+                                    {getStatusBadge(health.queue.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Queue Connection:</span>
+                                        <span className="font-semibold text-foreground uppercase">{health.queue.driver}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Pending Jobs:</span>
+                                        <span className="font-semibold text-foreground">{health.queue.pending_jobs}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Failed Jobs Count:</span>
+                                        <span className={`font-semibold ${health.queue.failed_jobs > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                                            {health.queue.failed_jobs}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Last Failed:</span>
+                                        <span className="text-foreground">{health.queue.last_failed_job_at || "None"}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 5: Scheduler Health */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-lg">
+                                            <Clock className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">Cron Scheduler</h3>
+                                    </div>
+                                    {getStatusBadge(health.scheduler.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Heartbeat Status:</span>
+                                        <span className="font-semibold text-foreground capitalize">{health.scheduler.status}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Last Heartbeat Pulse:</span>
+                                        <span className="font-medium text-foreground">
+                                            {health.scheduler.minutes_since_last_heartbeat !== null
+                                                ? `${health.scheduler.minutes_since_last_heartbeat} mins ago`
+                                                : "No Pulse Recorded"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Active Scheduled Tasks:</span>
+                                        <span className="font-semibold text-indigo-600">{health.scheduler.scheduled_tasks_count} tasks</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 6: Storage & Disk Space */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-rose-500/10 text-rose-600 rounded-lg">
+                                            <HardDrive className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">Disk & Storage</h3>
+                                    </div>
+                                    {getStatusBadge(health.storage.status)}
+                                </div>
+                                <div className="space-y-2.5 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between items-center">
+                                        <span>Storage Writable:</span>
+                                        <span className={`font-semibold ${health.storage.is_writable ? "text-emerald-600" : "text-rose-600"}`}>
+                                            {health.storage.is_writable ? "Writable ✓" : "Read Only ✕"}
+                                        </span>
+                                    </div>
+                                    {health.storage.used_percentage !== null && (
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-[11px]">
+                                                <span>Used Disk Space:</span>
+                                                <span className="font-semibold text-foreground">{health.storage.used_percentage}% ({health.storage.disk_free_gb} GB Free)</span>
+                                            </div>
+                                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full transition-all ${
+                                                        health.storage.used_percentage > 90 ? "bg-rose-500" : health.storage.used_percentage > 75 ? "bg-amber-500" : "bg-emerald-500"
+                                                    }`}
+                                                    style={{ width: `${health.storage.used_percentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Card 7: PHP Runtime & OPcache */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-cyan-500/10 text-cyan-600 rounded-lg">
+                                            <Cpu className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">PHP Runtime</h3>
+                                    </div>
+                                    {getStatusBadge(health.php.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Memory Limit:</span>
+                                        <span className="font-semibold text-foreground">{health.php.memory_limit}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Max Execution Time:</span>
+                                        <span className="font-semibold text-foreground">{health.php.max_execution_time}s</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Upload Max Filesize:</span>
+                                        <span className="font-semibold text-foreground">{health.php.upload_max_filesize}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>OPcache Status:</span>
+                                        <span className={`font-semibold ${health.php.opcache_enabled ? "text-emerald-600" : "text-muted-foreground"}`}>
+                                            {health.php.opcache_enabled ? `Enabled (${health.php.opcache_stats?.hit_rate}% hit rate)` : "Disabled"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 8: Log Monitoring */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-orange-500/10 text-orange-600 rounded-lg">
+                                            <FileText className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">Log Health</h3>
+                                    </div>
+                                    {getStatusBadge(health.logs.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    <div className="flex justify-between">
+                                        <span>Log Channel:</span>
+                                        <span className="font-semibold text-foreground uppercase">{health.logs.channel}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Log File Size:</span>
+                                        <span className="font-semibold text-foreground">{health.logs.log_size_mb} MB</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Recent Errors Count:</span>
+                                        <span className={`font-semibold ${health.logs.recent_errors_count > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                                            {health.logs.recent_errors_count}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 9: External Services */}
+                            <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs space-y-4 hover:border-emerald-500/40 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
+                                            <Globe className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="font-bold text-sm text-foreground">External Services</h3>
+                                    </div>
+                                    {getStatusBadge(health.services.status)}
+                                </div>
+                                <div className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                                    {Object.entries(health.services.services).map(([key, svc]) => (
+                                        <div key={key} className="flex justify-between items-center">
+                                            <span>{svc.name}:</span>
+                                            <span className={`font-semibold capitalize ${svc.status === 'healthy' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                {svc.status} {svc.response_time_ms ? `(${svc.response_time_ms}ms)` : ''}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
                         </div>
-                    )
+                    </div>
                 )}
 
                 {/* TAB 2: MAINTENANCE & RECOVERY OPERATIONS */}
@@ -1264,8 +1351,8 @@ export default function SystemHealthPage() {
                         </Dialog.Content>
                     </Dialog.Portal>
                 </Dialog.Root>
-
             </div>
+        )}
         </DashboardLayout>
     );
 }
