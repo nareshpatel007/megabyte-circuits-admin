@@ -136,9 +136,21 @@ export default function OrdersPage() {
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<number>(10);
+    const [sortBy, setSortBy] = useState<string>("created_at");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     const [totalOrders, setTotalOrders] = useState<number>(0);
     const [totalRecords, setTotalRecords] = useState<number>(0);
     const [apiStats, setApiStats] = useState<any>(null);
+
+    const handleSort = (columnKey: string) => {
+        if (sortBy === columnKey) {
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setSortBy(columnKey);
+            setSortOrder("desc");
+        }
+        setPage(1);
+    };
 
     // Quick preview modal state
     const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
@@ -152,9 +164,10 @@ export default function OrdersPage() {
     const handleOpenReorderModal = (order: ApiOrder) => {
         setReorderModalOrder(order);
         const origQty = order.order_qty || parseInt(getMetaValue(order, 'quantity', '1')) || 1;
-        const origDelivery = order.delivery_date || getMetaValue(order, 'delivery_date', '');
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         setReorderQty(origQty);
-        setReorderDeliveryDate(origDelivery ? String(origDelivery).split('T')[0] : '');
+        setReorderDeliveryDate(todayStr);
     };
 
     // Import & Export Modal state
@@ -1177,7 +1190,7 @@ export default function OrdersPage() {
             const token = localStorage.getItem("admin_token");
             const headers = { Authorization: `Bearer ${token}` };
 
-            let url = `/api/admin/orders?sort_by=delivery_date&sort_order=desc&per_page=${pageSize}&page=${page}`;
+            let url = `/api/admin/orders?sort_by=${encodeURIComponent(sortBy)}&sort_order=${encodeURIComponent(sortOrder)}&per_page=${pageSize}&page=${page}`;
             if (startDate) url += `&start_date=${startDate}`;
             if (endDate) url += `&end_date=${endDate}`;
             if (searchQuery.trim()) {
@@ -1230,7 +1243,7 @@ export default function OrdersPage() {
 
     useEffect(() => {
         fetchData(debouncedSearch);
-    }, [debouncedSearch, startDate, endDate, statusFilter, pageSize, page]);
+    }, [debouncedSearch, startDate, endDate, statusFilter, pageSize, page, sortBy, sortOrder]);
 
     const handleResetFilter = () => {
         setSearch("");
@@ -1238,6 +1251,8 @@ export default function OrdersPage() {
         setStartDate("");
         setEndDate("");
         setActivePreset(null);
+        setSortBy("created_at");
+        setSortOrder("desc");
         setPage(1);
     };
 
@@ -1360,7 +1375,9 @@ export default function OrdersPage() {
         const isCompleted = ['completed', 'shipped', 'delivered'].includes((order.status || '').toLowerCase());
         const totalQtyVal = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
         const initialCompletedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQtyVal : 0);
-        const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
+        const initialLaunchQty = order.launch_qty || 0;
+        const initialFinalQty = typeof order.final_qty === 'number' ? order.final_qty : initialCompletedQty;
+        const initialFailedQty = initialLaunchQty > 0 ? Math.max(0, initialLaunchQty - initialFinalQty) : (typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0));
 
         const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
@@ -1411,10 +1428,10 @@ export default function OrdersPage() {
         }
         setModalOldOrders(initialOldItems);
 
-        setModalLaunchQty(order.launch_qty || 0);
+        setModalLaunchQty(initialLaunchQty);
         setModalPanelQty(order.panel_qty || 0);
         setModalUpsQty(order.ups_qty || 0);
-        setModalFinalQty(order.final_qty || 0);
+        setModalFinalQty(initialFinalQty);
         setModalBillNumber(order.bill_number ? String(order.bill_number) : "");
         setModalBillNumberError("");
         setModalDeliveryDate(order.delivery_date ? String(order.delivery_date).split('T')[0] : "");
@@ -1926,16 +1943,102 @@ export default function OrdersPage() {
                                 <table className="w-full text-left text-xs border-collapse">
                                     <thead>
                                         <tr className="bg-muted/80 border-b border-border/80 text-foreground uppercase tracking-wider font-extrabold text-[11px]">
-                                            <th className="py-2 px-3.5">Status</th>
-                                            <th className="py-2 px-3.5">Order Number</th>
-                                            <th className="py-2 px-3.5">Customer</th>
-                                            <th className="py-2 px-3.5">Layers</th>
-                                            <th className="py-2 px-3.5">Film</th>
-                                            <th className="py-2 px-3.5">
-                                                QTY / LAUNCH / PANEL / UP / FINAL / FAIL
+                                            <th
+                                                onClick={() => handleSort('status')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Status"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Status</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'status' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'status' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
                                             </th>
-                                            <th className="py-2 px-3.5">Order Date</th>
-                                            <th className="py-2 px-3.5">Delivery Date</th>
+                                            <th
+                                                onClick={() => handleSort('order_number')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Order Number"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Order Number</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'order_number' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'order_number' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
+                                                onClick={() => handleSort('customer_name')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Customer Name"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Customer</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'customer_name' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'customer_name' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
+                                                onClick={() => handleSort('layers')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Layers"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Layers</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'layers' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'layers' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
+                                                onClick={() => handleSort('film_applied')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Film"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Film</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'film_applied' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'film_applied' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
+                                                onClick={() => handleSort('order_qty')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Quantity"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>QTY / LAUNCH / PANEL / UP / FINAL / FAIL</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'order_qty' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'order_qty' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
+                                                onClick={() => handleSort('created_at')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Order Date"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Order Date</span>
+                                                    <span className={`inline-flex items-center ${(sortBy === 'created_at' || sortBy === 'order_date') ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {(sortBy === 'created_at' || sortBy === 'order_date') ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
+                                                onClick={() => handleSort('delivery_date')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by Delivery Date"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>Delivery Date</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'delivery_date' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'delivery_date' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
                                             <th className="py-2 px-3.5 text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -1978,9 +2081,11 @@ export default function OrdersPage() {
                                                         ? order.completed_qty
                                                         : (parseInt(getMetaValue(order, 'final_qty', getMetaValue(order, 'completed_qty', '0')), 10) || 0));
 
-                                                const failedQty = typeof order.failed_qty === 'number'
-                                                    ? order.failed_qty
-                                                    : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0);
+                                                const failedQty = launchQty > 0
+                                                    ? Math.max(0, launchQty - completedQty)
+                                                    : (typeof order.failed_qty === 'number'
+                                                        ? order.failed_qty
+                                                        : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0));
 
                                                 const pendingQty = Math.max(0, totalQty - completedQty - failedQty);
                                                 const productTypeVal = getMetaValue(order, 'product_type', 'pcb').toLowerCase();
@@ -3984,7 +4089,7 @@ export default function OrdersPage() {
 
             {/* Reorder Confirmation & Customization Dialog */}
             <Dialog open={!!reorderModalOrder} onOpenChange={(open) => !open && setReorderModalOrder(null)}>
-                <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl bg-card border-border/80">
+                <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
                             <Copy className="w-5 h-5 text-blue-600" />
@@ -4006,7 +4111,7 @@ export default function OrdersPage() {
 
                         return (
                             <form onSubmit={handleReorderSubmit} className="space-y-4 py-2">
-                                <div className="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-border/60 space-y-1.5 text-xs font-medium">
+                                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs font-medium shadow-xs">
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground font-semibold">Original Order #:</span>
                                         <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
@@ -4033,7 +4138,7 @@ export default function OrdersPage() {
                                             min="1"
                                             value={reorderQty}
                                             onChange={(e) => setReorderQty(Math.max(1, parseInt(e.target.value) || 0))}
-                                            className="w-full h-10 text-xs font-bold rounded-xl border border-input bg-background"
+                                            className="w-full h-10 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-foreground"
                                             placeholder="Enter order quantity..."
                                             required
                                         />
@@ -4050,7 +4155,7 @@ export default function OrdersPage() {
                                             type="date"
                                             value={reorderDeliveryDate}
                                             onChange={(e) => setReorderDeliveryDate(e.target.value)}
-                                            className="w-full h-10 text-xs font-bold rounded-xl border border-input bg-background"
+                                            className="w-full h-10 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-foreground"
                                         />
                                         <p className="text-[10px] text-muted-foreground mt-1">
                                             Optionally select a target delivery date for this reorder.
