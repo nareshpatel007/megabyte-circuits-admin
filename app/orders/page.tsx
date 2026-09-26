@@ -2527,17 +2527,17 @@ export default function OrdersPage() {
                                 )}
 
                                 {/* Film Applied Toggle Option */}
-                                <div className="flex items-center justify-between p-3.5 bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl shadow-2xs">
+                                <div className="flex items-center justify-between p-3.5 bg-white border border-slate-200/90 rounded-xl shadow-xs">
                                     <div className="space-y-0.5">
-                                        <label htmlFor="film-applied-switch" className="text-xs font-black text-slate-800 dark:text-slate-100 block cursor-pointer">
+                                        <label htmlFor="film-applied-switch" className="text-xs font-black text-slate-900 block cursor-pointer">
                                             Film Applied
                                         </label>
-                                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">
+                                        <span className="text-[11px] text-slate-600 block font-semibold">
                                             {filmApplied ? "Mark film as applied (Status: Yes)" : "Mark film as not applied (Status: No)"}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2.5">
-                                        <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-md ${filmApplied ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"}`}>
+                                        <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-md ${filmApplied ? "bg-emerald-50 text-emerald-700 border border-emerald-300" : "bg-rose-50 text-rose-700 border border-rose-300"}`}>
                                             {filmApplied ? "Yes" : "No"}
                                         </span>
                                         <button
@@ -2546,7 +2546,7 @@ export default function OrdersPage() {
                                             role="switch"
                                             aria-checked={filmApplied}
                                             onClick={() => setFilmApplied(!filmApplied)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${filmApplied ? 'bg-purple-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${filmApplied ? 'bg-purple-600' : 'bg-slate-300'}`}
                                         >
                                             <span
                                                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${filmApplied ? 'translate-x-5' : 'translate-x-0'}`}
