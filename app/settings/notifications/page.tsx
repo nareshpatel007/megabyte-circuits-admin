@@ -155,10 +155,10 @@ export default function NotificationSettingsPage() {
         >
             <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
                 {/* Top Action Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card border border-border/80 rounded-2xl p-5 shadow-xs">
                     <div>
-                        <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-                            <Bell className="w-7 h-7 text-emerald-500" />
+                        <h1 className="text-xl md:text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+                            <Bell className="w-6 h-6 md:w-7 md:h-7 text-emerald-500" />
                             Notification System Settings
                         </h1>
                         <p className="text-xs text-muted-foreground mt-1 font-medium">
@@ -166,19 +166,19 @@ export default function NotificationSettingsPage() {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 shrink-0">
                         <button
                             onClick={() => setShowCleanupModal(true)}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 transition-all cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30 transition-all cursor-pointer shadow-2xs"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 text-rose-500" />
                             <span>Purge Old Notifications</span>
                         </button>
 
                         <button
                             disabled={saving}
                             onClick={handleSaveSettings}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white dark:text-slate-950 transition-all cursor-pointer shadow-xs disabled:opacity-50"
                         >
                             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             <span>Save Configuration</span>
@@ -190,7 +190,7 @@ export default function NotificationSettingsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Matrix Table Card */}
                     <div className="lg:col-span-3 rounded-2xl bg-card border border-border/80 overflow-hidden shadow-xs">
-                        <div className="p-4 border-b border-border/80 flex items-center justify-between bg-muted/20">
+                        <div className="p-4 px-5 border-b border-border/80 flex items-center justify-between bg-slate-50/70 dark:bg-muted/20">
                             <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                                 <Sliders className="w-4 h-4 text-emerald-500" />
                                 Event Notification Control Matrix
@@ -202,15 +202,15 @@ export default function NotificationSettingsPage() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs">
-                                <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider font-bold text-[11px] border-b border-border/80">
+                                <thead className="bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground uppercase tracking-wider font-bold text-[11px] border-b border-border/80">
                                     <tr>
-                                        <th className="p-4">Event Name & Description</th>
-                                        <th className="p-3 text-center">Client In-App</th>
-                                        <th className="p-3 text-center">Admin In-App</th>
-                                        <th className="p-3 text-center">Real-Time SSE</th>
-                                        <th className="p-3 text-center">Toast Alert</th>
-                                        <th className="p-3 text-center">Priority</th>
-                                        <th className="p-3 text-center">Preview</th>
+                                        <th className="p-4">EVENT NAME & DESCRIPTION</th>
+                                        <th className="p-3 text-center">CLIENT IN-APP</th>
+                                        <th className="p-3 text-center">ADMIN IN-APP</th>
+                                        <th className="p-3 text-center">REAL-TIME SSE</th>
+                                        <th className="p-3 text-center">TOAST ALERT</th>
+                                        <th className="p-3 text-center">PRIORITY</th>
+                                        <th className="p-3 text-center">PREVIEW</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/60 text-foreground">
@@ -228,13 +228,13 @@ export default function NotificationSettingsPage() {
                                         ))
                                     ) : (
                                         settings.map((item) => (
-                                            <tr key={item.event_key} className="hover:bg-muted/30 transition-colors">
+                                            <tr key={item.event_key} className="hover:bg-slate-50/60 dark:hover:bg-muted/30 transition-colors">
                                                 <td className="p-4">
                                                     <div className="font-bold text-foreground text-xs">{item.event_name}</div>
                                                     <div className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed font-medium">
                                                         {item.description}
                                                     </div>
-                                                    <span className="inline-block mt-1.5 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-semibold">
+                                                    <span className="inline-block mt-1.5 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 font-semibold">
                                                         {item.event_key}
                                                     </span>
                                                 </td>
@@ -245,7 +245,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.client_enabled}
                                                         onChange={() => handleToggle(item.event_key, "client_enabled")}
-                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
+                                                        className="w-4 h-4 rounded border-slate-300 dark:border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -255,7 +255,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.admin_enabled}
                                                         onChange={() => handleToggle(item.event_key, "admin_enabled")}
-                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
+                                                        className="w-4 h-4 rounded border-slate-300 dark:border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -265,7 +265,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.realtime_enabled}
                                                         onChange={() => handleToggle(item.event_key, "realtime_enabled")}
-                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
+                                                        className="w-4 h-4 rounded border-slate-300 dark:border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -275,7 +275,7 @@ export default function NotificationSettingsPage() {
                                                         type="checkbox"
                                                         checked={item.toast_enabled}
                                                         onChange={() => handleToggle(item.event_key, "toast_enabled")}
-                                                        className="w-4 h-4 rounded border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
+                                                        className="w-4 h-4 rounded border-slate-300 dark:border-border bg-background text-emerald-500 focus:ring-emerald-500/30 cursor-pointer accent-emerald-500"
                                                     />
                                                 </td>
 
@@ -284,7 +284,7 @@ export default function NotificationSettingsPage() {
                                                     <select
                                                         value={item.priority}
                                                         onChange={(e) => handlePriorityChange(item.event_key, e.target.value)}
-                                                        className="px-2.5 py-1.5 rounded-lg bg-background border border-border text-[11px] font-bold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                                        className="px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-[11px] font-bold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer"
                                                     >
                                                         <option value="low">Low</option>
                                                         <option value="normal">Normal</option>
@@ -297,7 +297,7 @@ export default function NotificationSettingsPage() {
                                                 <td className="p-3 text-center">
                                                     <button
                                                         onClick={() => setPreviewEvent(item)}
-                                                        className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 text-emerald-500 transition-colors cursor-pointer"
+                                                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-emerald-600 dark:bg-muted dark:hover:bg-muted/80 dark:text-emerald-400 transition-colors cursor-pointer border border-slate-200 dark:border-transparent"
                                                         title="Preview notification appearance"
                                                     >
                                                         <Eye className="w-4 h-4" />
@@ -320,13 +320,13 @@ export default function NotificationSettingsPage() {
                             </h3>
 
                             {previewEvent ? (
-                                <div className="p-4 rounded-xl bg-muted/40 border border-border/80 space-y-3">
+                                <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-muted/30 border border-slate-200 dark:border-border/80 space-y-3">
                                     <div className="flex items-start gap-3">
-                                        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
+                                        <div className="p-2.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 shrink-0">
                                             <Bell className="w-5 h-5" />
                                         </div>
                                         <div className="space-y-1">
-                                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] uppercase font-bold">
+                                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 font-mono text-[10px] uppercase font-bold tracking-wider inline-block">
                                                 {previewEvent.priority} Priority
                                             </span>
                                             <h4 className="text-xs font-bold text-foreground">{previewEvent.event_name}</h4>
@@ -343,9 +343,9 @@ export default function NotificationSettingsPage() {
                                 </div>
                             )}
 
-                            <div className="space-y-2 text-xs text-muted-foreground pt-2 border-t border-border/60">
+                            <div className="space-y-2 text-xs text-muted-foreground pt-3 border-t border-border/60">
                                 <strong className="text-foreground block font-bold">Notification Behavior Rules:</strong>
-                                <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed font-medium">
+                                <ul className="list-disc list-inside space-y-1.5 text-[11px] leading-relaxed font-medium">
                                     <li>Real-time SSE updates unread bell badges instantly without page refresh.</li>
                                     <li>Native Browser Notifications request permission & pop up when enabled.</li>
                                     <li>Clicking a notification marks it as read and redirects to entity.</li>
@@ -354,8 +354,8 @@ export default function NotificationSettingsPage() {
                                 <button
                                     onClick={async () => {
                                         const success = await showBrowserNotification({
-                                            title: "Test Admin Notification",
-                                            message: "This is a test notification from Megabyte Circuits Admin.",
+                                            title: previewEvent ? previewEvent.event_name : "Test Admin Notification",
+                                            message: previewEvent ? (previewEvent.description || "This is a test notification.") : "This is a test notification from Megabyte Circuits Admin.",
                                             action_url: "/settings/notifications"
                                         });
                                         if (success) {
@@ -364,9 +364,9 @@ export default function NotificationSettingsPage() {
                                             toast.info("Browser notification requested or not allowed by browser permissions.");
                                         }
                                     }}
-                                    className="w-full mt-3 py-2.5 px-3.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-500/20 shadow-2xs"
+                                    className="w-full mt-3 py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-200 dark:border-emerald-500/20 shadow-2xs"
                                 >
-                                    <Bell className="w-3.5 h-3.5" />
+                                    <Bell className="w-4 h-4" />
                                     <span>Test Browser Notification</span>
                                 </button>
                             </div>
