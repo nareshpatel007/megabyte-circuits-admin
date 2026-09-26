@@ -26,7 +26,8 @@ import {
     Sparkles,
     FileCode,
     Check,
-    AlertCircle
+    AlertCircle,
+    Image as ImageIcon
 } from "lucide-react";
 
 export default function OrderJobCardPage() {
@@ -37,6 +38,7 @@ export default function OrderJobCardPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [downloadingDocx, setDownloadingDocx] = useState(false);
     const [downloadingCombinedPdf, setDownloadingCombinedPdf] = useState(false);
     const [uploadingDoc, setUploadingDoc] = useState(false);
     const [selectedPreviewDoc, setSelectedPreviewDoc] = useState<any | null>(null);
@@ -71,6 +73,40 @@ export default function OrderJobCardPage() {
     useEffect(() => {
         fetchJobCard();
     }, [orderId]);
+
+    // Clipboard Image Paste Handler (Ctrl + V)
+    useEffect(() => {
+        const handlePaste = (e: ClipboardEvent) => {
+            if (!orderId || uploadingDoc) return;
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.type.indexOf('image') !== -1) {
+                    const blob = item.getAsFile();
+                    if (blob) {
+                        e.preventDefault();
+                        const now = new Date();
+                        const timestamp = now.getFullYear() +
+                            String(now.getMonth() + 1).padStart(2, '0') +
+                            String(now.getDate()).padStart(2, '0') + '-' +
+                            String(now.getHours()).padStart(2, '0') +
+                            String(now.getMinutes()).padStart(2, '0') +
+                            String(now.getSeconds()).padStart(2, '0');
+                        const ext = item.type.split('/')[1] || 'png';
+                        const pastedFile = new File([blob], `pasted-image-${timestamp}.${ext}`, { type: item.type });
+                        toast.info("Uploading pasted image from clipboard...");
+                        handleUploadJobCardDoc(pastedFile);
+                    }
+                    break;
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, [orderId, uploadingDoc]);
 
     const updateJobCardField = (key: string, value: any) => {
         setJobCardData((prev: any) => prev ? { ...prev, [key]: value } : prev);
@@ -150,11 +186,48 @@ export default function OrderJobCardPage() {
         }
     };
 
+    const handleDownloadDocx = async () => {
+        if (!orderId || !jobCardData) return;
+        setDownloadingDocx(true);
+        const toastId = toast.loading("Generating editable Job Card DOCX...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${orderId}/job-card/docx`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ job_card_data: jobCardData })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to generate DOCX on backend");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `JOB_CARD_${jobCardData.job_number || orderId}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("Editable Job Card DOCX downloaded!", { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || "Error downloading Job Card DOCX", { id: toastId });
+        } finally {
+            setDownloadingDocx(false);
+        }
+    };
+
     const handleUploadJobCardDoc = async (file: File) => {
         if (!orderId) return;
         const ext = file.name.split('.').pop()?.toLowerCase();
-        if (!ext || !['pdf', 'doc', 'docx'].includes(ext)) {
-            toast.error("Only .pdf, .doc, and .docx files are supported.");
+        const allowedExts = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'];
+        if (!ext || !allowedExts.includes(ext)) {
+            toast.error("Only PDF, Word (.doc, .docx), and Image (.jpg, .jpeg, .png, .webp) files are supported.");
             return;
         }
         if (file.size > 25 * 1024 * 1024) {
@@ -163,7 +236,12 @@ export default function OrderJobCardPage() {
         }
 
         setUploadingDoc(true);
-        const toastId = toast.loading(ext === 'pdf' ? "Uploading PDF attachment..." : "Uploading & converting Word document to PDF...");
+        const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+        const toastId = toast.loading(
+            isImage 
+                ? "Uploading & processing image to A4 PDF page..." 
+                : (ext === 'pdf' ? "Uploading PDF attachment..." : "Uploading & converting Word document to PDF...")
+        );
         try {
             const token = localStorage.getItem("admin_token");
             const formData = new FormData();
@@ -180,7 +258,7 @@ export default function OrderJobCardPage() {
 
             const json = await res.json();
             if (res.ok && json.success && json.data) {
-                toast.success("Document attached successfully!", { id: toastId });
+                toast.success(isImage ? "Image converted to A4 page & attached!" : "Document attached successfully!", { id: toastId });
                 setJobCardData((prev: any) => {
                     if (!prev) return prev;
                     const existingDocs = prev.documents || [];
@@ -329,7 +407,17 @@ export default function OrderJobCardPage() {
                 className="bg-card hover:bg-muted text-foreground font-bold text-xs rounded-xl shadow-xs gap-2 border-border/80 h-10"
             >
                 <Download className="w-4 h-4 text-indigo-500" />
-                {downloadingPdf ? "Generating..." : "Download Job Card"}
+                {downloadingPdf ? "Generating..." : "Download Job Card PDF"}
+            </Button>
+            <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadDocx}
+                disabled={downloadingDocx || !jobCardData}
+                className="bg-card hover:bg-muted text-foreground font-bold text-xs rounded-xl shadow-xs gap-2 border-border/80 h-10"
+            >
+                <FileText className="w-4 h-4 text-blue-500" />
+                {downloadingDocx ? "Generating DOCX..." : "Download Job Card DOCX"}
             </Button>
             <Button
                 type="button"
@@ -845,46 +933,55 @@ export default function OrderJobCardPage() {
                                         </span>
                                     </div>
 
-                                    {jobCardData.documents.map((doc: any, index: number) => (
-                                        <div key={doc.id} className="bg-card border border-border/80 rounded-xl p-4 space-y-3 shadow-xs">
-                                            <div className="flex items-center justify-between border-b border-border/80 pb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-6 h-6 rounded bg-indigo-600 text-white font-black text-xs flex items-center justify-center">
-                                                        {index + 2}
-                                                    </span>
-                                                    <span className="font-bold text-xs text-foreground truncate max-w-sm">
-                                                        {doc.original_name}
-                                                    </span>
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">
-                                                        {doc.file_type}
-                                                    </span>
-                                                    {doc.converted_pdf_path && (
-                                                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                                            DOCX → PDF ({doc.page_count || 1} pages)
+                                    {jobCardData.documents.map((doc: any, index: number) => {
+                                        const isImg = ['jpg', 'jpeg', 'png', 'webp'].includes(doc.file_type?.toLowerCase()) || doc.source_type === 'uploaded_image';
+                                        return (
+                                            <div key={doc.id} className="bg-card border border-border/80 rounded-xl p-4 space-y-3 shadow-xs">
+                                                <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="w-6 h-6 rounded bg-indigo-600 text-white font-black text-xs flex items-center justify-center">
+                                                            {index + 2}
                                                         </span>
-                                                    )}
+                                                        <span className="font-bold text-xs text-foreground truncate max-w-sm">
+                                                            {doc.original_name}
+                                                        </span>
+                                                        {isImg ? (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 uppercase flex items-center gap-1">
+                                                                <ImageIcon className="w-3 h-3" /> IMAGE (1 Page A4)
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">
+                                                                {doc.file_type}
+                                                            </span>
+                                                        )}
+                                                        {doc.converted_pdf_path && !isImg && (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                DOCX → PDF ({doc.page_count || 1} pages)
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setSelectedPreviewDoc(doc)}
+                                                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 gap-1.5 h-7"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" /> Fullscreen Preview
+                                                    </Button>
                                                 </div>
 
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setSelectedPreviewDoc(doc)}
-                                                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 gap-1.5 h-7"
-                                                >
-                                                    <Eye className="w-3.5 h-3.5" /> Fullscreen Preview
-                                                </Button>
+                                                <div className="rounded-lg overflow-hidden h-[450px] border border-border bg-slate-100 dark:bg-slate-900">
+                                                    <iframe
+                                                        src={`/api/admin/orders/${orderId}/job-card/documents/${doc.id}/file?token=${localStorage.getItem("admin_token")}`}
+                                                        className="w-full h-full border-none"
+                                                        title={`Attachment ${doc.original_name}`}
+                                                    />
+                                                </div>
                                             </div>
-
-                                            <div className="rounded-lg overflow-hidden h-[450px] border border-border bg-slate-100 dark:bg-slate-900">
-                                                <iframe
-                                                    src={`/api/admin/orders/${orderId}/job-card/documents/${doc.id}/file?token=${localStorage.getItem("admin_token")}`}
-                                                    className="w-full h-full border-none"
-                                                    title={`Attachment ${doc.original_name}`}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
 
@@ -899,16 +996,25 @@ export default function OrderJobCardPage() {
                                     <div>
                                         <h3 className="text-sm font-black text-foreground flex items-center gap-2">
                                             <FileCode className="w-4 h-4 text-indigo-500" />
-                                            Additional Documents
+                                            Additional Documents & Images
                                         </h3>
                                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                                            Upload PDFs or Word docs (.doc, .docx) to combine into the final A4 PDF.
+                                            Upload PDFs, Word docs, or images (JPG/PNG/WEBP). Paste via Ctrl+V supported.
                                         </p>
                                     </div>
                                 </div>
 
                                 {/* Drag & Drop Upload Zone */}
-                                <div className="border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/80 bg-indigo-500/5 transition-all rounded-xl p-5 text-center space-y-3">
+                                <div 
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const droppedFile = e.dataTransfer.files?.[0];
+                                        if (droppedFile) handleUploadJobCardDoc(droppedFile);
+                                    }}
+                                    className="border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/80 bg-indigo-500/5 transition-all rounded-xl p-5 text-center space-y-3"
+                                >
                                     <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-500/20">
                                         <Upload className="w-5 h-5" />
                                     </div>
@@ -916,15 +1022,18 @@ export default function OrderJobCardPage() {
                                         <p className="text-xs font-bold text-foreground">
                                             Drop files here or click to browse
                                         </p>
-                                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                                            PDF, DOC, DOCX up to 25MB (Auto-converted to A4 PDF)
+                                        <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                                            PDF • DOC • DOCX • Images (JPG, PNG, WEBP)
+                                        </p>
+                                        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1">
+                                            Supports Ctrl+V clipboard image paste
                                         </p>
                                     </div>
 
                                     <label className="inline-block cursor-pointer">
                                         <input
                                             type="file"
-                                            accept=".pdf,.doc,.docx"
+                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
                                             disabled={uploadingDoc}
                                             onChange={(e) => {
                                                 const f = e.target.files?.[0];
@@ -934,7 +1043,7 @@ export default function OrderJobCardPage() {
                                         />
                                         <span className={`inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all ${uploadingDoc ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                             <Plus className="w-4 h-4" />
-                                            {uploadingDoc ? "Processing..." : "Add PDF / DOC / DOCX"}
+                                            {uploadingDoc ? "Processing..." : "+ Add Document / Image"}
                                         </span>
                                     </label>
                                 </div>
@@ -985,31 +1094,43 @@ export default function OrderJobCardPage() {
                                         {(!jobCardData.documents || jobCardData.documents.length === 0) ? (
                                             <div className="p-4 border-2 border-dashed border-border/80 rounded-xl text-center bg-muted/10">
                                                 <p className="text-xs text-muted-foreground font-medium">
-                                                    No additional documents attached. Secondary PDFs/DOCs will appear here in sequence.
+                                                    No additional documents/images attached. Secondary PDFs/images will appear here in sequence.
                                                 </p>
                                             </div>
                                         ) : (
-                                            jobCardData.documents.map((doc: any, index: number) => (
-                                                <div key={doc.id} className="p-3 bg-card border border-border/80 hover:border-indigo-500/50 rounded-xl flex items-center justify-between gap-2 transition-all shadow-2xs">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <div className="w-6 h-6 rounded bg-muted text-muted-foreground font-black text-xs flex items-center justify-center shrink-0">
-                                                            {index + 2}
-                                                        </div>
-                                                        <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />
-                                                        <div className="min-w-0">
-                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                <span className="font-bold text-xs text-foreground truncate max-w-[140px]" title={doc.original_name}>
-                                                                    {doc.original_name}
-                                                                </span>
-                                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">
-                                                                    {doc.file_type}
-                                                                </span>
+                                            jobCardData.documents.map((doc: any, index: number) => {
+                                                const isImg = ['jpg', 'jpeg', 'png', 'webp'].includes(doc.file_type?.toLowerCase()) || doc.source_type === 'uploaded_image';
+                                                return (
+                                                    <div key={doc.id} className="p-3 bg-card border border-border/80 hover:border-indigo-500/50 rounded-xl flex items-center justify-between gap-2 transition-all shadow-2xs">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div className="w-6 h-6 rounded bg-muted text-muted-foreground font-black text-xs flex items-center justify-center shrink-0">
+                                                                {index + 2}
                                                             </div>
-                                                            <p className="text-[10px] text-muted-foreground font-medium truncate">
-                                                                {doc.converted_pdf_path ? `DOCX → PDF (${doc.page_count || 1} pages)` : `${doc.page_count || 1} pages`}
-                                                            </p>
+                                                            {isImg ? (
+                                                                <ImageIcon className="w-4 h-4 text-purple-500 shrink-0" />
+                                                            ) : (
+                                                                <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                            )}
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="font-bold text-xs text-foreground truncate max-w-[140px]" title={doc.original_name}>
+                                                                        {doc.original_name}
+                                                                    </span>
+                                                                    {isImg ? (
+                                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 uppercase">
+                                                                            IMAGE
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">
+                                                                            {doc.file_type}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground font-medium truncate">
+                                                                    {isImg ? 'IMAGE • 1 page (A4)' : (doc.converted_pdf_path ? `DOCX → PDF (${doc.page_count || 1} pages)` : `${doc.page_count || 1} pages`)}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
 
                                                     <div className="flex items-center gap-0.5 shrink-0">
                                                         <Button
@@ -1058,7 +1179,8 @@ export default function OrderJobCardPage() {
                                                         </Button>
                                                     </div>
                                                 </div>
-                                            ))
+                                            );
+                                        })
                                         )}
                                     </div>
                                 </div>

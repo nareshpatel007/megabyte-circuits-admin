@@ -751,11 +751,48 @@ export default function OrdersPage() {
         }
     };
 
+    const handleDownloadDocx = async () => {
+        if (!jobCardModalOrder || !jobCardData) return;
+        setDownloadingPdf(true);
+        const toastId = toast.loading("Generating editable Job Card DOCX...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card/docx`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ job_card_data: jobCardData })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to generate DOCX on backend");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `JOB_CARD_${jobCardData.job_number || jobCardModalOrder.order_number}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("Editable Job Card DOCX downloaded!", { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || "Error downloading Job Card DOCX", { id: toastId });
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
     const handleUploadJobCardDoc = async (file: File) => {
         if (!jobCardModalOrder) return;
         const ext = file.name.split('.').pop()?.toLowerCase();
-        if (!ext || !['pdf', 'doc', 'docx'].includes(ext)) {
-            toast.error("Only .pdf, .doc, and .docx files are supported.");
+        const allowedExts = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'];
+        if (!ext || !allowedExts.includes(ext)) {
+            toast.error("Only PDF, Word (.doc, .docx), and Image (.jpg, .jpeg, .png, .webp) files are supported.");
             return;
         }
         if (file.size > 25 * 1024 * 1024) {
@@ -764,7 +801,12 @@ export default function OrdersPage() {
         }
 
         setUploadingDoc(true);
-        const toastId = toast.loading(ext === 'pdf' ? "Uploading PDF attachment..." : "Uploading & converting Word document to PDF...");
+        const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+        const toastId = toast.loading(
+            isImage 
+                ? "Uploading & processing image to A4 PDF page..." 
+                : (ext === 'pdf' ? "Uploading PDF attachment..." : "Uploading & converting Word document to PDF...")
+        );
         try {
             const token = localStorage.getItem("admin_token");
             const formData = new FormData();
@@ -781,7 +823,7 @@ export default function OrdersPage() {
 
             const json = await res.json();
             if (res.ok && json.success && json.data) {
-                toast.success("Document attached successfully!", { id: toastId });
+                toast.success(isImage ? "Image converted to A4 page & attached!" : "Document attached successfully!", { id: toastId });
                 setJobCardData((prev: any) => {
                     if (!prev) return prev;
                     const existingDocs = prev.documents || [];
