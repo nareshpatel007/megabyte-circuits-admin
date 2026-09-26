@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp } from "lucide-react";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -606,6 +607,7 @@ export default function OrdersPage() {
     const [modalUpsQty, setModalUpsQty] = useState<number>(0);
     const [modalFinalQty, setModalFinalQty] = useState<number>(0);
     const [modalBillNumber, setModalBillNumber] = useState("");
+    const [modalBillNumberError, setModalBillNumberError] = useState("");
     const [modalDeliveryDate, setModalDeliveryDate] = useState("");
     const [modalRemark, setModalRemark] = useState("");
     const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -627,6 +629,12 @@ export default function OrdersPage() {
     const [loadingJobCard, setLoadingJobCard] = useState<boolean>(false);
     const [savingJobCard, setSavingJobCard] = useState<boolean>(false);
     const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+    const [uploadingDoc, setUploadingDoc] = useState<boolean>(false);
+    const [downloadingCombinedPdf, setDownloadingCombinedPdf] = useState<boolean>(false);
+    const [selectedPreviewDoc, setSelectedPreviewDoc] = useState<any | null>(null);
+    const [combinedPreviewOpen, setCombinedPreviewOpen] = useState<boolean>(false);
+    const [draggedDocIndex, setDraggedDocIndex] = useState<number | null>(null);
+
 
     const openJobCardModal = (order: ApiOrder) => {
         setJobCardModalOrder(order);
@@ -735,6 +743,167 @@ export default function OrdersPage() {
             setDownloadingPdf(false);
         }
     };
+
+    const handleUploadJobCardDoc = async (file: File) => {
+        if (!jobCardModalOrder) return;
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (!ext || !['pdf', 'doc', 'docx'].includes(ext)) {
+            toast.error("Only .pdf, .doc, and .docx files are supported.");
+            return;
+        }
+        if (file.size > 25 * 1024 * 1024) {
+            toast.error("File size exceeds maximum limit of 25MB.");
+            return;
+        }
+
+        setUploadingDoc(true);
+        const toastId = toast.loading(ext === 'pdf' ? "Uploading PDF attachment..." : "Uploading & converting Word document to PDF...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const formData = new FormData();
+            formData.append("document", file);
+
+            const res = await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card/documents/upload`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json"
+                },
+                body: formData
+            });
+
+            const json = await res.json();
+            if (res.ok && json.success && json.data) {
+                toast.success("Document attached successfully!", { id: toastId });
+                setJobCardData((prev: any) => {
+                    if (!prev) return prev;
+                    const existingDocs = prev.documents || [];
+                    return { ...prev, documents: [...existingDocs, json.data] };
+                });
+            } else {
+                toast.error(json.message || "Failed to attach document", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error uploading document", { id: toastId });
+        } finally {
+            setUploadingDoc(false);
+        }
+    };
+
+    const handleDeleteJobCardDoc = async (docId: number) => {
+        if (!jobCardModalOrder) return;
+        if (!confirm("Are you sure you want to remove this attached document?")) return;
+
+        const toastId = toast.loading("Removing document...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card/documents/${docId}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            const json = await res.json();
+            if (res.ok && json.success) {
+                toast.success("Document removed.", { id: toastId });
+                setJobCardData((prev: any) => {
+                    if (!prev) return prev;
+                    const filtered = (prev.documents || []).filter((d: any) => d.id !== docId);
+                    return { ...prev, documents: filtered };
+                });
+            } else {
+                toast.error(json.message || "Failed to remove document", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error removing document", { id: toastId });
+        }
+    };
+
+    const handleReorderJobCardDocs = async (newDocList: any[]) => {
+        if (!jobCardModalOrder) return;
+        setJobCardData((prev: any) => prev ? { ...prev, documents: newDocList } : prev);
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            const payload = {
+                documents: newDocList.map((d: any, index: number) => ({
+                    id: d.id,
+                    sort_order: index + 2
+                }))
+            };
+
+            await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card/documents/reorder`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+        } catch (err: any) {
+            console.error("Failed to persist document order:", err);
+        }
+    };
+
+    const handleMoveDocItem = (index: number, direction: 'up' | 'down') => {
+        if (!jobCardData || !jobCardData.documents) return;
+        const docs = [...jobCardData.documents];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= docs.length) return;
+
+        const temp = docs[index];
+        docs[index] = docs[targetIndex];
+        docs[targetIndex] = temp;
+
+        handleReorderJobCardDocs(docs);
+    };
+
+    const handleDownloadCombinedPdf = async () => {
+        if (!jobCardModalOrder || !jobCardData) return;
+        setDownloadingCombinedPdf(true);
+        const toastId = toast.loading("Generating combined PDF from backend...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const docSequence = (jobCardData.documents || []).map((d: any) => d.id);
+            const fullSequence = ['job_card', ...docSequence];
+
+            const res = await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card/combined-pdf`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    job_card_data: jobCardData,
+                    document_sequence: fullSequence
+                })
+            });
+
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.message || "Failed to generate combined PDF on backend");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `JOB_CARD_${jobCardData.job_number || jobCardModalOrder.order_number}_COMPLETE.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("Combined PDF generated and downloaded successfully!", { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || "Error generating combined PDF", { id: toastId });
+        } finally {
+            setDownloadingCombinedPdf(false);
+        }
+    };
+
 
     const openFilmModal = (order: ApiOrder) => {
         setFilmModalOrder(order);
@@ -1181,6 +1350,7 @@ export default function OrdersPage() {
         setModalUpsQty(order.ups_qty || 0);
         setModalFinalQty(order.final_qty || 0);
         setModalBillNumber(order.bill_number ? String(order.bill_number) : "");
+        setModalBillNumberError("");
         setModalDeliveryDate(order.delivery_date ? String(order.delivery_date).split('T')[0] : "");
         setModalRemark("");
     };
@@ -1189,6 +1359,18 @@ export default function OrdersPage() {
     // Quick inline status change handler
     const handleInlineStatusChange = async (order: ApiOrder, newStatus: string) => {
         if (!hasChangeStatusPermission || order.status === newStatus) return;
+        const completedStatuses = ['completed', 'delivered', 'order completed', 'production completed'];
+        const isCompleted = completedStatuses.includes((newStatus || '').toLowerCase().trim());
+        const hasBillNumber = order.bill_number && String(order.bill_number).trim() !== '';
+
+        if (isCompleted && !hasBillNumber) {
+            toast.info(`Bill Number is required to set status to Completed for Order #${order.order_number}.`);
+            handleOpenStatusModal(order);
+            setModalNewStatus(newStatus);
+            setModalBillNumberError("Bill number is required when completing an order.");
+            return;
+        }
+
         const toastId = toast.loading(`Updating Order #${order.order_number} status...`);
         try {
             const token = localStorage.getItem("admin_token");
@@ -1204,11 +1386,17 @@ export default function OrdersPage() {
             });
 
             const data = await res.json();
-            if (data.status || data.success) {
+            if (res.ok && (data.status || data.success)) {
                 toast.success(`Order #${order.order_number} status updated to "${newStatus}"`, { id: toastId });
                 fetchData(debouncedSearch);
             } else {
-                toast.error(data.message || "Failed to update status", { id: toastId });
+                const errMsg = data.errors?.bill_number?.[0] || data.message || "Failed to update status";
+                toast.error(errMsg, { id: toastId });
+                if (isCompleted) {
+                    handleOpenStatusModal(order);
+                    setModalNewStatus(newStatus);
+                    setModalBillNumberError(data.errors?.bill_number?.[0] || "Bill number is required when completing an order.");
+                }
             }
         } catch (err: any) {
             console.error("Inline status update error:", err);
@@ -1220,6 +1408,16 @@ export default function OrdersPage() {
     const handleStatusUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!statusModalOrder || !modalNewStatus) return;
+
+        setModalBillNumberError("");
+
+        const completedStatuses = ['completed', 'delivered', 'order completed', 'production completed'];
+        const isCompleted = completedStatuses.includes((modalNewStatus || '').toLowerCase().trim());
+        if (isCompleted && (!modalBillNumber || modalBillNumber.trim() === "")) {
+            setModalBillNumberError("Bill number is required when completing an order.");
+            toast.error("Cannot change order status to Completed. Bill Number is required.");
+            return;
+        }
 
         setUpdatingStatus(true);
         try {
@@ -1246,23 +1444,27 @@ export default function OrdersPage() {
                     panel_qty: modalPanelQty,
                     ups_qty: modalUpsQty,
                     final_qty: modalFinalQty,
-                    bill_number: modalBillNumber,
+                    bill_number: modalBillNumber.trim(),
                     delivery_date: modalDeliveryDate || null,
                     remark: modalRemark
                 })
             });
 
             const data = await res.json();
-            if (data.status || data.success) {
+            if (res.ok && (data.status || data.success)) {
                 toast.success(`Order #${statusModalOrder.order_number} updated successfully`);
                 setStatusModalOrder(null);
                 fetchData(debouncedSearch);
             } else {
-                toast.error(data.message || "Failed to update status");
+                const errMsg = data.errors?.bill_number?.[0] || data.message || "Failed to update status";
+                if (data.errors?.bill_number?.[0]) {
+                    setModalBillNumberError(data.errors.bill_number[0]);
+                }
+                toast.error(errMsg);
             }
         } catch (err: any) {
             console.error("Status update error:", err);
-            toast.error("Error updating status");
+            toast.error(err?.message || "Error updating status");
         } finally {
             setUpdatingStatus(false);
         }
@@ -2164,16 +2366,27 @@ export default function OrdersPage() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Bill Number
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1">
+                                            <span>Bill Number</span>
+                                            {['completed', 'delivered', 'order completed', 'production completed'].includes((modalNewStatus || '').toLowerCase().trim()) && (
+                                                <span className="text-rose-600 font-bold">*</span>
+                                            )}
                                         </label>
                                         <Input
                                             type="text"
                                             value={modalBillNumber}
-                                            onChange={(e) => setModalBillNumber(e.target.value)}
+                                            onChange={(e) => {
+                                                setModalBillNumber(e.target.value);
+                                                if (modalBillNumberError) setModalBillNumberError("");
+                                            }}
                                             placeholder="Bill Number..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            className={`w-full px-3.5 py-2.5 text-xs bg-white rounded-xl text-slate-900 font-bold shadow-xs h-auto ${modalBillNumberError ? "border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500" : "border-slate-300"}`}
                                         />
+                                        {modalBillNumberError && (
+                                            <p className="text-[11px] font-semibold text-rose-600 mt-1">
+                                                {modalBillNumberError}
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -2613,7 +2826,7 @@ export default function OrdersPage() {
                                     </DialogDescription>
                                 </div>
 
-                                <div className="flex items-center gap-2.5 mr-6">
+                                <div className="flex items-center gap-2.5 mr-6 flex-wrap">
                                     <Button
                                         type="button"
                                         onClick={() => setJobCardModalOrder(null)}
@@ -2635,12 +2848,24 @@ export default function OrdersPage() {
                                         type="button"
                                         onClick={handleDownloadPdf}
                                         disabled={downloadingPdf || loadingJobCard}
-                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto disabled:opacity-50"
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto disabled:opacity-50"
+                                        title="Download Job Card PDF only"
                                     >
                                         <Download className={`w-4 h-4 ${downloadingPdf ? 'animate-spin' : ''}`} />
-                                        {downloadingPdf ? "Generating PDF..." : "Download PDF"}
+                                        {downloadingPdf ? "Generating..." : "Download Job Card"}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={handleDownloadCombinedPdf}
+                                        disabled={downloadingCombinedPdf || loadingJobCard}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto disabled:opacity-50"
+                                        title="Download Combined PDF with all attachments"
+                                    >
+                                        <Download className={`w-4 h-4 ${downloadingCombinedPdf ? 'animate-spin' : ''}`} />
+                                        {downloadingCombinedPdf ? "Generating Combined..." : "Download Combined PDF"}
                                     </Button>
                                 </div>
+
                             </DialogHeader>
 
                             {loadingJobCard || !jobCardData ? (
@@ -2649,8 +2874,10 @@ export default function OrdersPage() {
                                     Loading Job Card details...
                                 </div>
                             ) : (
-                                /* Master Table Container */
-                                <div className="p-3 bg-white border border-slate-300 rounded-lg shadow-md font-sans text-black overflow-x-auto">
+                                <>
+                                    {/* Master Table Container */}
+                                    <div className="p-3 bg-white border border-slate-300 rounded-lg shadow-md font-sans text-black overflow-x-auto">
+
                                     <table className="w-full border-collapse border-2 border-black text-xs font-semibold text-black" style={{ borderCollapse: 'collapse', border: '2px solid #000' }}>
                                         <tbody>
                                             {/* Header Row */}
@@ -3236,11 +3463,352 @@ export default function OrdersPage() {
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* Additional Documents & Combined PDF Export Section */}
+                                <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 uppercase tracking-wide">
+                                                <Paperclip className="w-4 h-4 text-indigo-600" />
+                                                Additional Documents
+                                            </h3>
+                                            <p className="text-[11px] text-slate-500 font-medium">
+                                                Attach PDFs, DOC, or DOCX documents to combine with this Job Card into a single PDF export.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="file"
+                                                id="job-card-doc-upload"
+                                                accept=".pdf,.doc,.docx"
+                                                className="hidden"
+                                                disabled={uploadingDoc}
+                                                onChange={(e) => {
+                                                    const selected = e.target.files?.[0];
+                                                    if (selected) {
+                                                        handleUploadJobCardDoc(selected);
+                                                        e.target.value = "";
+                                                    }
+                                                }}
+                                            />
+                                            <label htmlFor="job-card-doc-upload">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    asChild
+                                                    disabled={uploadingDoc}
+                                                    className="bg-white hover:bg-slate-100 text-indigo-700 border-indigo-200 rounded-xl text-xs font-bold gap-1.5 h-9 px-3 cursor-pointer shadow-xs"
+                                                >
+                                                    <span>
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        {uploadingDoc ? "Uploading..." : "Add PDF / DOC / DOCX"}
+                                                    </span>
+                                                </Button>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Document Sequence List Card */}
+                                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-1">
+                                            Sequence & Attachments List
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {/* 1. Primary Generated Job Card Item */}
+                                            <div className="flex items-center justify-between p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg text-xs">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-bold text-slate-400 cursor-default">☰</span>
+                                                    <span className="font-black text-amber-900 dark:text-amber-300 w-6">1.</span>
+                                                    <div>
+                                                        <div className="font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                                            <span>Job Card {jobCardData.job_number || order.order_number}.pdf</span>
+                                                            <span className="bg-amber-200/80 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                                                Generated Job Card
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                            Primary document · Auto-generated from latest Job Card editor data
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[11px] font-bold text-amber-800 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-1 rounded-md">
+                                                        Primary
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* 2. Attached User Documents */}
+                                            {(jobCardData.documents || []).length === 0 ? (
+                                                <div className="text-center py-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-400 font-medium">
+                                                    No additional PDF or Word documents attached yet. Click "Add PDF / DOC / DOCX" above.
+                                                </div>
+                                            ) : (
+                                                (jobCardData.documents || []).map((doc: any, index: number) => {
+                                                    const isDocx = doc.file_type === 'doc' || doc.file_type === 'docx';
+                                                    return (
+                                                        <div
+                                                            key={doc.id}
+                                                            draggable
+                                                            onDragStart={() => setDraggedDocIndex(index)}
+                                                            onDragOver={(e) => e.preventDefault()}
+                                                            onDrop={() => {
+                                                                if (draggedDocIndex === null || draggedDocIndex === index) return;
+                                                                const docs = [...jobCardData.documents];
+                                                                const draggedItem = docs[draggedDocIndex];
+                                                                docs.splice(draggedDocIndex, 1);
+                                                                docs.splice(index, 0, draggedItem);
+                                                                setDraggedDocIndex(null);
+                                                                handleReorderJobCardDocs(docs);
+                                                            }}
+                                                            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 dark:bg-slate-900/60 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-bold text-slate-400 cursor-grab hover:text-slate-600">
+                                                                    <GripVertical className="w-4 h-4" />
+                                                                </span>
+                                                                <span className="font-black text-slate-700 dark:text-slate-300 w-6">
+                                                                    {index + 2}.
+                                                                </span>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                                                        <span>{doc.original_name}</span>
+                                                                        {isDocx ? (
+                                                                            <span className="bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                                                                                {doc.file_type.toUpperCase()} → PDF
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                                                                                PDF
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-500 font-semibold mt-0.5 flex items-center gap-3">
+                                                                        <span>{doc.page_count ? `${doc.page_count} page${doc.page_count > 1 ? 's' : ''}` : 'Pages detected'}</span>
+                                                                        <span>•</span>
+                                                                        <span>{(doc.file_size / 1024).toFixed(0)} KB</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={index === 0}
+                                                                    onClick={() => handleMoveDocItem(index, 'up')}
+                                                                    className="h-7 w-7 p-0 rounded cursor-pointer"
+                                                                    title="Move Up"
+                                                                >
+                                                                    <ChevronUp className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={index === (jobCardData.documents.length - 1)}
+                                                                    onClick={() => handleMoveDocItem(index, 'down')}
+                                                                    className="h-7 w-7 p-0 rounded cursor-pointer"
+                                                                    title="Move Down"
+                                                                >
+                                                                    <ChevronDown className="w-3.5 h-3.5" />
+                                                                </Button>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => setSelectedPreviewDoc(doc)}
+                                                                    className="h-7 px-2.5 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-lg cursor-pointer border-slate-300"
+                                                                >
+                                                                    <Eye className="w-3 h-3 mr-1 text-blue-600" />
+                                                                    Preview
+                                                                </Button>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleDeleteJobCardDoc(doc.id)}
+                                                                    className="h-7 w-7 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                                                    title="Remove Document"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+
+                                        {/* Combined Summary & Combined Actions Bar */}
+                                        <div className="pt-3 mt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                                            <div className="text-slate-600 dark:text-slate-400 font-bold flex items-center gap-2">
+                                                <span>Total Documents: <strong className="text-slate-900 dark:text-slate-100">{(jobCardData.documents || []).length + 1}</strong></span>
+                                                <span>•</span>
+                                                <span>Total Combined Pages: <strong className="text-indigo-600 dark:text-indigo-400">{(jobCardData.documents || []).reduce((acc: number, d: any) => acc + (d.page_count || 0), 1)}</strong></span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setCombinedPreviewOpen(true)}
+                                                    className="h-9 px-3 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 rounded-xl cursor-pointer border-slate-300"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                                                    Preview Combined Document
+                                                </Button>
+
+                                                <Button
+                                                    type="button"
+                                                    onClick={handleDownloadCombinedPdf}
+                                                    disabled={downloadingCombinedPdf}
+                                                    className="h-9 px-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs cursor-pointer gap-1.5 disabled:opacity-50"
+                                                >
+                                                    <Download className={`w-3.5 h-3.5 ${downloadingCombinedPdf ? 'animate-spin' : ''}`} />
+                                                    {downloadingCombinedPdf ? "Generating Combined..." : "Download Combined PDF"}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                </>
                             )}
+
                         </DialogContent>
                     );
                 })()}
             </Dialog>
+
+            {/* Individual Document Preview Modal */}
+            <Dialog open={!!selectedPreviewDoc} onOpenChange={(open) => !open && setSelectedPreviewDoc(null)}>
+                <DialogContent className="max-w-4xl max-h-[90vh] bg-card border-border/80 rounded-2xl p-6 shadow-2xl space-y-4">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-black flex items-center gap-2">
+                            <Eye className="w-5 h-5 text-indigo-600" />
+                            Preview Document: {selectedPreviewDoc?.original_name}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Type: {selectedPreviewDoc?.file_type?.toUpperCase()} {selectedPreviewDoc?.converted_pdf_name ? '(Converted to PDF)' : ''} · {selectedPreviewDoc?.page_count || 0} pages
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedPreviewDoc && jobCardModalOrder && (
+                        <div className="w-full h-[70vh] bg-slate-900 rounded-xl overflow-hidden border border-slate-700">
+                            <iframe
+                                src={`/api/admin/orders/${jobCardModalOrder.id}/job-card/documents/${selectedPreviewDoc.id}/file?token=${localStorage.getItem("admin_token")}`}
+                                className="w-full h-full border-0"
+                                title="Document Preview"
+                            />
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setSelectedPreviewDoc(null)}
+                            className="rounded-xl text-xs font-bold cursor-pointer"
+                        >
+                            Close Preview
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Combined Sequence Preview Modal */}
+            <Dialog open={combinedPreviewOpen} onOpenChange={setCombinedPreviewOpen}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-border/80 rounded-2xl p-6 shadow-2xl space-y-4">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-black flex items-center gap-2">
+                            <Layers className="w-5 h-5 text-indigo-600" />
+                            Combined Document Sequence Preview
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Order sequence preview of all documents that will be merged into the final PDF output.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-2">
+                        {/* 1. Job Card Card */}
+                        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-full bg-amber-600 text-white font-black flex items-center justify-center text-xs">
+                                    1
+                                </span>
+                                <div>
+                                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                                        Generated Job Card ({jobCardData?.job_number || jobCardModalOrder?.order_number})
+                                    </h4>
+                                    <p className="text-xs text-slate-500 font-medium">
+                                        Position: Primary Document (Main Job Card Specifications & Manufacturing Logs)
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="px-3 py-1 bg-amber-200/80 text-amber-900 font-black text-xs rounded-full">
+                                Generated Job Card
+                            </span>
+                        </div>
+
+                        {/* Attached Documents Sequence Cards */}
+                        {(jobCardData?.documents || []).map((doc: any, i: number) => (
+                            <div key={doc.id} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-indigo-600 text-white font-black flex items-center justify-center text-xs">
+                                        {i + 2}
+                                    </span>
+                                    <div>
+                                        <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                                            {doc.original_name}
+                                        </h4>
+                                        <p className="text-xs text-slate-500 font-medium">
+                                            {doc.page_count || 1} page(s) · {doc.file_type?.toUpperCase()} {doc.converted_pdf_name ? '(Converted to PDF)' : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-full">
+                                    Attachment #{i + 1}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <DialogFooter className="flex items-center justify-between border-t pt-3">
+                        <div className="text-xs font-bold text-slate-600">
+                            Total Combined Output: <strong>{(jobCardData?.documents || []).length + 1} Documents</strong> (approx. {(jobCardData?.documents || []).reduce((a: number, d: any) => a + (d.page_count || 0), 1)} pages)
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setCombinedPreviewOpen(false)}
+                                className="rounded-xl text-xs font-bold cursor-pointer"
+                            >
+                                Close
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    setCombinedPreviewOpen(false);
+                                    handleDownloadCombinedPdf();
+                                }}
+                                disabled={downloadingCombinedPdf}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold gap-1.5 cursor-pointer"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                Download Combined PDF
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
 
             {/* Reorder Confirmation & Customization Dialog */}
             <Dialog open={!!reorderModalOrder} onOpenChange={(open) => !open && setReorderModalOrder(null)}>

@@ -150,6 +150,7 @@ export default function OrderDetailPage() {
     const [upsQty, setUpsQty] = useState<number>(0);
     const [finalQty, setFinalQty] = useState<number>(0);
     const [billNumber, setBillNumber] = useState("");
+    const [billNumberError, setBillNumberError] = useState("");
     const [remark, setRemark] = useState("");
 
     // Delivery date state & edit
@@ -221,6 +222,16 @@ export default function OrderDetailPage() {
         e.preventDefault();
         if (!newStatus) return;
 
+        setBillNumberError("");
+        const completedStatuses = ['completed', 'delivered', 'order completed', 'production completed'];
+        const isCompleted = completedStatuses.includes((newStatus || '').toLowerCase().trim());
+
+        if (isCompleted && (!billNumber || billNumber.trim() === "")) {
+            setBillNumberError("Bill number is required when completing an order.");
+            toast.error("Cannot change order status to Completed. Bill Number is required.");
+            return;
+        }
+
         setUpdating(true);
         const toastId = toast.loading("Updating order details & logging history...");
         try {
@@ -257,7 +268,7 @@ export default function OrderDetailPage() {
                     panel_qty: panelQty,
                     ups_qty: upsQty,
                     final_qty: finalQty,
-                    bill_number: billNumber,
+                    bill_number: billNumber.trim(),
                     admin_id: loggedInAdminId || user?.id,
                     admin_name: user?.name,
                     remark: remark
@@ -270,7 +281,11 @@ export default function OrderDetailPage() {
                 setOrder(data.data);
                 setRemark("");
             } else {
-                toast.error(data.message || data.error || "Failed to update order", { id: toastId });
+                const errMsg = data.errors?.bill_number?.[0] || data.message || data.error || "Failed to update order";
+                if (data.errors?.bill_number?.[0]) {
+                    setBillNumberError(data.errors.bill_number[0]);
+                }
+                toast.error(errMsg, { id: toastId });
             }
         } catch (err: any) {
             toast.error(err?.message || "Error updating order status", { id: toastId });
@@ -954,14 +969,27 @@ export default function OrderDetailPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Bill Number</label>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5 flex items-center gap-1">
+                                    <span>Bill Number</span>
+                                    {['completed', 'delivered', 'order completed', 'production completed'].includes((newStatus || '').toLowerCase().trim()) && (
+                                        <span className="text-rose-500 font-bold">*</span>
+                                    )}
+                                </label>
                                 <input
                                     type="text"
                                     value={billNumber}
-                                    onChange={(e) => setBillNumber(e.target.value)}
+                                    onChange={(e) => {
+                                        setBillNumber(e.target.value);
+                                        if (billNumberError) setBillNumberError("");
+                                    }}
                                     placeholder="Bill No..."
-                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    className={`w-full px-3.5 py-2.5 text-xs bg-background border rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 ${billNumberError ? "border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500" : "border-border/80"}`}
                                 />
+                                {billNumberError && (
+                                    <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                                        {billNumberError}
+                                    </p>
+                                )}
                             </div>
 
                             <div>
