@@ -82,12 +82,22 @@ export default function ClientsPage() {
     const fetchUsers = async () => {
         try {
             const token = localStorage.getItem("admin_token");
-            const res = await fetch("/api/admin/users", {
+            const params = new URLSearchParams();
+            if (search.trim()) {
+                params.set("search", search.trim());
+            }
+            if (statusFilter && statusFilter !== "All") {
+                params.set("status", statusFilter);
+            }
+
+            const res = await fetch(`/api/admin/users?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
             if (data.status || data.success) {
-                setUsers(data.data || data.users || []);
+                const list: ApiUser[] = data.data || data.users || [];
+                // Completely exclude deleted clients
+                setUsers(list.filter(u => (u.status || '').toLowerCase() !== 'deleted'));
             } else {
                 toast.error("Failed to load clients list");
             }
@@ -100,8 +110,11 @@ export default function ClientsPage() {
     };
 
     useEffect(() => {
-        fetchUsers();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchUsers();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [search, statusFilter]);
 
     const openStatusModal = (user: ApiUser) => {
         setStatusModalUser(user);
@@ -173,20 +186,24 @@ export default function ClientsPage() {
 
     const [pageSize, setPageSize] = useState<number>(10);
 
-    const filtered = users.filter((u) => {
-        const query = search.toLowerCase();
+    const nonDeletedUsers = users.filter((u) => (u.status || '').toLowerCase() !== 'deleted');
+
+    const filtered = nonDeletedUsers.filter((u) => {
+        const query = search.toLowerCase().trim();
         const fullName = `${u.first_name || ''} ${u.last_name || ''} ${u.name || ''}`.toLowerCase();
         const matchSearch =
+            !query ||
             fullName.includes(query) ||
             (u.email && u.email.toLowerCase().includes(query)) ||
             (u.company_name && u.company_name.toLowerCase().includes(query)) ||
-            (u.phone_number && u.phone_number.toLowerCase().includes(query));
+            (u.phone_number && u.phone_number.toLowerCase().includes(query)) ||
+            ((u as any).mobile && (u as any).mobile.toLowerCase().includes(query)) ||
+            ((u as any).phone && (u as any).phone.toLowerCase().includes(query));
 
         const userStatus = (u.status || 'Active').toLowerCase();
 
         let matchStatus = false;
         if (statusFilter === "All") {
-            // "All Statuses" excludes soft deleted clients
             matchStatus = userStatus !== "deleted";
         } else {
             matchStatus = userStatus === statusFilter.toLowerCase();
@@ -209,7 +226,7 @@ export default function ClientsPage() {
     );
 
     return (
-        <DashboardLayout title="Client Management" subtitle={`${users.length} registered clients`} action={addClientButton}>
+        <DashboardLayout title="Client Management" subtitle={`${nonDeletedUsers.length} registered clients`} action={addClientButton}>
             {loading ? (
                 <TableSkeleton rows={7} />
             ) : (
@@ -222,7 +239,7 @@ export default function ClientsPage() {
                             </div>
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Clients</p>
-                                <h3 className="text-2xl font-black text-foreground mt-0.5">{users.length}</h3>
+                                <h3 className="text-2xl font-black text-foreground mt-0.5">{nonDeletedUsers.length}</h3>
                             </div>
                         </div>
 
@@ -233,7 +250,7 @@ export default function ClientsPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Clients</p>
                                 <h3 className="text-2xl font-black text-emerald-500 mt-0.5">
-                                    {users.filter((u) => (u.status || 'active').toLowerCase() === "active").length}
+                                    {nonDeletedUsers.filter((u) => (u.status || 'active').toLowerCase() === "active").length}
                                 </h3>
                             </div>
                         </div>
@@ -245,7 +262,7 @@ export default function ClientsPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Inactive</p>
                                 <h3 className="text-2xl font-black text-red-500 mt-0.5">
-                                    {users.filter((u) => (u.status || 'active').toLowerCase() !== "active").length}
+                                    {nonDeletedUsers.filter((u) => (u.status || 'active').toLowerCase() !== "active" && (u.status || '').toLowerCase() !== "deleted").length}
                                 </h3>
                             </div>
                         </div>
@@ -257,7 +274,7 @@ export default function ClientsPage() {
                             <div>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
                                 <h3 className="text-2xl font-black text-foreground mt-0.5">
-                                    {users.reduce((s, u) => s + (Number(u.orders_count) || 0), 0)}
+                                    {nonDeletedUsers.reduce((s, u) => s + (Number(u.orders_count) || 0), 0)}
                                 </h3>
                             </div>
                         </div>
@@ -294,7 +311,6 @@ export default function ClientsPage() {
                                 <option value="Pending">Pending</option>
                                 <option value="Suspended">Suspended</option>
                                 <option value="On Hold">On Hold</option>
-                                <option value="Deleted">Deleted</option>
                             </select>
                         </div>
                     </div>
