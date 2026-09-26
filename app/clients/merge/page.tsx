@@ -244,7 +244,7 @@ export default function MergeClientsPage() {
 
         try {
             const token = localStorage.getItem("admin_token");
-            
+
             setTimeout(() => setMergeProgressStep("Migrating PCB orders & order logs..."), 400);
             setTimeout(() => setMergeProgressStep("Reassigning payments, transactions & invoices..."), 800);
             setTimeout(() => setMergeProgressStep("Updating addresses, Gerber files & tickets..."), 1200);
@@ -672,27 +672,6 @@ export default function MergeClientsPage() {
                                             {previewData.counts.gerber_files_count} Migrated
                                         </td>
                                     </tr>
-
-                                    <tr>
-                                        <td className="py-3.5 px-4 flex items-center gap-2">
-                                            <Tag className="w-4 h-4 text-cyan-400" />
-                                            Available & Bonus Credits
-                                        </td>
-                                        <td className="py-3.5 px-4 text-right text-muted-foreground">
-                                            {formatCurrency((previewData.target.available_credits || 0) + (previewData.target.total_bonus_credits || 0))}
-                                        </td>
-                                        <td className="py-3.5 px-4 text-right text-amber-400 font-bold">
-                                            +{formatCurrency(previewData.counts.total_available_credits + previewData.counts.total_bonus_credits)}
-                                        </td>
-                                        <td className="py-3.5 px-4 text-right text-emerald-400 font-black text-sm">
-                                            {formatCurrency(
-                                                (previewData.target.available_credits || 0) +
-                                                    (previewData.target.total_bonus_credits || 0) +
-                                                    previewData.counts.total_available_credits +
-                                                    previewData.counts.total_bonus_credits
-                                            )}
-                                        </td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -740,11 +719,10 @@ export default function MergeClientsPage() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                             {/* Target Option */}
                                             <label
-                                                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                                                    (conflictSelections[conflict.field] || "target") === "target"
-                                                        ? "bg-emerald-500/10 border-emerald-500 text-foreground font-bold"
-                                                        : "bg-card border-border/60 text-muted-foreground"
-                                                }`}
+                                                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${(conflictSelections[conflict.field] || "target") === "target"
+                                                    ? "bg-emerald-500/10 border-emerald-500 text-foreground font-bold"
+                                                    : "bg-card border-border/60 text-muted-foreground"
+                                                    }`}
                                             >
                                                 <div className="space-y-0.5">
                                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -773,11 +751,10 @@ export default function MergeClientsPage() {
                                             {conflict.sources_values.map((src) => (
                                                 <label
                                                     key={src.source_id}
-                                                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                                                        conflictSelections[conflict.field] === `source_${src.source_id}`
-                                                            ? "bg-indigo-500/10 border-indigo-500 text-foreground font-bold"
-                                                            : "bg-card border-border/60 text-muted-foreground"
-                                                    }`}
+                                                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${conflictSelections[conflict.field] === `source_${src.source_id}`
+                                                        ? "bg-indigo-500/10 border-indigo-500 text-foreground font-bold"
+                                                        : "bg-card border-border/60 text-muted-foreground"
+                                                        }`}
                                                 >
                                                     <div className="space-y-0.5">
                                                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -950,11 +927,10 @@ export default function MergeClientsPage() {
                                         <div
                                             key={client.id}
                                             onClick={() => !isDisabled && handleSelectClient(client)}
-                                            className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                                                isDisabled
-                                                    ? "opacity-40 cursor-not-allowed bg-muted/10 border-border/40"
-                                                    : "hover:bg-muted/40 cursor-pointer border-border/60 bg-card"
-                                            }`}
+                                            className={`p-3 rounded-xl border flex items-center justify-between transition-all ${isDisabled
+                                                ? "opacity-40 cursor-not-allowed bg-muted/10 border-border/40"
+                                                : "hover:bg-muted/40 cursor-pointer border-border/60 bg-card"
+                                                }`}
                                         >
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
