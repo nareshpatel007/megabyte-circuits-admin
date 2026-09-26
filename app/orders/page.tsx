@@ -3787,7 +3787,7 @@ export default function OrdersPage() {
                                     </div>
 
                                     {/* Document Sequence List Card */}
-                                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2">
+                                    <div className="bg-card border border-border/80 rounded-xl p-3 shadow-xs space-y-2">
                                         <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-1">
                                             Sequence & Attachments List
                                         </div>
@@ -4089,7 +4089,7 @@ export default function OrdersPage() {
 
             {/* Reorder Confirmation & Customization Dialog */}
             <Dialog open={!!reorderModalOrder} onOpenChange={(open) => !open && setReorderModalOrder(null)}>
-                <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl bg-card text-foreground border border-border/80">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
                             <Copy className="w-5 h-5 text-blue-600" />
@@ -4111,7 +4111,7 @@ export default function OrdersPage() {
 
                         return (
                             <form onSubmit={handleReorderSubmit} className="space-y-4 py-2">
-                                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs font-medium shadow-xs">
+                                <div className="bg-muted/40 p-3.5 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground font-semibold">Original Order #:</span>
                                         <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
@@ -4138,7 +4138,7 @@ export default function OrdersPage() {
                                             min="1"
                                             value={reorderQty}
                                             onChange={(e) => setReorderQty(Math.max(1, parseInt(e.target.value) || 0))}
-                                            className="w-full h-10 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-foreground"
+                                            className="w-full h-10 text-xs font-bold rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-2 focus:ring-blue-500/20"
                                             placeholder="Enter order quantity..."
                                             required
                                         />
@@ -4155,7 +4155,7 @@ export default function OrdersPage() {
                                             type="date"
                                             value={reorderDeliveryDate}
                                             onChange={(e) => setReorderDeliveryDate(e.target.value)}
-                                            className="w-full h-10 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-foreground"
+                                            className="w-full h-10 text-xs font-bold rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-2 focus:ring-blue-500/20"
                                         />
                                         <p className="text-[10px] text-muted-foreground mt-1">
                                             Optionally select a target delivery date for this reorder.
@@ -4178,14 +4178,14 @@ export default function OrdersPage() {
                                         variant="outline"
                                         onClick={() => setReorderModalOrder(null)}
                                         disabled={reordering}
-                                        className="rounded-xl text-xs font-bold cursor-pointer"
+                                        className="rounded-xl text-xs font-bold cursor-pointer border border-border hover:bg-muted text-foreground"
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         type="submit"
                                         disabled={reordering}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-sm"
                                     >
                                         {reordering ? (
                                             <>
