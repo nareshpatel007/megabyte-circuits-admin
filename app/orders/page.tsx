@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp } from "lucide-react";
 
@@ -107,6 +108,7 @@ const getPcbLightBg = (colorHex: string) => {
 };
 
 export default function OrdersPage() {
+    const router = useRouter();
     const { user } = useAuth();
     const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
     const hasPaymentPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("payments.view") : true);
@@ -637,7 +639,7 @@ export default function OrdersPage() {
 
 
     const openJobCardModal = (order: ApiOrder) => {
-        setJobCardModalOrder(order);
+        router.push(`/orders/${order.id}/job-card`);
     };
 
     useEffect(() => {
