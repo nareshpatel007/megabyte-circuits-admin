@@ -617,6 +617,7 @@ export default function OrdersPage() {
             setLoadingCustomers(false);
         }
     };
+    const [modalOrderQty, setModalOrderQty] = useState<number>(0);
     const [modalCompletedQty, setModalCompletedQty] = useState<number>(0);
     const [modalFailedQty, setModalFailedQty] = useState<number>(0);
     const [modalQNo, setModalQNo] = useState("");
@@ -1389,7 +1390,8 @@ export default function OrdersPage() {
         setModalUserId(initialUserId);
         setCustomerSearch("");
         setCustomerDropdownOpen(false);
-        fetchCustomersList("");
+        const initialOrderQty = order.order_qty || parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '0'))) || 0;
+        setModalOrderQty(initialOrderQty);
         setModalCompletedQty(initialCompletedQty);
         setModalFailedQty(initialFailedQty);
         setModalQNo(order.q_no ? String(order.q_no) : "");
@@ -1526,6 +1528,8 @@ export default function OrdersPage() {
                 },
                 body: JSON.stringify({
                     order_number: modalOrderNumber.trim(),
+                    order_qty: modalOrderQty,
+                    quantity: modalOrderQty,
                     status: modalNewStatus,
                     user_id: modalUserId ? Number(modalUserId) : null,
                     customer_name: modalCustomerName,
@@ -2464,46 +2468,71 @@ export default function OrdersPage() {
                             <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: modalPcbColor }} />
 
                             <DialogHeader className="pb-3 border-b border-slate-200/80">
-                                <div className="flex items-center gap-2.5">
-                                    <div
-                                        className="p-2 rounded-xl border shadow-xs"
-                                        style={{ backgroundColor: `${modalPcbColor}20`, color: modalPcbColor, borderColor: `${modalPcbColor}40` }}
-                                    >
-                                        <RefreshCw className="w-5 h-5" />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div
+                                            className="p-2 rounded-xl border shadow-xs"
+                                            style={{ backgroundColor: `${modalPcbColor}20`, color: modalPcbColor, borderColor: `${modalPcbColor}40` }}
+                                        >
+                                            <RefreshCw className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <DialogTitle className="text-base font-black text-slate-900">
+                                                Update Order
+                                            </DialogTitle>
+                                            <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
+                                                Order #{statusModalOrder.order_number}
+                                            </DialogDescription>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <DialogTitle className="text-base font-black text-slate-900">
-                                            Update Order
-                                        </DialogTitle>
-                                        <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
-                                            Order #{statusModalOrder.order_number}
-                                        </DialogDescription>
+
+                                    {/* Order Quantity Badge in Top Header */}
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 border border-slate-300/80 text-slate-800 shadow-2xs mr-6 sm:mr-8">
+                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Order Qty:</span>
+                                        <span className="font-mono font-black text-sm text-emerald-700">{modalOrderQty} Pcs</span>
                                     </div>
                                 </div>
                             </DialogHeader>
 
                             <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
-                                        <span>Order Number</span>
-                                        <span className="text-rose-600 font-bold">*</span>
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={modalOrderNumber}
-                                        onChange={(e) => {
-                                            setModalOrderNumber(e.target.value);
-                                            if (modalOrderNumberError) setModalOrderNumberError("");
-                                        }}
-                                        placeholder="Order Number (e.g. M5000-1)..."
-                                        className={`w-full px-3.5 py-2.5 text-xs bg-white rounded-xl text-slate-900 font-bold shadow-xs h-auto ${modalOrderNumberError ? "border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500" : "border-slate-300"}`}
-                                    />
-                                    {modalOrderNumberError && (
-                                        <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
-                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                            {modalOrderNumberError}
-                                        </p>
-                                    )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                                            <span>Order Number</span>
+                                            <span className="text-rose-600 font-bold">*</span>
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            value={modalOrderNumber}
+                                            onChange={(e) => {
+                                                setModalOrderNumber(e.target.value);
+                                                if (modalOrderNumberError) setModalOrderNumberError("");
+                                            }}
+                                            placeholder="Order Number (e.g. M5000-1)..."
+                                            className={`w-full px-3.5 py-2.5 text-xs bg-white rounded-xl text-slate-900 font-bold shadow-xs h-auto ${modalOrderNumberError ? "border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500" : "border-slate-300"}`}
+                                        />
+                                        {modalOrderNumberError && (
+                                            <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                {modalOrderNumberError}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                                            <span>Order Quantity (Pcs)</span>
+                                            <span className="text-rose-600 font-bold">*</span>
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            value={modalOrderQty}
+                                            onChange={(e) => setModalOrderQty(Math.max(0, parseInt(e.target.value) || 0))}
+                                            placeholder="Order Quantity (Pcs)..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

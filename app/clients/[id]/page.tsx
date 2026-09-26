@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { useAuth } from "@/lib/auth-context";
 import {
     ArrowLeft,
     Mail,
@@ -21,7 +22,8 @@ import {
     DollarSign,
     Pencil,
     Trash2,
-    AlertTriangle
+    AlertTriangle,
+    LogIn
 } from "lucide-react";
 import { ClientDetailSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -177,6 +179,47 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // Impersonation state
+    const { user: authUser } = useAuth();
+    const isSuperAdmin = (authUser?.role || '').toLowerCase() === 'super admin' || (authUser as any)?.isSuperAdmin;
+    const hasImpersonatePermission = isSuperAdmin || (authUser?.permissions ? authUser.permissions.includes('clients.impersonate') || authUser.permissions.includes('users.impersonate') : true);
+
+    const [showImpersonateModal, setShowImpersonateModal] = useState(false);
+    const [impersonating, setImpersonating] = useState(false);
+    const [impersonateReason, setImpersonateReason] = useState("");
+
+    const handleConfirmImpersonation = async () => {
+        if (!client) return;
+        setImpersonating(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/clients/${client.id}/impersonate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ reason: impersonateReason.trim() })
+            });
+            const data = await res.json();
+            if (data.status || data.success) {
+                toast.success("Impersonation session created! Redirecting to Client application...");
+                setShowImpersonateModal(false);
+                const redirectUrl = data.data?.redirect_url;
+                if (redirectUrl) {
+                    window.open(redirectUrl, "_blank") || (window.location.href = redirectUrl);
+                }
+            } else {
+                toast.error(data.message || "Failed to start client impersonation");
+            }
+        } catch (err) {
+            console.error("Impersonation error:", err);
+            toast.error("Error starting client impersonation");
+        } finally {
+            setImpersonating(false);
+        }
+    };
 
     const fetchClientDetails = async () => {
         setLoading(true);
@@ -345,6 +388,18 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                         </div>
 
                         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+                            {hasImpersonatePermission && (
+                                <button
+                                    onClick={() => {
+                                        setImpersonateReason("");
+                                        setShowImpersonateModal(true);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-600 hover:text-white text-indigo-400 transition-all cursor-pointer shadow-xs"
+                                >
+                                    <LogIn className="w-3.5 h-3.5" />
+                                    Login as Client
+                                </button>
+                            )}
                             <Link
                                 href={`/clients/${id}/edit`}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500 hover:text-white text-blue-400 transition-all cursor-pointer shadow-xs"
@@ -821,6 +876,88 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                             <>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Yes, Delete Client
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Impersonation Confirmation Modal */}
+                    {showImpersonateModal && client && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                            <div className="bg-card border border-border/80 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                                <div className="p-6 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                                            <LogIn className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-black text-foreground">Login as Client?</h3>
+                                            <p className="text-xs text-muted-foreground font-medium">Impersonate Client Account</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-muted/40 border border-border/60 rounded-xl p-4 space-y-2">
+                                        <p className="text-xs text-muted-foreground font-medium">
+                                            You are about to enter the client account:
+                                        </p>
+                                        <div className="font-bold text-foreground text-sm">
+                                            {displayName}
+                                        </div>
+                                        <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                                            {client.email}
+                                        </div>
+                                        {(client.company_name || client.company) && (
+                                            <div className="text-xs text-muted-foreground font-medium">
+                                                Company: {client.company_name || client.company}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="text-xs text-muted-foreground leading-relaxed">
+                                        You will be logged into the client-side application as this client. Your original Admin session will remain available and you can return to Admin at any time.
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-extrabold uppercase text-muted-foreground tracking-wider">
+                                            Reason for Impersonation (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Support verification"
+                                            value={impersonateReason}
+                                            onChange={(e) => setImpersonateReason(e.target.value)}
+                                            className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-hidden focus:border-indigo-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-muted/20 border-t border-border/80 flex items-center justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowImpersonateModal(false)}
+                                        disabled={impersonating}
+                                        className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:bg-muted/60 transition-all cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirmImpersonation}
+                                        disabled={impersonating}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                    >
+                                        {impersonating ? (
+                                            <>
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                                Starting Session...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <LogIn className="w-4 h-4" />
+                                                Login as Client
                                             </>
                                         )}
                                     </button>
