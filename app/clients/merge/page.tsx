@@ -260,7 +260,8 @@ export default function MergeClientsPage() {
                     source_client_ids: sourceClients.map((c) => c.id),
                     target_client_id: targetClient.id,
                     conflict_resolutions: conflictSelections,
-                    confirm_code: "MERGE"
+                    confirmation: confirmInput.trim(),
+                    confirm_code: confirmInput.trim()
                 })
             });
 
@@ -329,7 +330,7 @@ export default function MergeClientsPage() {
 
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${step === 3 ? 'bg-emerald-500 text-black shadow-emerald-500/25 shadow-md' : 'bg-muted text-muted-foreground'}`}>
-                            "3"
+                            3
                         </div>
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Step 3</p>
