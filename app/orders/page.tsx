@@ -81,6 +81,7 @@ interface ApiOrder {
     launch_date?: string | null;
     delivery_date: string | null;
     created_at: string;
+    film_applied?: boolean | number | string | null;
     metas?: OrderMeta[];
     status_details?: StatusItem;
     combo_orders?: Array<{ id: number; order_number: string; status: string }>;
@@ -617,18 +618,144 @@ export default function OrdersPage() {
     // Add / Edit Film modal state
     const [filmModalOrder, setFilmModalOrder] = useState<ApiOrder | null>(null);
     const [filmDateTime, setFilmDateTime] = useState("");
+    const [filmApplied, setFilmApplied] = useState(false);
     const [savingFilm, setSavingFilm] = useState(false);
 
-    // Job Card modal state
+    // Job Card modal state & data editor
     const [jobCardModalOrder, setJobCardModalOrder] = useState<ApiOrder | null>(null);
+    const [jobCardData, setJobCardData] = useState<any>(null);
+    const [loadingJobCard, setLoadingJobCard] = useState<boolean>(false);
+    const [savingJobCard, setSavingJobCard] = useState<boolean>(false);
+    const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
 
     const openJobCardModal = (order: ApiOrder) => {
         setJobCardModalOrder(order);
     };
 
+    useEffect(() => {
+        if (!jobCardModalOrder) {
+            setJobCardData(null);
+            return;
+        }
+        setLoadingJobCard(true);
+        const token = localStorage.getItem("admin_token");
+        fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card`, {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(json => {
+            if (json.success && json.data) {
+                setJobCardData(json.data);
+            }
+        })
+        .catch(err => {
+            console.error("Error loading job card:", err);
+        })
+        .finally(() => {
+            setLoadingJobCard(false);
+        });
+    }, [jobCardModalOrder]);
+
+    const updateJobCardField = (key: string, value: any) => {
+        setJobCardData((prev: any) => prev ? { ...prev, [key]: value } : prev);
+    };
+
+    const updateJobCardProcess = (index: number, field: string, value: any) => {
+        setJobCardData((prev: any) => {
+            if (!prev || !prev.processes) return prev;
+            const newProcs = [...prev.processes];
+            newProcs[index] = { ...newProcs[index], [field]: value };
+            return { ...prev, processes: newProcs };
+        });
+    };
+
+    const handleSaveJobCard = async () => {
+        if (!jobCardModalOrder || !jobCardData) return;
+        setSavingJobCard(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ job_card_data: jobCardData })
+            });
+            const json = await res.json();
+            if (res.ok && json.success) {
+                toast.success("Job Card saved successfully!");
+                if (json.data) setJobCardData(json.data);
+            } else {
+                toast.error(json.message || "Failed to save Job Card");
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error saving Job Card");
+        } finally {
+            setSavingJobCard(false);
+        }
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!jobCardModalOrder || !jobCardData) return;
+        setDownloadingPdf(true);
+        const toastId = toast.loading("Generating PDF from backend...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${jobCardModalOrder.id}/job-card/pdf`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ job_card_data: jobCardData })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to generate PDF on backend");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `JOB_CARD_${jobCardData.job_number || jobCardModalOrder.order_number}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("Job Card PDF downloaded!", { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || "Error downloading Job Card PDF", { id: toastId });
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
     const openFilmModal = (order: ApiOrder) => {
         setFilmModalOrder(order);
         const existingFilmVal = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
+
+        // Check if film is applied
+        const rawApplied = order.film_applied;
+        const metaApplied = getMetaValue(order, 'film_applied', '');
+        let isApplied = false;
+        if (rawApplied === true || rawApplied === 1 || rawApplied === '1' || rawApplied === 'true' || rawApplied === 'yes') {
+            isApplied = true;
+        } else if (metaApplied === '1' || metaApplied.toLowerCase() === 'true' || metaApplied.toLowerCase() === 'yes') {
+            isApplied = true;
+        } else if (existingFilmVal && existingFilmVal !== 'N/A' && existingFilmVal.trim() !== '') {
+            if (rawApplied !== false && rawApplied !== 0 && rawApplied !== '0' && rawApplied !== 'false' && rawApplied !== 'no' &&
+                metaApplied !== '0' && metaApplied.toLowerCase() !== 'false' && metaApplied.toLowerCase() !== 'no') {
+                isApplied = true;
+            }
+        }
+        setFilmApplied(isApplied);
+
         if (existingFilmVal && existingFilmVal !== 'N/A') {
             let formatted = existingFilmVal;
             try {
@@ -656,7 +783,7 @@ export default function OrdersPage() {
         }
 
         setSavingFilm(true);
-        const toastId = toast.loading("Saving Film Date & Time...");
+        const toastId = toast.loading("Saving Film details...");
 
         try {
             const token = localStorage.getItem("admin_token");
@@ -667,25 +794,28 @@ export default function OrdersPage() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    film_datetime: filmDateTime,
+                    film_applied: filmApplied ? 1 : 0,
                     meta_key: "film_datetime",
                     meta_value: filmDateTime,
                     metas: {
                         film_datetime: filmDateTime,
-                        film_date: filmDateTime
+                        film_date: filmDateTime,
+                        film_applied: filmApplied ? "1" : "0"
                     }
                 })
             });
 
             const data = await res.json();
             if (res.ok && (data.status || data.success)) {
-                toast.success("Film date & time saved successfully", { id: toastId });
+                toast.success("Film details saved successfully", { id: toastId });
                 setFilmModalOrder(null);
                 fetchData(debouncedSearch);
             } else {
-                toast.error(data.message || "Failed to save film date & time", { id: toastId });
+                toast.error(data.message || "Failed to save film details", { id: toastId });
             }
         } catch (err: any) {
-            toast.error(err?.message || "Error saving film date & time", { id: toastId });
+            toast.error(err?.message || "Error saving film details", { id: toastId });
         } finally {
             setSavingFilm(false);
         }
@@ -960,7 +1090,20 @@ export default function OrdersPage() {
         const orderValue = (o.order_value || "").toString().toLowerCase();
 
         const filmVal = getMetaValue(o, 'film_datetime', getMetaValue(o, 'film_date', '')).toLowerCase();
-        const filmStatus = filmVal && filmVal !== 'n/a' ? `yes ${filmVal} ${formatDate(filmVal).toLowerCase()}` : 'no';
+        const rawApplied = o.film_applied;
+        const metaApplied = getMetaValue(o, 'film_applied', '');
+        let isFilmApplied = false;
+        if (rawApplied === true || rawApplied === 1 || rawApplied === '1' || rawApplied === 'true' || rawApplied === 'yes') {
+            isFilmApplied = true;
+        } else if (metaApplied === '1' || metaApplied.toLowerCase() === 'true' || metaApplied.toLowerCase() === 'yes') {
+            isFilmApplied = true;
+        } else if (filmVal && filmVal !== 'n/a' && filmVal.trim() !== '') {
+            if (rawApplied !== false && rawApplied !== 0 && rawApplied !== '0' && rawApplied !== 'false' && rawApplied !== 'no' &&
+                metaApplied !== '0' && metaApplied.toLowerCase() !== 'false' && metaApplied.toLowerCase() !== 'no') {
+                isFilmApplied = true;
+            }
+        }
+        const filmStatus = isFilmApplied ? `yes ${filmVal} ${formatDate(filmVal).toLowerCase()}` : 'no';
 
         const matchSearch =
             orderNum.includes(query) ||
@@ -1658,7 +1801,19 @@ export default function OrdersPage() {
                                                                 <span className="text-muted-foreground font-bold px-2">-</span>
                                                             ) : (() => {
                                                                 const filmVal = getMetaValue(order, 'film_datetime', getMetaValue(order, 'film_date', ''));
-                                                                const hasFilm = filmVal && filmVal !== 'N/A' && filmVal.trim() !== '';
+                                                                const rawApplied = order.film_applied;
+                                                                const metaApplied = getMetaValue(order, 'film_applied', '');
+                                                                let hasFilm = false;
+                                                                if (rawApplied === true || rawApplied === 1 || rawApplied === '1' || rawApplied === 'true' || rawApplied === 'yes') {
+                                                                    hasFilm = true;
+                                                                } else if (metaApplied === '1' || metaApplied.toLowerCase() === 'true' || metaApplied.toLowerCase() === 'yes') {
+                                                                    hasFilm = true;
+                                                                } else if (filmVal && filmVal !== 'N/A' && filmVal.trim() !== '') {
+                                                                    if (rawApplied !== false && rawApplied !== 0 && rawApplied !== '0' && rawApplied !== 'false' && rawApplied !== 'no' &&
+                                                                        metaApplied !== '0' && metaApplied.toLowerCase() !== 'false' && metaApplied.toLowerCase() !== 'no') {
+                                                                        hasFilm = true;
+                                                                    }
+                                                                }
                                                                 if (hasFilm) {
                                                                     return (
                                                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-sans">
@@ -2371,6 +2526,35 @@ export default function OrdersPage() {
                                     </div>
                                 )}
 
+                                {/* Film Applied Toggle Option */}
+                                <div className="flex items-center justify-between p-3.5 bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl shadow-2xs">
+                                    <div className="space-y-0.5">
+                                        <label htmlFor="film-applied-switch" className="text-xs font-black text-slate-800 dark:text-slate-100 block cursor-pointer">
+                                            Film Applied
+                                        </label>
+                                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">
+                                            {filmApplied ? "Mark film as applied (Status: Yes)" : "Mark film as not applied (Status: No)"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-md ${filmApplied ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"}`}>
+                                            {filmApplied ? "Yes" : "No"}
+                                        </span>
+                                        <button
+                                            id="film-applied-switch"
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={filmApplied}
+                                            onClick={() => setFilmApplied(!filmApplied)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${filmApplied ? 'bg-purple-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${filmApplied ? 'translate-x-5' : 'translate-x-0'}`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="text-xs font-bold text-slate-700 block mb-1.5">
                                         Select Film Date & Time
@@ -2409,177 +2593,101 @@ export default function OrdersPage() {
                 })()}
             </Dialog>
 
-            {/* Dynamic Job Card Generator & Preview Modal */}
+            {/* Dynamic Editable Job Card Generator & Preview Modal */}
             <Dialog open={!!jobCardModalOrder} onOpenChange={(open) => !open && setJobCardModalOrder(null)}>
                 {jobCardModalOrder && (() => {
                     const order = jobCardModalOrder;
+                    const isSingleSide = jobCardData?.is_single_side ?? false;
                     const layersStr = getMetaValue(order, 'layers', getMetaValue(order, 'layer', '2'));
-                    const isSingleSide = layersStr === "1" || layersStr.toLowerCase().includes("1-side") || layersStr.toLowerCase().includes("single");
-
-                    const createdDate = formatDate(order.created_at);
-                    const launchDate = formatDate(order.launch_date || getMetaValue(order, 'launch_date', order.created_at));
-                    const shippingDate = formatDate(order.delivery_date);
-
-                    const orderQty = getMetaValue(order, 'qty', getMetaValue(order, 'quantity', 'N/A'));
-                    const launchedQty = getMetaValue(order, 'launched_qty', getMetaValue(order, 'launched', orderQty));
-                    const ups = getMetaValue(order, 'ups', '1');
-                    const panels = getMetaValue(order, 'panels', '1');
-                    const minHole = getMetaValue(order, 'min_hole', getMetaValue(order, 'min_hole_size', '0.8 MM'));
-
-                    const panelSize = getMetaValue(order, 'panel_size', getMetaValue(order, 'dimensions', ''));
-                    const cuttingSize = getMetaValue(order, 'cutting_size', '');
-
-                    const material = getMetaValue(order, 'material', getMetaValue(order, 'base_material', 'FR4'));
-                    const thickness = getMetaValue(order, 'board_thickness', getMetaValue(order, 'thickness', '1.6'));
-                    const copperThickness = getMetaValue(order, 'copper_thickness', getMetaValue(order, 'copper_weight', '1 Oz'));
-                    const surfaceFinish = getMetaValue(order, 'surface_finish', getMetaValue(order, 'finish', 'HAL Finish'));
-
-                    const maskColour = getMetaValue(order, 'pcb_color', getMetaValue(order, 'solder_mask', 'Green'));
-                    const lpColor = getMetaValue(order, 'legend_color', getMetaValue(order, 'silkscreen', 'White'));
-                    const lpSide = getMetaValue(order, 'silkscreen_side', getMetaValue(order, 'legend_side', 'Top'));
-
-                    const route = getMetaValue(order, 'route', getMetaValue(order, 'routing', 'CNC Routing'));
-                    const vCut = getMetaValue(order, 'v_cut', 'Yes');
-                    const fptProgram = getMetaValue(order, 'fpt_program', 'MNF-1 / MNF-2');
-                    const secondStage = getMetaValue(order, 'second_stage', 'Yes');
-                    const copperArea = getMetaValue(order, 'copper_area', '');
-                    const internalCutouts = getMetaValue(order, 'internal_cutouts', 'No');
-
-                    const productionNote = getMetaValue(order, 'production_note', '');
-                    const customerNote = getMetaValue(order, 'customer_note', getMetaValue(order, 'special_instructions', ''));
-
-                    const singleSideProcesses = [
-                        "CUTTING",
-                        "DRILL",
-                        "DH Print",
-                        "Expose/P&E",
-                        "Devloping",
-                        "ETCHING",
-                        "ETCHING QC",
-                        "PISM",
-                        "HAL",
-                        "LP",
-                        "Manual Cutting",
-                        "V-CUT",
-                        "Routing",
-                        "Final QC with QTY",
-                        "Packing"
-                    ];
-
-                    const multiLayerProcesses = [
-                        "CUTTING",
-                        "DRILL",
-                        "DH Print",
-                        "Exposing",
-                        "DEVLOPING QC",
-                        "PLATING",
-                        "PLATING QC",
-                        "CAUSTIC",
-                        "ETCHING",
-                        "ETCH QC",
-                        "PISM",
-                        "HAL",
-                        "LP",
-                        "ROUT",
-                        "V-CUT",
-                        "BBT / FPT",
-                        "FINAL QC",
-                        "Packing"
-                    ];
-
-                    const processList = isSingleSide ? singleSideProcesses : multiLayerProcesses;
-
-                    const handlePrint = () => {
-                        const printContent = document.getElementById("job-card-printable-content");
-                        if (!printContent) return;
-                        const printWin = window.open("", "_blank");
-                        if (!printWin) {
-                            toast.error("Popup blocked! Please allow popups to print/download job cards.");
-                            return;
-                        }
-                        printWin.document.write(`
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <title>JOB_CARD_${order.order_number}</title>
-                                <style>
-                                    @page { size: A4 portrait; margin: 5mm; }
-                                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 5px; color: #000; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                                    * { box-sizing: border-box; }
-                                    table { width: 100%; border-collapse: collapse !important; border-spacing: 0; }
-                                    td, th { color: #000; font-family: Arial, sans-serif; }
-                                    @media print {
-                                        body { padding: 0; }
-                                    }
-                                </style>
-                            </head>
-                            <body>
-                                ${printContent.innerHTML}
-                                <script>
-                                    window.onload = function() {
-                                        window.focus();
-                                        setTimeout(function() {
-                                            window.print();
-                                        }, 300);
-                                    };
-                                </script>
-                            </body>
-                            </html>
-                        `);
-                        printWin.document.close();
-                    };
-
-                    const handleDownload = () => {
-                        handlePrint();
-                    };
 
                     return (
-                        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto border border-slate-300 rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 text-slate-900 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
+                        <DialogContent className="max-w-5xl max-h-[94vh] overflow-y-auto border border-slate-300 rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 text-slate-900 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
                             <DialogHeader className="pb-3 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between">
                                 <div>
                                     <DialogTitle className="text-lg font-extrabold flex items-center gap-2 text-indigo-900 dark:text-indigo-300">
                                         <FileText className="w-5 h-5 text-indigo-600" />
-                                        Job Card Preview & Generator
+                                        Job Card Preview & Editor
                                     </DialogTitle>
                                     <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
-                                        Order #{order.order_number} · {order.board_name || 'PCB Order'} ({isSingleSide ? '1-SIDE' : `${layersStr}-Layer`})
+                                        Order #{order.order_number} · {order.board_name || 'PCB Order'} ({isSingleSide ? '1-SIDE' : `${layersStr}-Layer`}) · Direct Editable Layout
                                     </DialogDescription>
                                 </div>
 
                                 <div className="flex items-center gap-2.5 mr-6">
                                     <Button
                                         type="button"
-                                        onClick={handlePrint}
-                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto"
+                                        onClick={() => setJobCardModalOrder(null)}
+                                        variant="outline"
+                                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto"
                                     >
-                                        <Printer className="w-4 h-4" /> Print Job Card
+                                        Cancel
                                     </Button>
                                     <Button
                                         type="button"
-                                        onClick={handleDownload}
-                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto"
+                                        onClick={handleSaveJobCard}
+                                        disabled={savingJobCard || loadingJobCard}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto disabled:opacity-50"
                                     >
-                                        <Download className="w-4 h-4" /> Download PDF
+                                        <Check className={`w-4 h-4 ${savingJobCard ? 'animate-spin' : ''}`} />
+                                        {savingJobCard ? "Saving..." : "Save Changes"}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={handleDownloadPdf}
+                                        disabled={downloadingPdf || loadingJobCard}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer h-auto disabled:opacity-50"
+                                    >
+                                        <Download className={`w-4 h-4 ${downloadingPdf ? 'animate-spin' : ''}`} />
+                                        {downloadingPdf ? "Generating PDF..." : "Download PDF"}
                                     </Button>
                                 </div>
                             </DialogHeader>
 
-                            {/* Single Master Table Container Matching PDF Screenshot */}
-                            <div className="p-3 bg-white border border-slate-300 rounded-lg shadow-md font-sans text-black overflow-x-auto">
-                                <div id="job-card-printable-content" className="text-black bg-white">
+                            {loadingJobCard || !jobCardData ? (
+                                <div className="p-12 text-center text-slate-500 font-medium">
+                                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
+                                    Loading Job Card details...
+                                </div>
+                            ) : (
+                                /* Master Table Container */
+                                <div className="p-3 bg-white border border-slate-300 rounded-lg shadow-md font-sans text-black overflow-x-auto">
                                     <table className="w-full border-collapse border-2 border-black text-xs font-semibold text-black" style={{ borderCollapse: 'collapse', border: '2px solid #000' }}>
                                         <tbody>
                                             {/* Header Row */}
                                             <tr className="border-b-2 border-black">
                                                 <td className="p-2 border-r-2 border-black w-1/3 font-black text-sm align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
-                                                    JOB NO: <span className="font-extrabold text-base underline ml-1">{order.order_number}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span>JOB NO:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.job_number ?? ''}
+                                                            onChange={e => updateJobCardField('job_number', e.target.value)}
+                                                            className="font-extrabold text-base underline bg-amber-50/60 hover:bg-amber-100/80 border border-slate-300 rounded px-1.5 py-0.5 w-full focus:bg-white focus:outline-none"
+                                                        />
+                                                    </div>
                                                 </td>
                                                 <td className="p-2 border-r-2 border-black w-1/3 text-center align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
                                                     {isSingleSide ? (
                                                         <>
-                                                            <div className="flex items-center justify-center gap-4 text-xs font-bold mb-0.5">
-                                                                <span>Expose <span className="inline-block border border-black px-1 font-mono font-bold">✓</span></span>
-                                                                <span>Print & Etch <span className="inline-block border border-black px-1.5 font-mono">&nbsp;</span></span>
+                                                            <div className="flex items-center justify-center gap-4 text-xs font-bold mb-1">
+                                                                <label className="inline-flex items-center gap-1 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={!!jobCardData.expose}
+                                                                        onChange={e => updateJobCardField('expose', e.target.checked)}
+                                                                        className="w-3.5 h-3.5"
+                                                                    />
+                                                                    Expose
+                                                                </label>
+                                                                <label className="inline-flex items-center gap-1 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={!!jobCardData.print_and_etch}
+                                                                        onChange={e => updateJobCardField('print_and_etch', e.target.checked)}
+                                                                        className="w-3.5 h-3.5"
+                                                                    />
+                                                                    Print & Etch
+                                                                </label>
                                                             </div>
                                                             <div className="text-xl font-black uppercase tracking-wider underline">JOB CARD</div>
                                                         </>
@@ -2588,28 +2696,113 @@ export default function OrdersPage() {
                                                     )}
                                                 </td>
                                                 <td className="p-2 w-1/3 text-right font-black text-base align-middle" style={{ borderBottom: '2px solid #000' }}>
-                                                    {isSingleSide ? "1- SIDE" : `${layersStr}-Layer Board`}
+                                                    <input
+                                                        type="text"
+                                                        value={jobCardData.job_type ?? ''}
+                                                        onChange={e => updateJobCardField('job_type', e.target.value)}
+                                                        className="font-black text-base text-right bg-amber-50/60 hover:bg-amber-100/80 border border-slate-300 rounded px-1.5 py-0.5 w-full focus:bg-white focus:outline-none"
+                                                    />
                                                 </td>
                                             </tr>
 
                                             {/* Row 2: Dates */}
                                             <tr className="border-b-2 border-black">
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Order Date: <span className="font-bold ml-1">{createdDate}</span></td>
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Launch Date: <span className="font-bold ml-1">{launchDate}</span></td>
-                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>Shipping Date: <span className="font-bold ml-1">{shippingDate}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">Order Date:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.order_date ?? ''}
+                                                            onChange={e => updateJobCardField('order_date', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">Launch Date:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.launch_date ?? ''}
+                                                            onChange={e => updateJobCardField('launch_date', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">Shipping Date:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.shipping_date ?? ''}
+                                                            onChange={e => updateJobCardField('shipping_date', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
                                             </tr>
 
                                             {/* Row 3: Quantities & Min Hole */}
                                             <tr className="border-b-2 border-black">
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>ORDER QTY: <span className="font-bold ml-1">{orderQty}</span></td>
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>LAUNCHED: <span className="font-bold ml-1">{launchedQty}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">ORDER QTY:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.order_qty ?? ''}
+                                                            onChange={e => updateJobCardField('order_qty', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">LAUNCHED:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.launched_qty ?? ''}
+                                                            onChange={e => updateJobCardField('launched_qty', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
                                                 <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
                                                     <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
                                                         <tbody>
                                                             <tr>
-                                                                <td className="p-1.5 border-r-2 border-black w-1/3" style={{ borderRight: '2px solid #000' }}>UPS: <span className="font-bold ml-1">{ups}</span></td>
-                                                                <td className="p-1.5 border-r-2 border-black w-1/3" style={{ borderRight: '2px solid #000' }}>PANELS: <span className="font-bold ml-1">{panels}</span></td>
-                                                                <td className="p-1.5 w-1/3">Min.Hole: <span className="font-bold ml-1">{minHole}</span></td>
+                                                                <td className="p-1.5 border-r-2 border-black w-1/3" style={{ borderRight: '2px solid #000' }}>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span>UPS:</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={jobCardData.ups ?? ''}
+                                                                            onChange={e => updateJobCardField('ups', e.target.value)}
+                                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                        />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-1.5 border-r-2 border-black w-1/3" style={{ borderRight: '2px solid #000' }}>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span>PANELS:</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={jobCardData.panels ?? ''}
+                                                                            onChange={e => updateJobCardField('panels', e.target.value)}
+                                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                        />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-1.5 w-1/3">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="whitespace-nowrap">Min.Hole:</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={jobCardData.min_hole ?? ''}
+                                                                            onChange={e => updateJobCardField('min_hole', e.target.value)}
+                                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                        />
+                                                                    </div>
+                                                                </td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -2618,20 +2811,82 @@ export default function OrdersPage() {
 
                                             {/* Row 4: Panel & Cutting Size */}
                                             <tr className="border-b-2 border-black">
-                                                <td colSpan={2} className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>PANEL SIZE: <span className="font-bold ml-1">{panelSize ? `${panelSize} MM` : 'MM'}</span></td>
-                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>CUTTING SIZE: <span className="font-bold ml-1">{cuttingSize ? `${cuttingSize} MM` : 'MM'}</span></td>
+                                                <td colSpan={2} className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">PANEL SIZE:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.panel_size ?? ''}
+                                                            onChange={e => updateJobCardField('panel_size', e.target.value)}
+                                                            placeholder="42.23 x 118.27"
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1.5 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">CUTTING SIZE:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.cutting_size ?? ''}
+                                                            onChange={e => updateJobCardField('cutting_size', e.target.value)}
+                                                            placeholder="e.g. 100x200"
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1.5 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
                                             </tr>
 
                                             {/* Row 5: Material, Thickness, Copper, Finish */}
                                             <tr className="border-b-2 border-black">
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Material: <span className="font-bold ml-1">{material}</span></td>
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Thick: <span className="font-bold ml-1">{thickness} MM</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span>Material:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.material ?? ''}
+                                                            onChange={e => updateJobCardField('material', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span>Thick:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.thickness ?? ''}
+                                                            onChange={e => updateJobCardField('thickness', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
                                                 <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
                                                     <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
                                                         <tbody>
                                                             <tr>
-                                                                <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>Copper Thick: <span className="font-bold ml-1">{copperThickness} Micron</span></td>
-                                                                <td className="p-1.5 w-1/2">Finish: <span className="font-bold ml-1">{surfaceFinish}</span></td>
+                                                                <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="whitespace-nowrap">Copper Thick:</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={jobCardData.copper_thickness ?? ''}
+                                                                            onChange={e => updateJobCardField('copper_thickness', e.target.value)}
+                                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                        />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-1.5 w-1/2">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span>Finish:</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={jobCardData.finish ?? ''}
+                                                                            onChange={e => updateJobCardField('finish', e.target.value)}
+                                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                        />
+                                                                    </div>
+                                                                </td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -2640,23 +2895,93 @@ export default function OrdersPage() {
 
                                             {/* Row 6: Mask Colour, LP Color, LP Side */}
                                             <tr className="border-b-2 border-black">
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Mask Colour: <span className="font-bold ml-1">{maskColour}</span></td>
-                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>LP Color: <span className="font-bold ml-1">{lpColor}</span></td>
-                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>LP Side: <span className="font-bold ml-1">{lpSide}</span></td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">Mask Colour:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.mask_colour ?? ''}
+                                                            onChange={e => updateJobCardField('mask_colour', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">LP Color:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.lp_color ?? ''}
+                                                            onChange={e => updateJobCardField('lp_color', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-1.5" style={{ borderBottom: '2px solid #000' }}>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="whitespace-nowrap">LP Side:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={jobCardData.lp_side ?? ''}
+                                                            onChange={e => updateJobCardField('lp_side', e.target.value)}
+                                                            className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </td>
                                             </tr>
 
-                                            {/* Row 7: Routing / V-Cut / FPT / Stage / Cutouts */}
+                                            {/* Row 7: Routing / V-Cut / Tech Specs */}
                                             <tr className="border-b-2 border-black">
                                                 {isSingleSide ? (
                                                     <>
-                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Route: <span className="font-bold ml-1">{route}</span></td>
-                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>V-Cut: <span className="font-bold ml-1">{vCut}</span></td>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                            <div className="flex items-center gap-1">
+                                                                <span>Route:</span>
+                                                                <input
+                                                                    type="text"
+                                                                    value={jobCardData.route ?? ''}
+                                                                    onChange={e => updateJobCardField('route', e.target.value)}
+                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                            <div className="flex items-center gap-1">
+                                                                <span>V-Cut:</span>
+                                                                <input
+                                                                    type="text"
+                                                                    value={jobCardData.v_cut ?? ''}
+                                                                    onChange={e => updateJobCardField('v_cut', e.target.value)}
+                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                />
+                                                            </div>
+                                                        </td>
                                                         <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
                                                             <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
                                                                 <tbody>
                                                                     <tr>
-                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>Shearing Cut: <span className="font-bold ml-1">Yes</span></td>
-                                                                        <td className="p-1.5 w-1/2">Internal Cutouts Reqd.?: <span className="font-bold ml-1">{internalCutouts}</span></td>
+                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="whitespace-nowrap">Shearing Cut:</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={jobCardData.shearing_cut ?? ''}
+                                                                                    onChange={e => updateJobCardField('shearing_cut', e.target.value)}
+                                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="p-1.5 w-1/2">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="whitespace-nowrap">Internal Cutouts Reqd.?:</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={jobCardData.internal_cutouts ?? ''}
+                                                                                    onChange={e => updateJobCardField('internal_cutouts', e.target.value)}
+                                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -2664,18 +2989,78 @@ export default function OrdersPage() {
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>Route: <span className="font-bold ml-1">{route}</span></td>
-                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>V-Cut: <span className="font-bold ml-1">{vCut}</span></td>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                            <div className="flex items-center gap-1">
+                                                                <span>Route:</span>
+                                                                <input
+                                                                    type="text"
+                                                                    value={jobCardData.route ?? ''}
+                                                                    onChange={e => updateJobCardField('route', e.target.value)}
+                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-1.5 border-r-2 border-black" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                            <div className="flex items-center gap-1">
+                                                                <span>V-Cut:</span>
+                                                                <input
+                                                                    type="text"
+                                                                    value={jobCardData.v_cut ?? ''}
+                                                                    onChange={e => updateJobCardField('v_cut', e.target.value)}
+                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                />
+                                                            </div>
+                                                        </td>
                                                         <td className="p-0" style={{ borderBottom: '2px solid #000' }}>
                                                             <table className="w-full border-collapse" style={{ borderCollapse: 'collapse' }}>
                                                                 <tbody>
                                                                     <tr style={{ borderBottom: '2px solid #000' }}>
-                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>FPT Program: <span className="font-bold ml-1">{fptProgram}</span></td>
-                                                                        <td className="p-1.5 w-1/2">2<sup>nd</sup> stage reqd.?: <span className="font-bold ml-1">{secondStage}</span></td>
+                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="whitespace-nowrap">FPT Program:</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={jobCardData.fpt_program ?? ''}
+                                                                                    onChange={e => updateJobCardField('fpt_program', e.target.value)}
+                                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="p-1.5 w-1/2">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="whitespace-nowrap">2<sup>nd</sup> stage reqd.?:</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={jobCardData.second_stage ?? ''}
+                                                                                    onChange={e => updateJobCardField('second_stage', e.target.value)}
+                                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
                                                                     </tr>
                                                                     <tr>
-                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>Copper Area: <span className="font-bold ml-1">{copperArea ? `${copperArea} Amp` : 'Amp'}</span></td>
-                                                                        <td className="p-1.5 w-1/2">Internal Cutouts Reqd.?: <span className="font-bold ml-1">{internalCutouts}</span></td>
+                                                                        <td className="p-1.5 border-r-2 border-black w-1/2" style={{ borderRight: '2px solid #000' }}>
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="whitespace-nowrap">Copper Area:</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={jobCardData.copper_area ?? ''}
+                                                                                    onChange={e => updateJobCardField('copper_area', e.target.value)}
+                                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="p-1.5 w-1/2">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="whitespace-nowrap">Internal Cutouts Reqd.?:</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={jobCardData.internal_cutouts ?? ''}
+                                                                                    onChange={e => updateJobCardField('internal_cutouts', e.target.value)}
+                                                                                    className="font-bold bg-amber-50/60 border border-slate-300 rounded px-1 py-0.5 w-full focus:bg-white"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -2686,21 +3071,29 @@ export default function OrdersPage() {
 
                                             {/* Row 8: Notes Section */}
                                             <tr className="border-b-2 border-black">
-                                                <td colSpan={2} className="p-2 border-r-2 border-black align-top h-20" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                <td colSpan={2} className="p-2 border-r-2 border-black align-top" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
                                                     <div className="font-black text-xs underline mb-1">Production Note:</div>
-                                                    <div className="text-[11px] font-medium leading-relaxed pl-2 whitespace-pre-wrap">
-                                                        {productionNote ? productionNote : "• \n• "}
-                                                    </div>
+                                                    <textarea
+                                                        value={jobCardData.production_note ?? ''}
+                                                        onChange={e => updateJobCardField('production_note', e.target.value)}
+                                                        rows={2}
+                                                        placeholder="• Note 1&#10;• Note 2"
+                                                        className="w-full text-xs font-semibold p-1.5 bg-amber-50/60 hover:bg-amber-100/80 border border-slate-300 rounded focus:bg-white focus:outline-none"
+                                                    />
                                                 </td>
-                                                <td className="p-2 align-top h-20" style={{ borderBottom: '2px solid #000' }}>
+                                                <td className="p-2 align-top" style={{ borderBottom: '2px solid #000' }}>
                                                     <div className="font-black text-xs underline mb-1">Customer Special Note:</div>
-                                                    <div className="text-[11px] font-medium leading-relaxed pl-2 whitespace-pre-wrap">
-                                                        {customerNote ? customerNote : ""}
-                                                    </div>
+                                                    <textarea
+                                                        value={jobCardData.customer_note ?? ''}
+                                                        onChange={e => updateJobCardField('customer_note', e.target.value)}
+                                                        rows={2}
+                                                        placeholder="Special notes..."
+                                                        className="w-full text-xs font-semibold p-1.5 bg-amber-50/60 hover:bg-amber-100/80 border border-slate-300 rounded focus:bg-white focus:outline-none"
+                                                    />
                                                 </td>
                                             </tr>
 
-                                            {/* Row 9: Final Quantities Header & Blank Row */}
+                                            {/* Row 9: Final Quantities Header & Input Row */}
                                             <tr className="border-b-2 border-black">
                                                 <td colSpan={3} className="p-0" style={{ borderBottom: '2px solid #000' }}>
                                                     <table className="w-full border-collapse text-center" style={{ borderCollapse: 'collapse' }}>
@@ -2713,18 +3106,50 @@ export default function OrdersPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <tr className="h-7">
-                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}></td>
-                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}></td>
-                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}></td>
-                                                                <td className="p-1"></td>
+                                                            <tr>
+                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={jobCardData.final_panel_qty ?? ''}
+                                                                        onChange={e => updateJobCardField('final_panel_qty', e.target.value)}
+                                                                        placeholder="e.g. 10"
+                                                                        className="w-full text-center text-xs font-bold bg-amber-50/60 border border-slate-300 rounded py-0.5 focus:bg-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={jobCardData.final_board_qty ?? ''}
+                                                                        onChange={e => updateJobCardField('final_board_qty', e.target.value)}
+                                                                        placeholder="e.g. 120"
+                                                                        className="w-full text-center text-xs font-bold bg-amber-50/60 border border-slate-300 rounded py-0.5 focus:bg-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="p-1 border-r-2 border-black" style={{ borderRight: '2px solid #000' }}>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={jobCardData.rejected_board_qty ?? ''}
+                                                                        onChange={e => updateJobCardField('rejected_board_qty', e.target.value)}
+                                                                        placeholder="e.g. 2"
+                                                                        className="w-full text-center text-xs font-bold bg-amber-50/60 border border-slate-300 rounded py-0.5 focus:bg-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="p-1">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={jobCardData.why_rejected ?? ''}
+                                                                        onChange={e => updateJobCardField('why_rejected', e.target.value)}
+                                                                        placeholder="e.g. Surface defect"
+                                                                        className="w-full text-center text-xs font-bold bg-amber-50/60 border border-slate-300 rounded py-0.5 focus:bg-white"
+                                                                    />
+                                                                </td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
                                                 </td>
                                             </tr>
 
-                                            {/* Row 10: Process Table Header & Rows */}
+                                            {/* Row 10: Manufacturing Process Table Header & Editable Rows */}
                                             <tr>
                                                 <td colSpan={3} className="p-0">
                                                     <table className="w-full border-collapse text-xs" style={{ borderCollapse: 'collapse' }}>
@@ -2741,16 +3166,67 @@ export default function OrdersPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {processList.map((proc, idx) => (
-                                                                <tr key={idx} className="border-b border-black h-5.5 text-[10px]" style={{ borderBottom: idx === processList.length - 1 ? 'none' : '1px solid #000' }}>
-                                                                    <td className="p-1 border-r-2 border-black font-black text-left pl-3 uppercase" style={{ borderRight: '2px solid #000' }}>{proc}</td>
-                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
-                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
-                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
-                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
-                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
-                                                                    <td className="p-1 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}></td>
-                                                                    <td className="p-1 text-center"></td>
+                                                            {(jobCardData.processes || []).map((proc: any, idx: number) => (
+                                                                <tr key={idx} className="border-b border-black text-[10px]" style={{ borderBottom: idx === (jobCardData.processes?.length || 0) - 1 ? 'none' : '1px solid #000' }}>
+                                                                    <td className="p-1 border-r-2 border-black font-black text-left pl-3 uppercase" style={{ borderRight: '2px solid #000' }}>
+                                                                        {proc.process}
+                                                                    </td>
+                                                                    <td className="p-0.5 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.in ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'in', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-0.5 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.panel_qty_in ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'panel_qty_in', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-0.5 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.out ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'out', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-0.5 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.panel_qty_out ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'panel_qty_out', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-0.5 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.qc ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'qc', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-0.5 border-r-2 border-black text-center" style={{ borderRight: '2px solid #000' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.sign ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'sign', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-0.5 text-center">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={proc.remark ?? ''}
+                                                                            onChange={e => updateJobCardProcess(idx, 'remark', e.target.value)}
+                                                                            className="w-full text-center text-xs font-semibold bg-transparent hover:bg-amber-50 focus:bg-white border-0 py-0.5 focus:outline-none"
+                                                                        />
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -2760,7 +3236,7 @@ export default function OrdersPage() {
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            )}
                         </DialogContent>
                     );
                 })()}

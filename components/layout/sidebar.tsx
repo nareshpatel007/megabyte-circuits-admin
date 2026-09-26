@@ -32,6 +32,7 @@ import {
     FileSpreadsheet,
     Mail,
     Bell,
+    Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
     { href: "/staff", label: "Staff", icon: UserCog, permission: "staff.view" },
     { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
     { href: "/email-logs", label: "Email Logs", icon: Mail, permission: "email_logs.view" },
+    { href: "/system-health", label: "System Health", icon: Activity, permission: "system_health.view" },
     {
         label: "Blog Management",
         icon: BookOpen,
