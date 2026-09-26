@@ -16,6 +16,7 @@ import { OrdersSkeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusColor } from "@/lib/status-colors";
+import { ComboSelect, ComboOrderItem } from "@/components/ComboSelect";
 
 interface StatusItem {
     id: number;
@@ -82,6 +83,7 @@ interface ApiOrder {
     created_at: string;
     metas?: OrderMeta[];
     status_details?: StatusItem;
+    combo_orders?: Array<{ id: number; order_number: string; status: string }>;
     status_histories?: StatusHistory[];
 }
 
@@ -597,6 +599,7 @@ export default function OrdersPage() {
     const [modalFailedQty, setModalFailedQty] = useState<number>(0);
     const [modalQNo, setModalQNo] = useState("");
     const [modalCombo, setModalCombo] = useState("");
+    const [modalComboOrders, setModalComboOrders] = useState<ComboOrderItem[]>([]);
     const [modalLaunchQty, setModalLaunchQty] = useState<number>(0);
     const [modalPanelQty, setModalPanelQty] = useState<number>(0);
     const [modalUpsQty, setModalUpsQty] = useState<number>(0);
@@ -1013,6 +1016,23 @@ export default function OrdersPage() {
         setModalFailedQty(initialFailedQty);
         setModalQNo(order.q_no ? String(order.q_no) : "");
         setModalCombo(order.combo ? String(order.combo) : "");
+
+        let initialComboItems: ComboOrderItem[] = [];
+        if (Array.isArray(order.combo_orders) && order.combo_orders.length > 0) {
+            initialComboItems = order.combo_orders.map((c) => ({
+                id: c.id,
+                order_number: c.order_number,
+                status: c.status,
+            }));
+        } else if (order.combo && String(order.combo).trim() !== "") {
+            const parsed = String(order.combo).split(/[\+,\s]+/).filter(Boolean);
+            initialComboItems = parsed.map((no, idx) => ({
+                id: 990000 + idx,
+                order_number: no,
+            }));
+        }
+        setModalComboOrders(initialComboItems);
+
         setModalLaunchQty(order.launch_qty || 0);
         setModalPanelQty(order.panel_qty || 0);
         setModalUpsQty(order.ups_qty || 0);
@@ -1061,6 +1081,9 @@ export default function OrdersPage() {
         setUpdatingStatus(true);
         try {
             const token = localStorage.getItem("admin_token");
+            const comboOrderNos = modalComboOrders.map((c) => c.order_number);
+            const comboStr = comboOrderNos.join(", ");
+
             const res = await fetch(`/api/admin/orders/${statusModalOrder.id}`, {
                 method: "PUT",
                 headers: {
@@ -1074,7 +1097,8 @@ export default function OrdersPage() {
                     completed_qty: modalCompletedQty,
                     failed_qty: modalFailedQty,
                     q_no: modalQNo,
-                    combo: modalCombo,
+                    combo: comboStr,
+                    combo_order_ids: comboOrderNos,
                     launch_qty: modalLaunchQty,
                     panel_qty: modalPanelQty,
                     ups_qty: modalUpsQty,
@@ -1551,6 +1575,13 @@ export default function OrdersPage() {
                                                                     #{order.order_number}
                                                                 </span>
                                                             )}
+                                                            {order.combo && String(order.combo).trim() !== "" && (
+                                                                <div className="mt-1">
+                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                                                        <Layers className="w-2.5 h-2.5" /> Combo: {order.combo}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </td>
 
                                                         {/* 3. Customer */}
@@ -1947,14 +1978,14 @@ export default function OrdersPage() {
 
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Combo
+                                            Combo Orders
                                         </label>
-                                        <Input
-                                            type="text"
-                                            value={modalCombo}
-                                            onChange={(e) => setModalCombo(e.target.value)}
-                                            placeholder="Combo..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        <ComboSelect
+                                            currentOrderId={statusModalOrder?.id}
+                                            currentOrderNumber={statusModalOrder?.order_number}
+                                            value={modalComboOrders}
+                                            onChange={setModalComboOrders}
+                                            placeholder="Select combo orders..."
                                         />
                                     </div>
                                 </div>

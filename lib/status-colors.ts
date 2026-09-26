@@ -5,46 +5,46 @@ export interface StatusColorItem {
 
 export const PREDEFINED_STATUS_COLORS: Record<string, string> = {
     "pending": "#a855f7",            // Soft Violet
-    "hold": "#e11d48",               // Rose Red
-    "cam": "#0284c7",                // Ocean Blue
-    "cam engineering": "#0284c7",    // Ocean Blue
+    "hold": "#ef4444",               // Bright Red
+    "cam": "#0284c7",                // Sky Blue
+    "cam engineering": "#0284c7",    // Sky Blue
     "cam done": "#10b981",           // Emerald Green
     "filming": "#f59e0b",            // Amber Orange
     "traveler": "#84cc16",           // Lime Green
     "drilling": "#8b5cf6",           // Purple
     "outside drill": "#d97706",      // Golden Amber
     "drill done": "#06b6d4",         // Cyan
-    "blackhole": "#334155",          // Slate
-    "dh": "#f97316",                 // Vivid Orange
+    "blackhole": "#475569",          // Slate
+    "dh": "#ea580c",                 // Deep Orange
+    "dh exposer": "#f97316",         // Orange
     "dh done": "#14b8a6",            // Teal
-    "under process": "#3b82f6",      // Blue
-    "dh exposer": "#ea580c",         // Deep Orange
-    "final cutting": "#ec4899",      // Pink
-    "devloping": "#06b6d4",          // Cyan
-    "developing": "#06b6d4",         // Cyan
+    "under process": "#3b82f6",      // Royal Blue
+    "final cutting": "#ec4899",      // Hot Pink
+    "devloping": "#00b4d8",          // Bright Cyan
+    "developing": "#00b4d8",         // Bright Cyan
     "plating": "#6366f1",            // Indigo
-    "plating qc": "#4f46e5",         // Dark Indigo
+    "plating qc": "#4338ca",         // Dark Indigo
     "devloping qc": "#0891b2",       // Dark Cyan
-    "etching": "#d97706",            // Amber
-    "etch qc": "#b45309",            // Dark Amber
+    "etching": "#b45309",            // Bronze Amber
+    "etch qc": "#92400e",            // Dark Amber
     "masking": "#2563eb",            // Royal Blue
     "masking exposer": "#1d4ed8",    // Deep Blue
-    "hal/tin": "#0d9488",            // Teal
+    "hal/tin": "#0d9488",            // Dark Teal
     "silk": "#f43f5e",               // Rose
-    "vgroove": "#7c3aed",            // Deep Purple
-    "rout": "#dc2626",               // Crimson Red
-    "rout done": "#059669",          // Cyan / Dark Emerald
-    "ready to ship": "#0f766e",      // Dark Teal
+    "vgroove": "#7c3aed",            // Vivid Purple
+    "rout": "#dc2626",               // Crimson
+    "rout done": "#059669",          // Dark Emerald
+    "ready to ship": "#0284c7",      // Ocean Blue
     "bbt": "#c026d3",                // Fuchsia
     "bbt-mqc": "#a21caf",            // Dark Fuchsia
-    "final qc": "#059669",           // Emerald
-    "move": "#64748b",               // Slate
-    "fpt": "#ef4444",                // Bright Red
-    "completed": "#16a34a",          // Forest Green
+    "final qc": "#16a34a",           // Forest Green
+    "move": "#64748b",               // Slate Gray
+    "fpt": "#e11d48",                // Rose
+    "completed": "#22c55e",          // Vibrant Green
     "shipped": "#16a34a",            // Forest Green
-    "delivered": "#15803d",          // Dark Forest Green
-    "cancelled": "#64748b",          // Slate Gray
-    "canceled": "#64748b",           // Slate Gray
+    "delivered": "#15803d",          // Dark Green
+    "cancelled": "#64748b",          // Muted Slate
+    "canceled": "#64748b",           // Muted Slate
 };
 
 export const DISTINCT_PALETTE: string[] = [
@@ -65,7 +65,7 @@ export function getStatusColor(
         return PREDEFINED_STATUS_COLORS[cleanName];
     }
 
-    // 2. Check if matchedStatus has a custom non-default color (not default emerald fallback #10b981 / white / black / transparent)
+    // 2. Check if matchedStatus has a custom non-default color
     if (
         matchedStatus?.color &&
         matchedStatus.color !== "#ffffff" &&
@@ -78,7 +78,8 @@ export function getStatusColor(
 
     // 3. Fallback to distinct palette based on index or string hash
     const strHash = cleanName.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const paletteIndex = index > 0 ? index : strHash;
+    const paletteIndex = index >= 0 ? index : strHash;
     return DISTINCT_PALETTE[Math.abs(paletteIndex) % DISTINCT_PALETTE.length];
 }
+
 

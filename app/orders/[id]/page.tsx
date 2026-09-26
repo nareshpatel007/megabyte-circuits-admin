@@ -10,6 +10,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrderDetailSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
 import { useAuth } from "@/lib/auth-context";
+import { ComboSelect, ComboOrderItem } from "@/components/ComboSelect";
 
 interface StatusItem {
     id: number;
@@ -142,6 +143,7 @@ export default function OrderDetailPage() {
     const [failedQty, setFailedQty] = useState<number>(0);
     const [qNo, setQNo] = useState("");
     const [combo, setCombo] = useState("");
+    const [comboOrdersState, setComboOrdersState] = useState<ComboOrderItem[]>([]);
     const [launchQty, setLaunchQty] = useState<number>(0);
     const [panelQty, setPanelQty] = useState<number>(0);
     const [upsQty, setUpsQty] = useState<number>(0);
@@ -174,6 +176,22 @@ export default function OrderDetailPage() {
                 setFailedQty(o.failed_qty || 0);
                 setQNo(o.q_no ? String(o.q_no) : "");
                 setCombo(o.combo ? String(o.combo) : "");
+
+                let initialComboItems: ComboOrderItem[] = [];
+                if (Array.isArray(o.combo_orders) && o.combo_orders.length > 0) {
+                    initialComboItems = o.combo_orders.map((c: any) => ({
+                        id: c.id,
+                        order_number: c.order_number,
+                        status: c.status,
+                    }));
+                } else if (o.combo && String(o.combo).trim() !== "") {
+                    const parsed = String(o.combo).split(/[\+,\s]+/).filter(Boolean);
+                    initialComboItems = parsed.map((no, idx) => ({
+                        id: 990000 + idx,
+                        order_number: no,
+                    }));
+                }
+                setComboOrdersState(initialComboItems);
                 setLaunchQty(o.launch_qty || 0);
                 setPanelQty(o.panel_qty || 0);
                 setUpsQty(o.ups_qty || 0);
@@ -217,6 +235,9 @@ export default function OrderDetailPage() {
                 } catch (e) { }
             }
 
+            const comboOrderNos = comboOrdersState.map((c) => c.order_number);
+            const comboStr = comboOrderNos.join(", ");
+
             const res = await fetch(`/api/admin/orders/${orderId}`, {
                 method: "PUT",
                 headers: {
@@ -229,7 +250,8 @@ export default function OrderDetailPage() {
                     completed_qty: completedQty,
                     failed_qty: failedQty,
                     q_no: qNo,
-                    combo: combo,
+                    combo: comboStr,
+                    combo_order_ids: comboOrderNos,
                     launch_qty: launchQty,
                     panel_qty: panelQty,
                     ups_qty: upsQty,
@@ -912,13 +934,13 @@ export default function OrderDetailPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Combo</label>
-                                <input
-                                    type="text"
-                                    value={combo}
-                                    onChange={(e) => setCombo(e.target.value)}
-                                    placeholder="Combo..."
-                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Combo Orders</label>
+                                <ComboSelect
+                                    currentOrderId={order?.id}
+                                    currentOrderNumber={order?.order_number}
+                                    value={comboOrdersState}
+                                    onChange={setComboOrdersState}
+                                    placeholder="Select combo orders..."
                                 />
                             </div>
 

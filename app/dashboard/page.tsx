@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { IndianRupee, ShoppingCart, Cpu, UserPlus, ExternalLink, Layers, Calendar, CheckCircle2, RotateCcw } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { IndianRupee, ShoppingCart, Cpu, UserPlus, ExternalLink, Layers, Calendar, CheckCircle2, RotateCcw, TrendingUp, BarChart3, PieChart as PieIcon, X, LayoutDashboard, RefreshCw, CreditCard } from "lucide-react";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusColor } from "@/lib/status-colors";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface StatusItem {
     id: number;
@@ -84,6 +87,104 @@ export default function DashboardPage() {
     const [startDate, setStartDate] = useState<string>("");
     const [endDate, setEndDate] = useState<string>("");
     const [revenueTrend, setRevenueTrend] = useState<{ date: string; revenue: number }[]>([]);
+    const [activeStatusHover, setActiveStatusHover] = useState<{ name: string; value: number; color: string } | null>(null);
+    const [statusViewMode, setStatusViewMode] = useState<"donut" | "list">("donut");
+    const [popoverOpen, setPopoverOpen] = useState(false);
+    const [tempStartDate, setTempStartDate] = useState<string>("");
+    const [tempEndDate, setTempEndDate] = useState<string>("");
+    const [activePreset, setActivePreset] = useState<string | null>(null);
+
+    const getLast5MonthsOptions = () => {
+        const options: { label: string; start: string; end: string; key: string }[] = [];
+        const now = new Date();
+        for (let i = 0; i < 5; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const start = `${yyyy}-${mm}-01`;
+            const lastDay = new Date(yyyy, d.getMonth() + 1, 0).getDate();
+            const end = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+            options.push({ label, start, end, key: `month_${i}` });
+        }
+        return options;
+    };
+
+    const MONTH_OPTIONS = getLast5MonthsOptions();
+
+    const PRESET_OPTIONS = [
+        { label: "Today", value: "today" },
+        { label: "Yesterday", value: "yesterday" },
+        { label: "Last 7 Days", value: "7days" },
+        { label: "Last 30 Days", value: "30days" },
+        { label: "This Month", value: "this_month" },
+        { label: "Last Month", value: "last_month" },
+        { label: "This Year", value: "this_year" },
+        { label: "Last Year", value: "last_year" },
+    ];
+
+    const applyPreset = (presetKey: string) => {
+        setActivePreset(presetKey);
+        const now = new Date();
+        const formatDateStr = (d: Date) => {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
+        let start = new Date();
+        let end = new Date();
+
+        if (presetKey === 'today') {
+            start = new Date();
+            end = new Date();
+        } else if (presetKey === 'yesterday') {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            start = y;
+            end = y;
+        } else if (presetKey === '7days') {
+            const d = new Date();
+            d.setDate(d.getDate() - 6);
+            start = d;
+            end = new Date();
+        } else if (presetKey === '30days') {
+            const d = new Date();
+            d.setDate(d.getDate() - 29);
+            start = d;
+            end = new Date();
+        } else if (presetKey === 'this_month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date();
+        } else if (presetKey === 'last_month') {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            end = new Date(now.getFullYear(), now.getMonth(), 0);
+        } else if (presetKey === 'this_year') {
+            start = new Date(now.getFullYear(), 0, 1);
+            end = new Date();
+        } else if (presetKey === 'last_year') {
+            start = new Date(now.getFullYear() - 1, 0, 1);
+            end = new Date(now.getFullYear() - 1, 11, 31);
+        }
+
+        setTempStartDate(formatDateStr(start));
+        setTempEndDate(formatDateStr(end));
+    };
+
+    const formatDateShort = (dStr: string) => {
+        if (!dStr) return "";
+        try {
+            const parts = dStr.split('-');
+            if (parts.length === 3) {
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            }
+            return dStr;
+        } catch {
+            return dStr;
+        }
+    };
 
     const currentYear = new Date().getFullYear();
     const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
@@ -158,6 +259,21 @@ export default function DashboardPage() {
         ? Object.entries(stats.status_counts).map(([name, value]) => ({ name, value }))
         : [];
 
+    const totalStatusOrders = donutData.reduce((sum, d) => sum + d.value, 0);
+
+    const enhancedDonutData = donutData
+        .map((entry, index) => {
+            const matched = statuses.find(s => s && s.name && s.name.trim().toLowerCase() === entry.name.trim().toLowerCase());
+            const color = getStatusColor(entry.name, matched, index);
+            const percentage = totalStatusOrders > 0 ? ((entry.value / totalStatusOrders) * 100).toFixed(1) : "0";
+            return {
+                ...entry,
+                color,
+                percentage,
+            };
+        })
+        .sort((a, b) => b.value - a.value);
+
     const metrics = [
         {
             label: "Total Revenue",
@@ -195,13 +311,83 @@ export default function DashboardPage() {
         },
     ];
 
+    const [refreshing, setRefreshing] = useState(false);
+
+    const refreshData = async () => {
+        setRefreshing(true);
+        const token = localStorage.getItem("admin_token");
+        const headers = { Authorization: `Bearer ${token}` };
+
+        try {
+            const [statsRes, statusesRes, ordersRes, paymentsRes] = await Promise.all([
+                fetch("/api/admin/stats", { headers }),
+                fetch("/api/admin/statuses", { headers }),
+                fetch("/api/admin/orders?limit=10&per_page=10", { headers }),
+                fetch("/api/admin/payments?per_page=10", { headers }),
+            ]);
+
+            const statsData = await statsRes.json();
+            if (statsData.status || statsData.success) setStats(statsData.stats);
+
+            const statusesData = await statusesRes.json();
+            if (statusesData.status || statusesData.success) setStatuses(statusesData.data || []);
+
+            const ordersData = await ordersRes.json();
+            if (ordersData.status || ordersData.success) {
+                const fetchedOrders: ApiOrder[] = ordersData.data || [];
+                setAllOrders(fetchedOrders);
+                setRecentOrders(fetchedOrders.slice(0, 5));
+            }
+
+            const paymentsData = await paymentsRes.json();
+            if (paymentsData.status || paymentsData.success) setRecentPayments(paymentsData.data || []);
+
+            let trendUrl = `/api/admin/revenue-trend?period=${revenuePeriod}`;
+            if (startDate) trendUrl += `&start_date=${encodeURIComponent(startDate)}`;
+            if (endDate) trendUrl += `&end_date=${encodeURIComponent(endDate)}`;
+
+            const trendRes = await fetch(trendUrl, { headers });
+            const trendData = await trendRes.json();
+            if (trendData.status || trendData.success) setRevenueTrend(trendData.data || []);
+        } catch (e) {
+            console.error("Failed to refresh data:", e);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     return (
         <DashboardLayout title="Dashboard" subtitle="PCB Manufacturing Overview">
-            <div className="space-y-6">
+            <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+                {/* Top Action Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+                            <LayoutDashboard className="w-7 h-7 text-emerald-500" />
+                            PCB Manufacturing Dashboard
+                        </h1>
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">
+                            Real-time manufacturing pipeline metrics, order fulfillment trends, status breakdowns, and revenue tracking.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                        <button
+                            onClick={refreshData}
+                            disabled={refreshing}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                            <span>Refresh Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Metric KPI Cards */}
                 {loadingStats ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                         {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="bg-card border border-border/80 rounded-xl p-5 flex items-start gap-4 animate-pulse">
+                            <div key={i} className="bg-card border border-border/80 rounded-2xl p-5 flex items-start gap-4 animate-pulse shadow-2xs">
                                 <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
                                 <div className="min-w-0 flex-1 space-y-2">
                                     <div className="h-3 bg-muted rounded w-24" />
@@ -217,7 +403,7 @@ export default function DashboardPage() {
                             return (
                                 <div
                                     key={m.label}
-                                    className="bg-card border border-border/80 rounded-xl p-5 flex items-start gap-4 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-500/20 transition-all duration-300 relative group overflow-hidden"
+                                    className="bg-card border border-border/80 rounded-2xl p-5 flex items-start gap-4 hover:-translate-y-1 hover:shadow-md hover:border-emerald-500/20 transition-all duration-300 relative group overflow-hidden shadow-2xs"
                                 >
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                     <div className={`w-12 h-12 rounded-xl ${m.bg} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-300`}>
@@ -234,297 +420,506 @@ export default function DashboardPage() {
                 )}
                 {hasAnalyticsPermission && (
                     <>
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                            <div className="xl:col-span-2 bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300">
-                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                                    <div className="flex flex-wrap items-center gap-4">
-                                        <div>
-                                            <h3 className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap">Revenue Trend</h3>
-                                            <p className="text-xs text-muted-foreground mt-0.5">Real-time revenue computed from submitted PCB orders</p>
-                                        </div>
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                            {/* Revenue Trend Area Chart */}
+                            <div className="xl:col-span-2 rounded-2xl bg-card border border-border/80 overflow-hidden shadow-2xs flex flex-col justify-between">
+                                <div className="p-4 sm:px-6 border-b border-border/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/20">
+                                    <div>
+                                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                            Revenue Trend
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground mt-0.5 font-medium">Real-time revenue computed from submitted PCB orders</p>
+                                    </div>
 
-                                        {/* Inline Timeframe Selector */}
-                                        <div className="flex flex-wrap items-center gap-2.5 px-3 py-1.5 bg-muted/30 border border-border/60 rounded-xl text-xs">
-                                            <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-[11px]">
-                                                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                                                <span>Timeframe:</span>
-                                            </div>
-
-                                            {/* Day to Day */}
-                                            {revenuePeriod === "day" && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-muted-foreground text-[11px]">From</span>
-                                                    <input
-                                                        type="date"
-                                                        value={startDate}
-                                                        onChange={(e) => setStartDate(e.target.value)}
-                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                                    />
-                                                    <span className="text-muted-foreground text-[11px]">To</span>
-                                                    <input
-                                                        type="date"
-                                                        value={endDate}
-                                                        onChange={(e) => setEndDate(e.target.value)}
-                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                                    />
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                        {/* Popover Date Range & Presets Selector */}
+                                        <Popover open={popoverOpen} onOpenChange={(open) => {
+                                            setPopoverOpen(open);
+                                            if (open) {
+                                                setTempStartDate(startDate);
+                                                setTempEndDate(endDate);
+                                            }
+                                        }}>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="h-9 min-w-[150px] sm:min-w-[170px] flex items-center justify-between gap-2 px-3.5 bg-background border-border/80 rounded-xl text-xs font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                        <span>
+                                                            {activePreset
+                                                                ? PRESET_OPTIONS.find(p => p.value === activePreset)?.label || MONTH_OPTIONS.find(m => m.key === activePreset)?.label
+                                                                : startDate && endDate
+                                                                    ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
+                                                                    : startDate
+                                                                        ? `From ${formatDateShort(startDate)}`
+                                                                        : "Date Filter"}
+                                                        </span>
+                                                    </div>
+                                                    {(startDate || endDate) && (
+                                                        <span
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setStartDate("");
+                                                                setEndDate("");
+                                                                setTempStartDate("");
+                                                                setTempEndDate("");
+                                                                setActivePreset(null);
+                                                            }}
+                                                            className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                                                            title="Clear date filter"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                        </span>
+                                                    )}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="z-50 w-80 sm:w-[360px] p-4 bg-card border-border/80 rounded-2xl shadow-xl space-y-4 text-foreground"
+                                                align="start"
+                                                sideOffset={8}
+                                            >
+                                                <div className="flex items-center justify-between pb-2.5 border-b border-border/60">
+                                                    <span className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                                        <Calendar className="w-4 h-4 text-emerald-500" /> Select Date Range
+                                                    </span>
                                                 </div>
-                                            )}
 
-                                            {/* Month to Month */}
-                                            {revenuePeriod === "month" && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-muted-foreground text-[11px]">From</span>
-                                                    <input
-                                                        type="month"
-                                                        value={startDate}
-                                                        onChange={(e) => setStartDate(e.target.value)}
-                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                                    />
-                                                    <span className="text-muted-foreground text-[11px]">To</span>
-                                                    <input
-                                                        type="month"
-                                                        value={endDate}
-                                                        onChange={(e) => setEndDate(e.target.value)}
-                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                                    />
+                                                {/* Side by Side Start & End Date Inputs */}
+                                                <div>
+                                                    <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-1.5">Custom Date Range</span>
+                                                    <div className="grid grid-cols-2 gap-2.5">
+                                                        <div>
+                                                            <label className="text-[10px] font-bold text-muted-foreground block mb-1">Start Date</label>
+                                                            <Input
+                                                                type="date"
+                                                                value={tempStartDate}
+                                                                onChange={(e) => {
+                                                                    setTempStartDate(e.target.value);
+                                                                    setActivePreset(null);
+                                                                }}
+                                                                className="w-full bg-background border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus-visible:ring-emerald-500 cursor-pointer shadow-2xs h-9"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-bold text-muted-foreground block mb-1">End Date</label>
+                                                            <Input
+                                                                type="date"
+                                                                value={tempEndDate}
+                                                                onChange={(e) => {
+                                                                    setTempEndDate(e.target.value);
+                                                                    setActivePreset(null);
+                                                                }}
+                                                                className="w-full bg-background border-border rounded-xl px-2.5 py-1.5 text-xs font-bold text-foreground focus-visible:ring-emerald-500 cursor-pointer shadow-2xs h-9"
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
 
-                                            {/* Year to Year */}
-                                            {revenuePeriod === "year" && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-muted-foreground text-[11px]">From</span>
-                                                    <select
-                                                        value={startDate}
-                                                        onChange={(e) => setStartDate(e.target.value)}
-                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                {/* Quick Presets Grid */}
+                                                <div>
+                                                    <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-1.5">Quick Presets</span>
+                                                    <div className="grid grid-cols-2 gap-1.5">
+                                                        {PRESET_OPTIONS.map((p) => {
+                                                            const isActive = activePreset === p.value;
+                                                            return (
+                                                                <Button
+                                                                    key={p.value}
+                                                                    type="button"
+                                                                    variant={isActive ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => applyPreset(p.value)}
+                                                                    className={`justify-start px-2.5 py-1.5 text-xs font-extrabold rounded-xl transition-all h-auto cursor-pointer ${isActive
+                                                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs"
+                                                                        : "bg-muted/40 hover:bg-muted text-foreground border-border/60"
+                                                                        }`}
+                                                                >
+                                                                    {p.label}
+                                                                </Button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Last 5 Months Quick Options */}
+                                                <div className="pt-2 border-t border-border/60">
+                                                    <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block mb-2">Last 5 Months</span>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {MONTH_OPTIONS.map((m) => {
+                                                            const isActive = activePreset === m.key;
+                                                            return (
+                                                                <Button
+                                                                    key={m.key}
+                                                                    type="button"
+                                                                    variant={isActive ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setActivePreset(m.key);
+                                                                        setTempStartDate(m.start);
+                                                                        setTempEndDate(m.end);
+                                                                    }}
+                                                                    className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all h-auto cursor-pointer ${isActive
+                                                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs"
+                                                                        : "bg-muted/40 hover:bg-muted text-foreground border-border/60"
+                                                                        }`}
+                                                                >
+                                                                    {m.label}
+                                                                </Button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons: Reset & Apply */}
+                                                <div className="pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setTempStartDate("");
+                                                            setTempEndDate("");
+                                                            setStartDate("");
+                                                            setEndDate("");
+                                                            setActivePreset(null);
+                                                            setPopoverOpen(false);
+                                                        }}
+                                                        className="px-3.5 py-1.5 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted h-auto cursor-pointer"
                                                     >
-                                                        <option value="">Start Year</option>
-                                                        {yearOptions.map((yr) => (
-                                                            <option key={yr} value={String(yr)}>
-                                                                {yr}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <span className="text-muted-foreground text-[11px]">To</span>
-                                                    <select
-                                                        value={endDate}
-                                                        onChange={(e) => setEndDate(e.target.value)}
-                                                        className="bg-background border border-border/80 rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                        Reset
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setStartDate(tempStartDate);
+                                                            setEndDate(tempEndDate);
+                                                            setPopoverOpen(false);
+                                                        }}
+                                                        className="px-4 py-1.5 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs h-auto cursor-pointer"
                                                     >
-                                                        <option value="">End Year</option>
-                                                        {yearOptions.map((yr) => (
-                                                            <option key={yr} value={String(yr)}>
-                                                                {yr}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                        Apply Filter
+                                                    </Button>
                                                 </div>
-                                            )}
+                                            </PopoverContent>
+                                        </Popover>
 
-                                            {(startDate || endDate) && (
+                                        {/* Period Toggle Buttons */}
+                                        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60">
+                                            {(["day", "month", "year"] as const).map((period) => (
                                                 <button
+                                                    key={period}
                                                     type="button"
                                                     onClick={() => {
+                                                        setRevenuePeriod(period);
                                                         setStartDate("");
                                                         setEndDate("");
                                                     }}
-                                                    className="flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                                                    className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
+                                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                        }`}
                                                 >
-                                                    <RotateCcw className="w-3 h-3" />
-                                                    Reset
+                                                    {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
                                                 </button>
-                                            )}
+                                            ))}
                                         </div>
                                     </div>
-
-                                    {/* Period Toggle Buttons */}
-                                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start lg:self-auto">
-                                        {(["day", "month", "year"] as const).map((period) => (
-                                            <button
-                                                key={period}
-                                                type="button"
-                                                onClick={() => {
-                                                    setRevenuePeriod(period);
-                                                    setStartDate("");
-                                                    setEndDate("");
-                                                }}
-                                                className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${revenuePeriod === period
-                                                    ? "bg-primary text-primary-foreground shadow-xs"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                                    }`}
-                                            >
-                                                {period === "day" ? "Day" : period === "month" ? "Month" : "Year"}
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
-                                <div className="h-56">
-                                     {loadingTrend ? (
-                                         <div className="h-full flex flex-col items-center justify-center space-y-2">
-                                             <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
-                                             <span className="text-xs text-muted-foreground font-semibold">Loading analytics trend...</span>
-                                         </div>
-                                     ) : revenueTrend.length === 0 ? (
-                                         <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
-                                             No order revenue data recorded yet.
-                                         </div>
-                                     ) : (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={revenueTrend} margin={{ top: 5, right: 15, left: 0, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" />
-                                                <XAxis
-                                                    dataKey="date"
-                                                    tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 500 }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                />
-                                                <YAxis
-                                                    yAxisId="left"
-                                                    tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 500 }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    tickFormatter={formatRevenue}
-                                                    width={46}
-                                                />
-                                                <YAxis
-                                                    yAxisId="right"
-                                                    orientation="right"
-                                                    tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 500 }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    allowDecimals={false}
-                                                    width={30}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                                                        border: "1px solid #e2e8f0",
-                                                        borderRadius: "12px",
-                                                        fontSize: "12px",
-                                                        fontWeight: 600,
-                                                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)",
-                                                        color: "#1e293b",
-                                                    }}
-                                                    formatter={(value: number, name: string) => [
-                                                        name === "revenue" ? `₹${value.toLocaleString("en-IN")}` : value,
-                                                        name === "revenue" ? "Revenue" : "Total Orders",
-                                                    ]}
-                                                />
-                                                <Legend
-                                                    verticalAlign="top"
-                                                    align="right"
-                                                    height={24}
-                                                    iconType="circle"
-                                                    formatter={(value: string) => (
-                                                        <span className="text-xs font-semibold text-muted-foreground capitalize">
-                                                            {value === "revenue" ? "Revenue" : "Orders"}
-                                                        </span>
-                                                    )}
-                                                />
-                                                <Line
-                                                    yAxisId="left"
-                                                    type="monotone"
-                                                    dataKey="revenue"
-                                                    name="revenue"
-                                                    stroke="#10b981"
-                                                    strokeWidth={3}
-                                                    dot={{ r: 3, fill: "#10b981" }}
-                                                    activeDot={{ r: 6, fill: "#10b981", strokeWidth: 0 }}
-                                                />
-                                                <Line
-                                                    yAxisId="right"
-                                                    type="monotone"
-                                                    dataKey="orders"
-                                                    name="orders"
-                                                    stroke="#6366f1"
-                                                    strokeWidth={2}
-                                                    strokeDasharray="4 4"
-                                                    dot={{ r: 3, fill: "#6366f1" }}
-                                                    activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 0 }}
-                                                />
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    )}
+
+                                <div className="p-5 md:p-6">
+                                    <div className="h-64">
+                                        {loadingTrend ? (
+                                            <div className="h-full flex flex-col items-center justify-center space-y-2">
+                                                <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                                                <span className="text-xs text-muted-foreground font-semibold">Loading analytics trend...</span>
+                                            </div>
+                                        ) : revenueTrend.length === 0 ? (
+                                            <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
+                                                No order revenue data recorded yet.
+                                            </div>
+                                        ) : (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={revenueTrend} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
+                                                    <defs>
+                                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
+                                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                                                        </linearGradient>
+                                                        <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
+                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0}/>
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.12)" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="date"
+                                                        minTickGap={35}
+                                                        tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
+                                                        tickLine={false}
+                                                        axisLine={{ stroke: "rgba(148, 163, 184, 0.15)" }}
+                                                    />
+                                                    <YAxis
+                                                        yAxisId="left"
+                                                        tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
+                                                        tickLine={false}
+                                                        axisLine={false}
+                                                        tickFormatter={formatRevenue}
+                                                        width={46}
+                                                    />
+                                                    <YAxis
+                                                        yAxisId="right"
+                                                        orientation="right"
+                                                        tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
+                                                        tickLine={false}
+                                                        axisLine={false}
+                                                        allowDecimals={false}
+                                                        width={30}
+                                                    />
+                                                    <Tooltip
+                                                        contentStyle={{
+                                                            backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                                            border: "1px solid #e2e8f0",
+                                                            borderRadius: "12px",
+                                                            fontSize: "12px",
+                                                            fontWeight: 600,
+                                                            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                                                            color: "#0f172a",
+                                                        }}
+                                                        formatter={(value: number, name: string) => [
+                                                            name === "revenue" ? `₹${value.toLocaleString("en-IN")}` : value,
+                                                            name === "revenue" ? "Revenue" : "Total Orders",
+                                                        ]}
+                                                    />
+                                                    <Area
+                                                        yAxisId="left"
+                                                        type="monotone"
+                                                        dataKey="revenue"
+                                                        name="revenue"
+                                                        stroke="#10b981"
+                                                        strokeWidth={2.5}
+                                                        fillOpacity={1}
+                                                        fill="url(#colorRevenue)"
+                                                        dot={false}
+                                                        activeDot={{ r: 6, fill: "#10b981", stroke: "#ffffff", strokeWidth: 2 }}
+                                                    />
+                                                    <Area
+                                                        yAxisId="right"
+                                                        type="monotone"
+                                                        dataKey="orders"
+                                                        name="orders"
+                                                        stroke="#6366f1"
+                                                        strokeWidth={2}
+                                                        strokeDasharray="4 4"
+                                                        fillOpacity={1}
+                                                        fill="url(#colorOrders)"
+                                                        dot={false}
+                                                        activeDot={{ r: 5, fill: "#6366f1", stroke: "#ffffff", strokeWidth: 2 }}
+                                                    />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Order Status Donut */}
-                            <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300">
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-foreground tracking-tight">Order Status Breakdown</h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Live distribution by manufacturing pipeline stage</p>
+                            {/* Order Status Breakdown */}
+                            <div className="rounded-2xl bg-card border border-border/80 overflow-hidden shadow-2xs flex flex-col justify-between">
+                                <div className="p-4 sm:px-6 border-b border-border/80 flex items-center justify-between bg-muted/20">
+                                    <div>
+                                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                            <PieIcon className="w-4 h-4 text-emerald-500" />
+                                            Order Status Breakdown
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground mt-0.5 font-medium">Live distribution by manufacturing pipeline stage</p>
+                                    </div>
+                                    {/* Toggle View Mode */}
+                                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border/60">
+                                        <button
+                                            type="button"
+                                            onClick={() => setStatusViewMode("donut")}
+                                            title="Donut Chart View"
+                                            className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                                                statusViewMode === "donut"
+                                                    ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-xs"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                        >
+                                            <PieIcon className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setStatusViewMode("list")}
+                                            title="Detailed Breakdown List"
+                                            className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                                                statusViewMode === "list"
+                                                    ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-xs"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                        >
+                                            <BarChart3 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="h-56">
-                                    {donutData.length === 0 ? (
-                                        <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
-                                            No status distribution data.
+
+                                <div className="p-5 md:p-6 flex-1 flex flex-col justify-between">
+                                    {statusViewMode === "donut" ? (
+                                        <div className="space-y-3">
+                                            {/* Donut Chart with MinAngle */}
+                                            <div className="h-[185px] relative">
+                                                {enhancedDonutData.length === 0 ? (
+                                                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
+                                                        No status distribution data.
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <PieChart>
+                                                                <Pie
+                                                                    data={enhancedDonutData}
+                                                                    cx="50%"
+                                                                    cy="50%"
+                                                                    innerRadius={58}
+                                                                    outerRadius={82}
+                                                                    paddingAngle={3}
+                                                                    minAngle={5}
+                                                                    dataKey="value"
+                                                                    onMouseEnter={(data) => setActiveStatusHover(data)}
+                                                                    onMouseLeave={() => setActiveStatusHover(null)}
+                                                                >
+                                                                    {enhancedDonutData.map((entry, index) => (
+                                                                        <Cell
+                                                                            key={index}
+                                                                            fill={entry.color}
+                                                                            stroke="rgba(0,0,0,0.05)"
+                                                                            strokeWidth={1}
+                                                                            className="transition-all duration-200 hover:opacity-80 cursor-pointer"
+                                                                        />
+                                                                    ))}
+                                                                </Pie>
+                                                                <Tooltip
+                                                                    contentStyle={{
+                                                                        backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                                                        border: "1px solid #e2e8f0",
+                                                                        borderRadius: "12px",
+                                                                        fontSize: "12px",
+                                                                        fontWeight: 600,
+                                                                        boxShadow: "0 10px 20px -3px rgba(0, 0, 0, 0.08)",
+                                                                        color: "#0f172a",
+                                                                    }}
+                                                                    formatter={(val: number, name: string, item: any) => [
+                                                                        `${val.toLocaleString()} orders (${item.payload.percentage}%)`,
+                                                                        item.payload.name,
+                                                                    ]}
+                                                                />
+                                                            </PieChart>
+                                                        </ResponsiveContainer>
+
+                                                        {/* Interactive Center Callout */}
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                                                            {activeStatusHover ? (
+                                                                <div className="text-center px-2 animate-in fade-in zoom-in-95 duration-150">
+                                                                    <div className="w-2.5 h-2.5 rounded-full mx-auto mb-0.5 shadow-xs" style={{ backgroundColor: activeStatusHover.color }} />
+                                                                    <p className="text-[11px] font-bold max-w-[110px] truncate leading-tight" style={{ color: activeStatusHover.color }}>
+                                                                        {activeStatusHover.name}
+                                                                    </p>
+                                                                    <p className="text-lg font-black text-foreground tracking-tight my-0.5">
+                                                                        {activeStatusHover.value.toLocaleString()}
+                                                                    </p>
+                                                                    <span className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-muted text-muted-foreground">
+                                                                        {totalStatusOrders > 0 ? ((activeStatusHover.value / totalStatusOrders) * 100).toFixed(1) : 0}%
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-center">
+                                                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">Total</p>
+                                                                    <p className="text-xl font-black text-foreground tracking-tight my-0.5">
+                                                                        {totalStatusOrders.toLocaleString()}
+                                                                    </p>
+                                                                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                                        {enhancedDonutData.length} Stages
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            {/* Scrollable Badges / Legend Pills showing every color prominently */}
+                                            <div className="flex flex-wrap items-center justify-center gap-1.5 max-h-20 overflow-y-auto pr-1 pt-1 border-t border-border/40">
+                                                {enhancedDonutData.map((item, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        onMouseEnter={() => setActiveStatusHover(item)}
+                                                        onMouseLeave={() => setActiveStatusHover(null)}
+                                                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                                                            activeStatusHover?.name === item.name
+                                                                ? "bg-muted border-foreground/30 scale-105 shadow-xs"
+                                                                : "bg-muted/30 border-border/60 hover:bg-muted/60"
+                                                        }`}
+                                                    >
+                                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                                        <span className="text-foreground max-w-[90px] truncate">{item.name}</span>
+                                                        <span className="text-muted-foreground font-mono text-[10px] font-bold">({item.value})</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     ) : (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={donutData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={55}
-                                                    outerRadius={75}
-                                                    paddingAngle={4}
-                                                    dataKey="value"
+                                        /* Detailed List Breakdown View */
+                                        <div className="h-[250px] overflow-y-auto space-y-2 pr-2">
+                                            {enhancedDonutData.map((item, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    onMouseEnter={() => setActiveStatusHover(item)}
+                                                    onMouseLeave={() => setActiveStatusHover(null)}
+                                                    className="p-2 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/50 transition-colors"
                                                 >
-                                                    {donutData.map((entry, index) => {
-                                                        const matched = statuses.find(s => s && s.name && s.name.trim().toLowerCase() === entry.name.trim().toLowerCase());
-                                                        const color = getStatusColor(entry.name, matched, index);
-                                                        return <Cell key={index} fill={color} />;
-                                                    })}
-                                                </Pie>
-                                                <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                                                        border: "1px solid #e2e8f0",
-                                                        borderRadius: "12px",
-                                                        fontSize: "12px",
-                                                        fontWeight: 600,
-                                                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)",
-                                                        color: "#1e293b",
-                                                    }}
-                                                />
-                                                <Legend
-                                                    iconType="circle"
-                                                    iconSize={8}
-                                                    wrapperStyle={{ fontSize: "11px", fontWeight: 500 }}
-                                                    formatter={(value: string, entry: any) => {
-                                                        const matched = statuses.find(s => s && s.name && s.name.trim().toLowerCase() === value.trim().toLowerCase());
-                                                        const idx = donutData.findIndex(d => d.name === value);
-                                                        const color = entry?.color || getStatusColor(value, matched, idx >= 0 ? idx : 0);
-                                                        return (
-                                                            <span className="text-xs font-bold" style={{ color }}>
-                                                                {value}
+                                                    <div className="flex items-center justify-between text-xs mb-1">
+                                                        <div className="flex items-center gap-2 font-bold text-foreground">
+                                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                                            <span>{item.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-foreground font-mono">{item.value.toLocaleString()} orders</span>
+                                                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                                                {item.percentage}%
                                                             </span>
-                                                        );
-                                                    }}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+                                                    {/* Visual Progress Bar filled with exact status color */}
+                                                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full rounded-full transition-all duration-500"
+                                                            style={{
+                                                                width: `${Math.max(Number(item.percentage), item.value > 0 ? 2 : 0)}%`,
+                                                                backgroundColor: item.color,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Bottom Row - Recent Orders & API Health */}
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                             {/* Recent Orders */}
-                            <div className="xl:col-span-2 bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300">
-                                <div className="flex items-center justify-between mb-5">
+                            <div className="xl:col-span-2 rounded-2xl bg-card border border-border/80 overflow-hidden shadow-2xs">
+                                <div className="p-4 sm:px-6 border-b border-border/80 flex items-center justify-between bg-muted/20">
                                     <div>
-                                        <h3 className="text-sm font-bold text-foreground tracking-tight">Recent Orders</h3>
-                                        <p className="text-xs text-muted-foreground mt-0.5">Live order submissions from database</p>
+                                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                            <ShoppingCart className="w-4 h-4 text-emerald-500" />
+                                            Recent Orders
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground mt-0.5 font-medium">Live order submissions from database</p>
                                     </div>
                                     <Link href="/orders" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
                                         View all orders →
                                     </Link>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="p-5 md:p-6 space-y-3">
                                     {loadingOrders ? (
                                         <div className="space-y-3">
                                             {[1, 2, 3, 4, 5].map((i) => (
@@ -666,18 +1061,21 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Recent Transactions List (Last 10) */}
-                            <div className="bg-card border border-border/80 rounded-xl p-5 md:p-6 hover:shadow-md transition-shadow duration-300 flex flex-col">
-                                <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                            <div className="rounded-2xl bg-card border border-border/80 overflow-hidden shadow-2xs flex flex-col">
+                                <div className="p-4 sm:px-6 border-b border-border/80 flex items-center justify-between bg-muted/20">
                                     <div>
-                                        <h3 className="text-sm font-bold text-foreground tracking-tight">Recent Transactions</h3>
-                                        <p className="text-[11px] text-muted-foreground mt-0.5">Last 10 payment transactions</p>
+                                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                            <CreditCard className="w-4 h-4 text-emerald-500" />
+                                            Recent Transactions
+                                        </h2>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">Last 10 payment transactions</p>
                                     </div>
                                     <Link href="/payments" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
                                         View all →
                                     </Link>
                                 </div>
 
-                                <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                                <div className="p-5 md:p-6 space-y-3 flex-1 overflow-y-auto max-h-[500px]">
                                     {recentPayments.length === 0 ? (
                                         <div className="p-8 text-center text-xs text-muted-foreground italic">No recent transactions found.</div>
                                     ) : (
