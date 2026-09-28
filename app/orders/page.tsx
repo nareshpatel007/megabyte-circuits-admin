@@ -2150,7 +2150,7 @@ export default function OrdersPage() {
                                                                                 <Layers className="w-2.5 h-2.5 text-indigo-500 shrink-0" />
                                                                                 <span className="font-semibold text-indigo-600">Combo:</span>
                                                                                 <span className="font-mono font-bold text-indigo-800">
-                                                                                    {comboList.map(c => (c.startsWith('#') || c.startsWith('M') ? c : `#${c}`)).join(', ')}
+                                                                                    {comboList.map(c => (c.startsWith('#') || c.startsWith('M') || c.startsWith('J') ? c : `#${c}`)).join(', ')}
                                                                                 </span>
                                                                             </span>
                                                                         );
@@ -2174,7 +2174,7 @@ export default function OrdersPage() {
                                                                                 <History className="w-2.5 h-2.5 text-amber-600 shrink-0" />
                                                                                 <span className="font-semibold text-amber-700">Old Order:</span>
                                                                                 <span className="font-mono font-bold text-amber-900">
-                                                                                    {oldList.map(c => (c.startsWith('#') || c.startsWith('M') ? c : `#${c}`)).join(', ')}
+                                                                                    {oldList.map(c => (c.startsWith('#') || c.startsWith('M') || c.startsWith('J') ? c : `#${c}`)).join(', ')}
                                                                                 </span>
                                                                             </span>
                                                                         );
