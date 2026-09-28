@@ -518,39 +518,13 @@ export default function OrderJobCardPage() {
                                             />
                                         </div>
 
-                                        <div className="flex items-center gap-4 bg-slate-100 px-3 py-1 rounded border border-black text-xs font-bold">
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!jobCardData.expose}
-                                                    onChange={(e) => updateJobCardField("expose", e.target.checked)}
-                                                    className="w-4 h-4 accent-indigo-600"
-                                                />
-                                                Expose
-                                            </label>
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!jobCardData.print_and_etch}
-                                                    onChange={(e) => updateJobCardField("print_and_etch", e.target.checked)}
-                                                    className="w-4 h-4 accent-indigo-600"
-                                                />
-                                                Print & Etch
-                                            </label>
-                                        </div>
-
                                         <div className="text-right font-black text-lg tracking-wider">
                                             {jobCardData.job_type}
                                         </div>
                                     </div>
 
-                                    {/* Title Banner */}
-                                    <div className="text-center font-black text-2xl tracking-widest underline py-1">
-                                        JOB CARD
-                                    </div>
-
                                     {/* Dates Grid (Date Only - NO TIME) */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-t-2 border-black pt-2 text-xs">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                                         <div>
                                             <span className="font-bold">Order Date: </span>
                                             <input

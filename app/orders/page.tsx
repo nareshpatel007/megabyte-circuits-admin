@@ -3188,7 +3188,7 @@ export default function OrdersPage() {
                                         <tbody>
                                             {/* Header Row */}
                                             <tr className="border-b-2 border-black">
-                                                <td className="p-2 border-r-2 border-black w-1/3 font-black text-sm align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
+                                                <td className="p-2 border-r-2 border-black w-1/2 font-black text-sm align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
                                                     <div className="flex items-center gap-1.5">
                                                         <span>JOB NO:</span>
                                                         <input
@@ -3199,36 +3199,7 @@ export default function OrdersPage() {
                                                         />
                                                     </div>
                                                 </td>
-                                                <td className="p-2 border-r-2 border-black w-1/3 text-center align-middle" style={{ borderRight: '2px solid #000', borderBottom: '2px solid #000' }}>
-                                                    {isSingleSide ? (
-                                                        <>
-                                                            <div className="flex items-center justify-center gap-4 text-xs font-bold mb-1">
-                                                                <label className="inline-flex items-center gap-1 cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={!!jobCardData.expose}
-                                                                        onChange={e => updateJobCardField('expose', e.target.checked)}
-                                                                        className="w-3.5 h-3.5"
-                                                                    />
-                                                                    Expose
-                                                                </label>
-                                                                <label className="inline-flex items-center gap-1 cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={!!jobCardData.print_and_etch}
-                                                                        onChange={e => updateJobCardField('print_and_etch', e.target.checked)}
-                                                                        className="w-3.5 h-3.5"
-                                                                    />
-                                                                    Print & Etch
-                                                                </label>
-                                                            </div>
-                                                            <div className="text-xl font-black uppercase tracking-wider underline">JOB CARD</div>
-                                                        </>
-                                                    ) : (
-                                                        <div className="text-xl font-black uppercase tracking-wider underline">JOB CARD</div>
-                                                    )}
-                                                </td>
-                                                <td className="p-2 w-1/3 text-right font-black text-base align-middle" style={{ borderBottom: '2px solid #000' }}>
+                                                <td className="p-2 w-1/2 text-right font-black text-base align-middle" style={{ borderBottom: '2px solid #000' }}>
                                                     <input
                                                         type="text"
                                                         value={jobCardData.job_type ?? ''}
