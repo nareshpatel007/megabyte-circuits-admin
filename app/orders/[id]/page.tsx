@@ -511,106 +511,111 @@ export default function OrderDetailPage() {
         return true;
     }) : [];
 
-    const isJlcpcbOrder = (order as any)?.order_type === 'jlcpcb' || (order as any)?.quotation_source === 'jlcpcb' || order?.order_number?.startsWith('J') || getMetaValue('quotation_source') === 'jlcpcb';
+    const orderNumUpper = (order?.order_number || "").toUpperCase().trim();
+    const isJlcpcbOrder = orderNumUpper.startsWith("JL") || (
+        !orderNumUpper.startsWith("J") && (
+            (order as any)?.order_type === 'jlcpcb' ||
+            (order as any)?.quotation_source === 'jlcpcb' ||
+            getMetaValue('quotation_source') === 'jlcpcb'
+        )
+    );
 
     const pageHeaderTitle = (
-        <div className="space-y-1">
-            <div className="flex items-center gap-3">
-                {editingOrderNumber ? (
-                    <div className="flex items-center gap-2">
-                        <div className="flex flex-col">
-                            <input
-                                type="text"
-                                value={orderNumberState}
-                                onChange={(e) => {
-                                    setOrderNumberState(e.target.value);
-                                    if (orderNumberError) setOrderNumberError("");
-                                }}
-                                className={`px-2.5 py-1 text-sm font-black border rounded-lg bg-background text-foreground ${orderNumberError ? "border-rose-500 ring-1 ring-rose-500" : "border-emerald-500"}`}
-                                placeholder="Order Number..."
-                                autoFocus
-                            />
-                            {orderNumberError && (
-                                <span className="text-[11px] text-rose-500 font-semibold mt-0.5">{orderNumberError}</span>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleSaveOrderNumber}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                        >
-                            Save
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setEditingOrderNumber(false);
-                                setOrderNumberState(order.order_number || "");
-                                setOrderNumberError("");
+        <div className="flex flex-wrap items-center gap-2.5 md:gap-3">
+            {editingOrderNumber ? (
+                <div className="flex items-center gap-2">
+                    <div className="flex flex-col">
+                        <input
+                            type="text"
+                            value={orderNumberState}
+                            onChange={(e) => {
+                                setOrderNumberState(e.target.value);
+                                if (orderNumberError) setOrderNumberError("");
                             }}
-                            className="px-2.5 py-1 bg-muted hover:bg-accent text-foreground font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                        >
-                            Cancel
-                        </button>
+                            className={`px-2.5 py-1 text-sm font-black border rounded-lg bg-background text-foreground ${orderNumberError ? "border-rose-500 ring-1 ring-rose-500" : "border-emerald-500"}`}
+                            placeholder="Order Number..."
+                            autoFocus
+                        />
+                        {orderNumberError && (
+                            <span className="text-[11px] text-rose-500 font-semibold mt-0.5">{orderNumberError}</span>
+                        )}
                     </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : (isJlcpcbOrder ? "#7c3aed" : "#059669") }}>
-                            Order #{order.order_number}
-                        </h1>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setEditingOrderNumber(true);
-                                setOrderNumberState(order.order_number || "");
-                                setOrderNumberError("");
-                            }}
-                            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                            [Edit]
-                        </button>
-                    </div>
-                )}
-            </div>
-            <div className="flex items-center gap-2">
-                <span
-                    className="px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider inline-flex items-center gap-1.5 text-black"
-                    style={{
-                        backgroundColor: `${currentStatusColor}15`,
-                        color: "#000000",
-                        borderColor: `${currentStatusColor}40`
-                    }}
-                >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentStatusColor }} />
-                    {order.status}
+                    <button
+                        type="button"
+                        onClick={handleSaveOrderNumber}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                    >
+                        Save
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditingOrderNumber(false);
+                            setOrderNumberState(order.order_number || "");
+                            setOrderNumberError("");
+                        }}
+                        className="px-2.5 py-1 bg-muted hover:bg-accent text-foreground font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : (isJlcpcbOrder ? "#7c3aed" : "#059669") }}>
+                        Order #{order.order_number}
+                    </h1>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditingOrderNumber(true);
+                            setOrderNumberState(order.order_number || "");
+                            setOrderNumberError("");
+                        }}
+                        className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                        [Edit]
+                    </button>
+                </div>
+            )}
+
+            <span
+                className="px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider inline-flex items-center gap-1.5 text-black"
+                style={{
+                    backgroundColor: `${currentStatusColor}15`,
+                    color: "#000000",
+                    borderColor: `${currentStatusColor}40`
+                }}
+            >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentStatusColor }} />
+                {order.status}
+            </span>
+
+            {isPartProduct && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wider">
+                    Part Order
                 </span>
-                {isPartProduct && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wider">
-                        Part Order
-                    </span>
-                )}
-                {isJlcpcbOrder && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
-                        JLCPCB Order
-                    </span>
-                )}
-                {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200/80 inline-flex items-center gap-1">
-                        <Layers className="w-3 h-3 text-indigo-500" />
-                        Combo: {Array.isArray(order.combo_orders) && order.combo_orders.length > 0
-                            ? order.combo_orders.map(c => c.order_number).join(', ')
-                            : order.combo}
-                    </span>
-                )}
-                {((order.old_order_number && String(order.old_order_number).trim() !== "") || (Array.isArray(order.old_orders) && order.old_orders.length > 0)) && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200/80 inline-flex items-center gap-1">
-                        <History className="w-3 h-3 text-amber-600" />
-                        Old Order Number: {Array.isArray(order.old_orders) && order.old_orders.length > 0
-                            ? order.old_orders.map(c => c.order_number).join(', ')
-                            : order.old_order_number}
-                    </span>
-                )}
-            </div>
+            )}
+            {isJlcpcbOrder && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
+                    JLCPCB Order
+                </span>
+            )}
+            {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200/80 inline-flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-indigo-500" />
+                    Combo: {Array.isArray(order.combo_orders) && order.combo_orders.length > 0
+                        ? order.combo_orders.map(c => c.order_number).join(', ')
+                        : order.combo}
+                </span>
+            )}
+            {((order.old_order_number && String(order.old_order_number).trim() !== "") || (Array.isArray(order.old_orders) && order.old_orders.length > 0)) && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200/80 inline-flex items-center gap-1">
+                    <History className="w-3 h-3 text-amber-600" />
+                    Old Order Number: {Array.isArray(order.old_orders) && order.old_orders.length > 0
+                        ? order.old_orders.map(c => c.order_number).join(', ')
+                        : order.old_order_number}
+                </span>
+            )}
         </div>
     );
 
