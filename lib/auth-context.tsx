@@ -4,13 +4,18 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/navigation";
 import { getDefaultRedirectRoute } from "@/lib/permissions-helper";
 
-interface User {
+export interface User {
     id: number;
     username?: string;
     email: string;
     name: string;
+    mobile?: string | null;
+    profile_picture?: string | null;
+    avatar_url?: string | null;
     role?: string;
     permissions?: string[];
+    created_at?: string;
+    last_login_at?: string;
 }
 
 interface AuthContextType {
@@ -18,6 +23,8 @@ interface AuthContextType {
     user: User | null;
     login: (usernameOrEmail: string, password: string) => Promise<void>;
     logout: () => void;
+    updateUser: (updatedData: Partial<User>) => void;
+    refreshProfile: () => Promise<void>;
     isLoading: boolean;
 }
 
@@ -53,9 +60,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } catch (e) {
                 setUser(null);
             }
+            refreshProfile();
         }
         setIsLoading(false);
     }, [router]);
+
+    const refreshProfile = async () => {
+        try {
+            const token = localStorage.getItem("admin_token");
+            if (!token) return;
+            const res = await fetch("/api/admin/profile", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok && data.status && data.data) {
+                const freshUser = data.data;
+                setUser((prev) => {
+                    const updated: User = {
+                        id: freshUser.id,
+                        name: freshUser.name,
+                        email: freshUser.email,
+                        username: freshUser.username,
+                        mobile: freshUser.mobile,
+                        profile_picture: freshUser.profile_picture,
+                        avatar_url: freshUser.avatar_url,
+                        role: freshUser.role || prev?.role || "Admin",
+                        permissions: prev?.permissions || [],
+                        created_at: freshUser.created_at,
+                        last_login_at: freshUser.last_login_at
+                    };
+                    localStorage.setItem("user", JSON.stringify(updated));
+                    return updated;
+                });
+            }
+        } catch (e) {
+            console.error("Failed to refresh profile", e);
+        }
+    };
+
+    const updateUser = (updatedData: Partial<User>) => {
+        setUser((prev) => {
+            if (!prev) return null;
+            const newUserData = { ...prev, ...updatedData };
+            localStorage.setItem("user", JSON.stringify(newUserData));
+            return newUserData;
+        });
+    };
 
     const login = async (usernameOrEmail: string, password: string) => {
         const response = await fetch("/api/admin/login", {
@@ -102,6 +152,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             username: adminInfo.username || usernameOrEmail,
             email: adminInfo.email || usernameOrEmail,
             name: adminInfo.name || "Admin User",
+            mobile: adminInfo.mobile || null,
+            profile_picture: adminInfo.profile_picture || null,
+            avatar_url: adminInfo.avatar_url || null,
             role: adminInfo.role || "Admin",
             permissions: freshPermissions
         };
@@ -183,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading }}>
+        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, updateUser, refreshProfile, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

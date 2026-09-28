@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Menu, Bell, Sun, Moon, User, LogOut, ChevronDown, Settings, Check } from "lucide-react";
+import { Menu, Bell, Sun, Moon, User, LogOut, ChevronDown, Settings, Check, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import GlobalSearch from "@/components/layout/global-search";
 import { showBrowserNotification } from "@/lib/browser-notifications";
+import { AdminAvatar } from "@/components/ui/admin-avatar";
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -265,14 +266,16 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 <div className="relative" ref={userRef}>
                     <button
                         onClick={() => { setUserOpen(!userOpen); setBellOpen(false); }}
-                        className="flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-xl hover:bg-white/5 transition-all duration-200 cursor-pointer"
+                        className="flex items-center gap-2.5 pl-1.5 pr-2.5 py-1.5 rounded-xl hover:bg-white/5 transition-all duration-200 cursor-pointer"
                     >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-                            <User className="w-4 h-4 text-white" />
-                        </div>
+                        <AdminAvatar
+                            src={user?.avatar_url || user?.profile_picture}
+                            name={user?.name}
+                            className="w-8 h-8"
+                        />
                         <div className="hidden sm:block text-left">
                             <p className="text-xs font-semibold text-foreground leading-tight">{user?.name || "Admin User"}</p>
-                            <p className="text-[10px] text-muted-foreground">Administrator</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">{user?.role || "Administrator"}</p>
                         </div>
                         <ChevronDown
                             className={cn(
@@ -284,29 +287,59 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
                     {userOpen && (
                         <div className={cn(
-                            "absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50 py-1.5",
+                            "absolute right-0 top-full mt-2 w-60 rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50 py-1.5",
                             "bg-slate-900/95 backdrop-blur-xl",
                             theme === "light" ? "card-shadow" : "card-shadow-dark"
                         )}>
-                            <div className="px-4 py-2 border-b border-white/10">
-                                <p className="text-xs font-bold text-white">{user?.name || "Admin User"}</p>
-                                <p className="text-[10px] text-slate-400 font-mono truncate">{user?.email || "admin@megabyte.com"}</p>
+                            <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
+                                <AdminAvatar
+                                    src={user?.avatar_url || user?.profile_picture}
+                                    name={user?.name}
+                                    className="w-10 h-10"
+                                />
+                                <div className="overflow-hidden">
+                                    <p className="text-xs font-bold text-white truncate">{user?.name || "Admin User"}</p>
+                                    <p className="text-[11px] text-slate-400 font-mono truncate">{user?.email || "admin@megabyte.com"}</p>
+                                    <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        {user?.role || "Administrator"}
+                                    </span>
+                                </div>
                             </div>
-                            <Link
-                                href="/settings"
-                                onClick={() => setUserOpen(false)}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                            >
-                                <Settings className="w-3.5 h-3.5" />
-                                <span>Settings</span>
-                            </Link>
-                            <button
-                                onClick={() => { logout(); setUserOpen(false); }}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            >
-                                <LogOut className="w-3.5 h-3.5" />
-                                <span>Logout</span>
-                            </button>
+                            <div className="py-1">
+                                <Link
+                                    href="/profile"
+                                    onClick={() => setUserOpen(false)}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                                >
+                                    <User className="w-4 h-4 text-emerald-400" />
+                                    <span>My Profile</span>
+                                </Link>
+                                <Link
+                                    href="/profile?tab=password"
+                                    onClick={() => setUserOpen(false)}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                                >
+                                    <KeyRound className="w-4 h-4 text-amber-400" />
+                                    <span>Change Password</span>
+                                </Link>
+                                <Link
+                                    href="/settings"
+                                    onClick={() => setUserOpen(false)}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                                >
+                                    <Settings className="w-4 h-4 text-slate-400" />
+                                    <span>System Settings</span>
+                                </Link>
+                            </div>
+                            <div className="border-t border-white/10 pt-1">
+                                <button
+                                    onClick={() => { logout(); setUserOpen(false); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    <span>Logout</span>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
