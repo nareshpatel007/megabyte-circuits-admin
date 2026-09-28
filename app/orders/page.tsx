@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp } from "lucide-react";
@@ -110,7 +110,7 @@ const getPcbLightBg = (colorHex: string) => {
     return `color-mix(in srgb, ${colorHex} 7%, #ffffff 93%)`;
 };
 
-export default function OrdersPage() {
+function OrdersContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -5105,5 +5105,13 @@ export default function OrdersPage() {
                 </DialogContent>
             </Dialog>
         </DashboardLayout>
+    );
+}
+
+export default function OrdersPage() {
+    return (
+        <Suspense fallback={<OrdersSkeleton />}>
+            <OrdersContent />
+        </Suspense>
     );
 }
