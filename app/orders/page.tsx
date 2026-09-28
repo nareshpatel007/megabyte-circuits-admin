@@ -642,6 +642,7 @@ function OrdersContent() {
     const [modalBillNumber, setModalBillNumber] = useState("");
     const [modalBillNumberError, setModalBillNumberError] = useState("");
     const [modalDeliveryDate, setModalDeliveryDate] = useState("");
+    const [modalOriginalDeliveryDate, setModalOriginalDeliveryDate] = useState("");
     const [modalRemark, setModalRemark] = useState("");
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -1278,6 +1279,20 @@ function OrdersContent() {
         setPage(1);
     };
 
+    // Helper to parse delivery date string cleanly to YYYY-MM-DD format without timezone shift
+    const parseDeliveryDateToYYYYMMDD = (dateStr: string | null | undefined): string => {
+        if (!dateStr || dateStr === 'N/A') return '';
+        const str = String(dateStr).trim();
+        const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+        const d = new Date(str);
+        if (isNaN(d.getTime())) return '';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // Helper to get meta key value
     const getMetaValue = (order: ApiOrder, key: string, fallback = "N/A") => {
         if (!order || !order.metas) return fallback;
@@ -1466,7 +1481,9 @@ function OrdersContent() {
         setModalFinalQty(initialFinalQty);
         setModalBillNumber(order.bill_number ? String(order.bill_number) : "");
         setModalBillNumberError("");
-        setModalDeliveryDate(order.delivery_date ? String(order.delivery_date).split('T')[0] : "");
+        const origDeliveryDate = parseDeliveryDateToYYYYMMDD(order.delivery_date);
+        setModalDeliveryDate(origDeliveryDate);
+        setModalOriginalDeliveryDate(origDeliveryDate);
         setModalRemark("");
     };
     const openStatusModal = handleOpenStatusModal;
@@ -1550,34 +1567,43 @@ function OrdersContent() {
             const oldOrderNos = modalOldOrders.map((c) => c.order_number);
             const oldOrderStr = oldOrderNos.join(", ");
 
+            const normCurrentDeliveryDate = parseDeliveryDateToYYYYMMDD(modalDeliveryDate);
+            const normOrigDeliveryDate = parseDeliveryDateToYYYYMMDD(modalOriginalDeliveryDate);
+            const hasDeliveryDateChanged = normCurrentDeliveryDate !== normOrigDeliveryDate;
+
+            const updatePayload: any = {
+                order_number: modalOrderNumber.trim(),
+                order_qty: modalOrderQty,
+                quantity: modalOrderQty,
+                status: modalNewStatus,
+                user_id: modalUserId ? Number(modalUserId) : null,
+                customer_name: modalCustomerName,
+                completed_qty: modalCompletedQty,
+                failed_qty: modalFailedQty,
+                q_no: modalQNo,
+                combo: comboStr,
+                combo_order_ids: comboOrderNos,
+                old_order_number: oldOrderStr,
+                old_order_ids: oldOrderNos,
+                launch_qty: modalLaunchQty,
+                panel_qty: modalPanelQty,
+                ups_qty: modalUpsQty,
+                final_qty: modalFinalQty,
+                bill_number: modalBillNumber.trim(),
+                remark: modalRemark
+            };
+
+            if (hasDeliveryDateChanged) {
+                updatePayload.delivery_date = normCurrentDeliveryDate || null;
+            }
+
             const res = await fetch(`/api/admin/orders/${statusModalOrder.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    order_number: modalOrderNumber.trim(),
-                    order_qty: modalOrderQty,
-                    quantity: modalOrderQty,
-                    status: modalNewStatus,
-                    user_id: modalUserId ? Number(modalUserId) : null,
-                    customer_name: modalCustomerName,
-                    completed_qty: modalCompletedQty,
-                    failed_qty: modalFailedQty,
-                    q_no: modalQNo,
-                    combo: comboStr,
-                    combo_order_ids: comboOrderNos,
-                    old_order_number: oldOrderStr,
-                    old_order_ids: oldOrderNos,
-                    launch_qty: modalLaunchQty,
-                    panel_qty: modalPanelQty,
-                    ups_qty: modalUpsQty,
-                    final_qty: modalFinalQty,
-                    bill_number: modalBillNumber.trim(),
-                    delivery_date: modalDeliveryDate || null,
-                    remark: modalRemark
-                })
+                body: JSON.stringify(updatePayload)
             });
 
             const data = await res.json();

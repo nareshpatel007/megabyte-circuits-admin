@@ -383,6 +383,13 @@ export default function OrderDetailPage() {
     };
 
     const handleSaveDeliveryDate = async () => {
+        const normNewDate = parseDeliveryDateToYYYYMMDD(deliveryDate);
+        const normOldDate = parseDeliveryDateToYYYYMMDD(order?.delivery_date);
+        if (normNewDate === normOldDate) {
+            toast.info("Delivery date is unchanged.");
+            setEditingDeliveryDate(false);
+            return;
+        }
         try {
             const token = localStorage.getItem("admin_token");
             const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -391,7 +398,7 @@ export default function OrderDetailPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ delivery_date: deliveryDate })
+                body: JSON.stringify({ delivery_date: normNewDate || null })
             });
             const data = await res.json();
             if (res.ok && (data.status || data.success)) {
@@ -408,10 +415,11 @@ export default function OrderDetailPage() {
 
     const parseDeliveryDateToYYYYMMDD = (dateStr: string | null | undefined): string => {
         if (!dateStr || dateStr === 'N/A') return '';
-        const match = String(dateStr).match(/^(\d{4}-\d{2}-\d{2})/);
-        if (match) return match[1];
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return String(dateStr);
+        const str = String(dateStr).trim();
+        const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+        const d = new Date(str);
+        if (isNaN(d.getTime())) return '';
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
