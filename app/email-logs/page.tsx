@@ -28,6 +28,7 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { useAdminListingParams } from "@/hooks/useAdminListingParams";
 
 interface EmailLogItem {
     id: number;
@@ -93,7 +94,13 @@ const formatRetentionDisplay = (days: string) => {
 };
 
 function EmailLogsContent() {
-    const searchParams = useSearchParams();
+    const { searchParams, getParam, page, updateParams } = useAdminListingParams();
+    const search = getParam("search", "");
+    const statusFilter = getParam("status", "all");
+    const emailTypeFilter = getParam("email_type", "all");
+    const startDate = getParam("from", getParam("start_date", ""));
+    const endDate = getParam("to", getParam("end_date", ""));
+    const pageSize = getParam("per_page", 10);
 
     const [logs, setLogs] = useState<EmailLogItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -107,25 +114,10 @@ function EmailLogsContent() {
         failed_today: 0
     });
 
-    // Filters
-    const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
-    const [emailTypeFilter, setEmailTypeFilter] = useState("all");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [tempStartDate, setTempStartDate] = useState("");
-    const [tempEndDate, setTempEndDate] = useState("");
+    const [tempStartDate, setTempStartDate] = useState(startDate);
+    const [tempEndDate, setTempEndDate] = useState(endDate);
     const [activePreset, setActivePreset] = useState<string | null>(null);
     const [popoverOpen, setPopoverOpen] = useState(false);
-
-    // Debounce search input to call API after user stops typing
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 400);
-        return () => clearTimeout(timer);
-    }, [search]);
 
     const getLast5MonthsOptions = () => {
         const options: { label: string; start: string; end: string; key: string }[] = [];
@@ -200,7 +192,7 @@ function EmailLogsContent() {
             params.append("page", page.toString());
             params.append("per_page", pageSize.toString());
 
-            if (debouncedSearch.trim()) params.append("search", debouncedSearch.trim());
+            if (search.trim()) params.append("search", search.trim());
             if (statusFilter !== "all") params.append("status", statusFilter);
             if (emailTypeFilter !== "all") params.append("email_type", emailTypeFilter);
             if (startDate) params.append("start_date", startDate);
@@ -236,7 +228,7 @@ function EmailLogsContent() {
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, debouncedSearch, statusFilter, emailTypeFilter, startDate, endDate]);
+    }, [page, pageSize, search, statusFilter, emailTypeFilter, startDate, endDate]);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -599,18 +591,12 @@ function EmailLogsContent() {
                                 type="search"
                                 placeholder="Search recipient, subject, or template..."
                                 value={search}
-                                onChange={(e) => {
-                                    setSearch(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ search: e.target.value })}
                                 className="w-full pl-9 pr-8 py-2 bg-muted/30 border border-border/80 rounded-xl text-xs text-foreground focus:outline-hidden focus:border-emerald-500 font-medium"
                             />
                             {search && (
                                 <button
-                                    onClick={() => {
-                                        setSearch("");
-                                        setPage(1);
-                                    }}
+                                    onClick={() => updateParams({ search: "" })}
                                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                                 >
                                     <X className="w-3.5 h-3.5" />
@@ -621,10 +607,7 @@ function EmailLogsContent() {
                         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                             <select
                                 value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ status: e.target.value })}
                                 className="px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="all">All Statuses</option>
@@ -636,10 +619,7 @@ function EmailLogsContent() {
 
                             <select
                                 value={emailTypeFilter}
-                                onChange={(e) => {
-                                    setEmailTypeFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ email_type: e.target.value })}
                                 className="px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="all">All Email Types</option>
@@ -768,10 +748,8 @@ function EmailLogsContent() {
                                             onClick={() => {
                                                 setTempStartDate("");
                                                 setTempEndDate("");
-                                                setStartDate("");
-                                                setEndDate("");
                                                 setActivePreset(null);
-                                                setPage(1);
+                                                updateParams({ from: "", to: "" });
                                                 setPopoverOpen(false);
                                             }}
                                             className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-border/80 text-foreground hover:bg-muted h-auto cursor-pointer"
@@ -781,9 +759,7 @@ function EmailLogsContent() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                setStartDate(tempStartDate);
-                                                setEndDate(tempEndDate);
-                                                setPage(1);
+                                                updateParams({ from: tempStartDate, to: tempEndDate });
                                                 setPopoverOpen(false);
                                             }}
                                             className="px-4 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs h-auto cursor-pointer"
@@ -797,15 +773,10 @@ function EmailLogsContent() {
                             {(startDate || endDate || statusFilter !== "all" || emailTypeFilter !== "all" || search) && (
                                 <button
                                     onClick={() => {
-                                        setSearch("");
-                                        setStatusFilter("all");
-                                        setEmailTypeFilter("all");
-                                        setStartDate("");
-                                        setEndDate("");
                                         setTempStartDate("");
                                         setTempEndDate("");
                                         setActivePreset(null);
-                                        setPage(1);
+                                        clearFilters();
                                     }}
                                     className="p-2 bg-muted/40 border border-border/80 rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                                     title="Reset all filters"
@@ -946,7 +917,7 @@ function EmailLogsContent() {
                             <div className="flex items-center gap-3">
                                 <button
                                     disabled={page <= 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    onClick={() => updateParams({ page: Math.max(1, page - 1) })}
                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted text-foreground font-bold text-xs disabled:opacity-40 transition-colors cursor-pointer"
                                 >
                                     <ChevronLeft className="w-3.5 h-3.5" /> Prev
@@ -958,7 +929,7 @@ function EmailLogsContent() {
 
                                 <button
                                     disabled={page >= totalPages}
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    onClick={() => updateParams({ page: Math.min(totalPages, page + 1) })}
                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted text-foreground font-bold text-xs disabled:opacity-40 transition-colors cursor-pointer"
                                 >
                                     Next <ChevronRight className="w-3.5 h-3.5" />

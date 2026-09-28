@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
+import { useAdminListingParams } from "@/hooks/useAdminListingParams";
 
 interface PaymentTransaction {
     id: number;
@@ -73,15 +74,18 @@ const formatDate = (dateString?: string | null) => {
 };
 
 function PaymentsContent() {
-    const searchParams = useSearchParams();
+    const { searchParams, getParam, page, updateParams } = useAdminListingParams();
+    const search = getParam("search", "");
+    const statusFilter = getParam("status", "success");
+    const paymentMethodFilter = getParam("payment_method", "all");
+    const fromStr = getParam("from", getParam("start_date", ""));
+    const toStr = getParam("to", getParam("end_date", ""));
+
+    const startDate = fromStr ? parseISO(fromStr) : undefined;
+    const endDate = toStr ? parseISO(toStr) : undefined;
+
     const [payments, setPayments] = useState<PaymentTransaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("success");
-    const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
-    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-    const [page, setPage] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [totalAmountSum, setTotalAmountSum] = useState(0);
@@ -89,15 +93,6 @@ function PaymentsContent() {
     const [totalFailedCount, setTotalFailedCount] = useState(0);
     const [selectedPayment, setSelectedPayment] = useState<PaymentTransaction | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
-
-    // Sync search parameter from URL on load
-    useEffect(() => {
-        const urlQuery = searchParams?.get("search");
-        if (urlQuery) {
-            setSearch(urlQuery);
-            setStatusFilter("all");
-        }
-    }, [searchParams]);
 
     const fetchPayments = useCallback(async () => {
         setLoading(true);
@@ -264,12 +259,12 @@ function PaymentsContent() {
                         <input
                             type="text"
                             value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                            onChange={(e) => updateParams({ search: e.target.value })}
                             placeholder="Search Txn #, Payment ID, Customer name or email..."
                             className="w-full pl-10 pr-4 py-2 rounded-xl bg-card border border-border/80 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-all shadow-xs"
                         />
                         {search && (
-                            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            <button onClick={() => updateParams({ search: "" })} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                                 <X className="w-3.5 h-3.5" />
                             </button>
                         )}
@@ -277,7 +272,7 @@ function PaymentsContent() {
 
                     <select
                         value={statusFilter}
-                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                        onChange={(e) => updateParams({ status: e.target.value })}
                         className="px-3 py-2 rounded-xl bg-card border border-border/80 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold cursor-pointer shadow-xs"
                     >
                         <option value="success">Completed (Success)</option>
@@ -295,7 +290,7 @@ function PaymentsContent() {
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0 z-50 bg-card border border-border/80 shadow-2xl" align="start">
-                                <Calendar mode="single" selected={startDate} onSelect={(d) => { setStartDate(d); setPage(1); }} />
+                                <Calendar mode="single" selected={startDate} onSelect={(d) => updateParams({ from: d ? format(d, "yyyy-MM-dd") : "" })} />
                             </PopoverContent>
                         </Popover>
 
@@ -309,13 +304,13 @@ function PaymentsContent() {
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0 z-50 bg-card border border-border/80 shadow-2xl" align="start">
-                                <Calendar mode="single" selected={endDate} onSelect={(d) => { setEndDate(d); setPage(1); }} />
+                                <Calendar mode="single" selected={endDate} onSelect={(d) => updateParams({ to: d ? format(d, "yyyy-MM-dd") : "" })} />
                             </PopoverContent>
                         </Popover>
 
                         {(startDate || endDate) && (
                             <button
-                                onClick={() => { setStartDate(undefined); setEndDate(undefined); setPage(1); }}
+                                onClick={() => updateParams({ from: "", to: "" })}
                                 className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                                 title="Clear dates"
                             >
@@ -485,7 +480,7 @@ function PaymentsContent() {
 
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                                onClick={() => updateParams({ page: Math.max(page - 1, 1) })}
                                 disabled={page === 1}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                             >
@@ -496,7 +491,7 @@ function PaymentsContent() {
                                 Page {page} of {totalPages}
                             </span>
                             <button
-                                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                                onClick={() => updateParams({ page: Math.min(page + 1, totalPages) })}
                                 disabled={page >= totalPages}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                             >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/lib/auth-context";
@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useAdminListingParams } from "@/hooks/useAdminListingParams";
 
 interface ApiUser {
     id: number;
@@ -66,12 +67,14 @@ const formatDate = (dateString?: string) => {
     }
 };
 
-export default function ClientsPage() {
+function ClientsContent() {
+    const { getParam, page, updateParams } = useAdminListingParams();
+    const search = getParam("search", "");
+    const statusFilter = getParam("status", "All");
+    const pageSize = getParam("per_page", 10);
+
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<ApiUser[]>([]);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All");
-    const [page, setPage] = useState(1);
 
     // Status Change Modal State
     const [statusModalUser, setStatusModalUser] = useState<ApiUser | null>(null);
@@ -219,7 +222,7 @@ export default function ClientsPage() {
             const data = await res.json();
 
             if (data.status || data.success) {
-                toast.success(data.message || "Client account soft deleted successfully");
+                toast.success(data.message || "Client account soft-deleted successfully");
                 setUsers(prev => prev.filter(u => u.id !== deleteModalUser.id));
                 setDeleteModalUser(null);
             } else {
@@ -232,8 +235,6 @@ export default function ClientsPage() {
             setDeleting(false);
         }
     };
-
-    const [pageSize, setPageSize] = useState<number>(10);
 
     const nonDeletedUsers = users.filter((u) => (u.status || '').toLowerCase() !== 'deleted');
 
@@ -278,18 +279,27 @@ export default function ClientsPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer"
             >
                 <UserPlus className="w-4 h-4" />
-                Add Client
+                Add New Client
             </Link>
         </div>
     );
 
     return (
-        <DashboardLayout title="Client Management" subtitle={`${nonDeletedUsers.length} registered clients`} action={headerActions}>
+        <DashboardLayout headerActions={headerActions}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Client Management</h1>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                        Manage registered client accounts, order limits, credit balances and permissions.
+                    </p>
+                </div>
+            </div>
+
             {loading ? (
-                <TableSkeleton rows={7} />
+                <TableSkeleton rows={8} cols={6} />
             ) : (
-                <div className="space-y-5">
-                    {/* Stats Row */}
+                <div className="space-y-6">
+                    {/* Metrics Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
@@ -346,10 +356,7 @@ export default function ClientsPage() {
                                 type="text"
                                 placeholder="Search clients by name, email, company..."
                                 value={search}
-                                onChange={(e) => {
-                                    setSearch(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ search: e.target.value })}
                                 className="w-full pl-9 pr-4 py-2 bg-muted/30 border border-border/80 rounded-xl text-xs text-foreground focus:outline-hidden focus:border-emerald-500 font-medium"
                             />
                         </div>
@@ -357,10 +364,7 @@ export default function ClientsPage() {
                         <div className="w-full md:w-auto">
                             <select
                                 value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ status: e.target.value })}
                                 className="w-full md:w-auto px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="All">All Statuses</option>
@@ -388,7 +392,7 @@ export default function ClientsPage() {
                                         <th className="py-3.5 px-5 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border/40">
+                                <tbody className="divide-y divide-border/40 font-medium">
                                     {paginated.length === 0 ? (
                                         <tr>
                                             <td colSpan={7} className="text-center py-12 text-muted-foreground">
@@ -398,97 +402,86 @@ export default function ClientsPage() {
                                     ) : (
                                         paginated.map((user) => {
                                             const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || `Client #${user.id}`;
-                                            const userStatus = user.status || "Active";
-                                            const joinedDateFormatted = formatDate(user.created_at);
+                                            const isDeleted = (user.status || '').toLowerCase() === 'deleted';
+                                            const userStatus = (user.status || 'Active');
 
                                             return (
-                                                <tr key={user.id} className="hover:bg-muted/20 transition-colors">
-                                                    <td className="py-4 px-5 whitespace-nowrap">
-                                                        <p className="font-bold text-foreground text-sm">{displayName}</p>
-                                                        <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 select-all">
-                                                            <Mail className="w-3 h-3" /> {user.email}
-                                                        </p>
+                                                <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                                                    <td className="py-3.5 px-5">
+                                                        <div className="font-extrabold text-foreground">
+                                                            <Link href={`/clients/${user.id}`} className="hover:text-emerald-500 transition-colors">
+                                                                {displayName}
+                                                            </Link>
+                                                        </div>
+                                                        <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                            <Mail className="w-3 h-3" />
+                                                            <span>{user.email || 'N/A'}</span>
+                                                        </div>
                                                     </td>
-                                                    <td className="py-4 px-5 whitespace-nowrap">
-                                                        <p className="font-semibold text-foreground text-xs flex items-center gap-1">
-                                                            <Building className="w-3 h-3 text-muted-foreground" /> {user.company_name || 'Individual Client'}
-                                                        </p>
-                                                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{user.phone_number || 'N/A'}</p>
+                                                    <td className="py-3.5 px-5">
+                                                        <div className="text-foreground font-semibold flex items-center gap-1.5">
+                                                            <Building className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                            <span>{user.company_name || 'Individual'}</span>
+                                                        </div>
+                                                        <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                            <Phone className="w-3 h-3" />
+                                                            <span>{user.phone_number || (user as any).mobile || (user as any).phone || 'N/A'}</span>
+                                                        </div>
                                                     </td>
-                                                    <td className="py-4 px-5 font-extrabold text-foreground text-xs whitespace-nowrap">
-                                                        {user.orders_count || 0} Orders
+                                                    <td className="py-3.5 px-5">
+                                                        <span className="font-bold text-foreground">{user.orders_count || 0}</span>
                                                     </td>
-                                                    <td className="py-4 px-5 font-black text-emerald-600 dark:text-emerald-400 text-sm whitespace-nowrap">
-                                                        ₹{Number(user.total_spent || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                    <td className="py-3.5 px-5">
+                                                        <span className="font-bold text-emerald-500">
+                                                            ₹{(user.total_spent || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
                                                     </td>
-                                                    <td className="py-4 px-5 text-muted-foreground font-bold font-mono text-xs whitespace-nowrap">
-                                                        {joinedDateFormatted}
+                                                    <td className="py-3.5 px-5 text-muted-foreground font-medium">
+                                                        {formatDate(user.created_at)}
                                                     </td>
-                                                    <td className="py-4 px-5 whitespace-nowrap">
+                                                    <td className="py-3.5 px-5">
                                                         <button
                                                             onClick={() => openStatusModal(user)}
-                                                            title="Click to Change Status"
-                                                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider border shadow-2xs cursor-pointer hover:opacity-80 transition-all ${userStatus.toLowerCase() === "active"
-                                                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                                                                : "bg-red-500/10 text-red-600 border-red-500/20"
-                                                                }`}
+                                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-all hover:opacity-80 ${
+                                                                userStatus.toLowerCase() === 'active'
+                                                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                                                    : userStatus.toLowerCase() === 'pending'
+                                                                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                                                    : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                                            }`}
                                                         >
-                                                            <span
-                                                                className={`w-1.5 h-1.5 rounded-full ${userStatus.toLowerCase() === "active" ? "bg-emerald-500" : "bg-red-500"}`}
-                                                            />
-                                                            {userStatus}
+                                                            <span>{userStatus}</span>
                                                         </button>
                                                     </td>
-                                                    <td className="py-4 px-5 text-right whitespace-nowrap">
-                                                        <div className="inline-flex items-center justify-end gap-1.5">
-                                                            {/* View Details Button */}
-                                                            <Link
-                                                                href={`/clients/${user.id}`}
-                                                                title="View Client Details"
-                                                                aria-label="View Client Details"
-                                                                className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500 hover:text-white transition-all cursor-pointer shadow-2xs"
-                                                            >
-                                                                <ExternalLink className="w-4 h-4" />
-                                                            </Link>
-
-                                                            {/* Login as Client (Impersonate) Button */}
+                                                    <td className="py-3.5 px-5 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
                                                             {hasImpersonatePermission && (
                                                                 <button
                                                                     onClick={() => openImpersonateModal(user)}
-                                                                    title="Login as Client (Impersonate)"
-                                                                    aria-label="Login as Client"
-                                                                    className="p-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                                    className="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-colors"
+                                                                    title="Impersonate Client"
                                                                 >
                                                                     <LogIn className="w-4 h-4" />
                                                                 </button>
                                                             )}
-
-                                                            {/* Edit Button */}
+                                                            <Link
+                                                                href={`/clients/${user.id}`}
+                                                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                                                title="View Details"
+                                                            >
+                                                                <ExternalLink className="w-4 h-4" />
+                                                            </Link>
                                                             <Link
                                                                 href={`/clients/${user.id}/edit`}
-                                                                title="Edit Client Details"
-                                                                aria-label="Edit Client Details"
-                                                                className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                                                title="Edit Profile"
                                                             >
                                                                 <Pencil className="w-4 h-4" />
                                                             </Link>
-
-                                                            {/* Change Status Button */}
-                                                            <button
-                                                                onClick={() => openStatusModal(user)}
-                                                                title="Change Account Status"
-                                                                aria-label="Change Account Status"
-                                                                className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl hover:bg-amber-500 hover:text-white transition-all cursor-pointer shadow-2xs"
-                                                            >
-                                                                <RefreshCw className="w-4 h-4" />
-                                                            </button>
-
-                                                            {/* Soft Delete Button */}
                                                             <button
                                                                 onClick={() => openDeleteModal(user)}
-                                                                title="Delete Client"
-                                                                aria-label="Delete Client"
-                                                                className="p-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-2xs"
+                                                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                                                title="Soft Delete"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
                                                             </button>
@@ -503,106 +496,74 @@ export default function ClientsPage() {
                         </div>
 
                         {/* Pagination Footer */}
-                        <div className="p-3 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-medium bg-card">
-                            <div className="flex items-center gap-3">
-                                <span>
-                                    Showing <strong className="text-foreground">{filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}</strong> to{" "}
-                                    <strong className="text-foreground">{Math.min(page * pageSize, filtered.length)}</strong> of{" "}
-                                    <strong className="text-foreground">{filtered.length}</strong> clients
-                                </span>
-                                <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-border/60">
-                                    <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">Rows per page:</span>
-                                    <select
-                                        value={pageSize}
-                                        onChange={(e) => {
-                                            setPageSize(Number(e.target.value));
-                                            setPage(1);
-                                        }}
-                                        className="px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
-                                    >
-                                        <option value={10}>10</option>
-                                        <option value={20}>20</option>
-                                        <option value={50}>50</option>
-                                        <option value={100}>100</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    disabled={page === 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    className="px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
-                                >
-                                    <ChevronLeft className="w-4 h-4 inline" /> Prev
-                                </button>
-                                <span className="px-2 font-bold text-foreground">
-                                    Page {page} of {totalPages}
-                                </span>
-                                <button
-                                    disabled={page >= totalPages}
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                    className="px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
-                                >
-                                    Next <ChevronRight className="w-4 h-4 inline" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                        {filtered.length > 0 && (
+                            <div className="p-4 border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    Showing <span className="font-bold text-foreground">{(page - 1) * pageSize + 1}</span> to{" "}
+                                    <span className="font-bold text-foreground">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
+                                    <span className="font-bold text-foreground">{filtered.length}</span> clients
+                                </p>
 
-                    {/* Change Status Modal */}
-                    {statusModalUser && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-                            <div className="bg-card border border-border/90 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-                                <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                                        <RefreshCw className="w-5 h-5 text-amber-500" />
-                                        Change Client Status
-                                    </h3>
+                                <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setStatusModalUser(null)}
-                                        className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
+                                        onClick={() => updateParams({ page: Math.max(1, page - 1) })}
+                                        disabled={page === 1}
+                                        className="p-2 rounded-xl border border-border/80 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-foreground transition-all"
                                     >
-                                        ✕
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+
+                                    <span className="text-xs font-bold text-foreground px-2">
+                                        Page {page} of {totalPages}
+                                    </span>
+
+                                    <button
+                                        onClick={() => updateParams({ page: Math.min(totalPages, page + 1) })}
+                                        disabled={page >= totalPages}
+                                        className="p-2 rounded-xl border border-border/80 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-foreground transition-all"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
                                     </button>
                                 </div>
+                            </div>
+                        )}
+                    </div>
 
-                                <form onSubmit={handleSaveStatus} className="space-y-4 text-xs">
-                                    <div>
-                                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Client</span>
-                                        <p className="text-foreground font-bold text-sm mt-0.5">
-                                            {statusModalUser.name || `${statusModalUser.first_name || ''} ${statusModalUser.last_name || ''}`.trim()} ({statusModalUser.email})
-                                        </p>
-                                    </div>
+                    {/* Status Change Modal */}
+                    {statusModalUser && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+                            <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                                <h3 className="font-extrabold text-foreground text-lg">Change Client Status</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Update access status for <span className="font-bold text-foreground">{statusModalUser.name || statusModalUser.email}</span>.
+                                </p>
 
+                                <form onSubmit={handleSaveStatus} className="space-y-4">
                                     <div>
-                                        <label className="block text-muted-foreground font-semibold mb-1 uppercase tracking-wider text-[10px]">
-                                            Select Status
-                                        </label>
+                                        <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase">Status</label>
                                         <select
                                             value={selectedStatus}
                                             onChange={(e) => setSelectedStatus(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold focus:outline-hidden focus:border-emerald-500 text-xs"
+                                            className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-hidden focus:border-emerald-500 font-semibold"
                                         >
-                                            {POSSIBLE_STATUSES.map((st) => (
-                                                <option key={st} value={st}>
-                                                    {st}
-                                                </option>
+                                            {POSSIBLE_STATUSES.map(st => (
+                                                <option key={st} value={st}>{st}</option>
                                             ))}
                                         </select>
                                     </div>
 
-                                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+                                    <div className="flex items-center justify-end gap-3 pt-2">
                                         <button
                                             type="button"
                                             onClick={() => setStatusModalUser(null)}
-                                            className="px-4 py-2 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer"
+                                            className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:bg-muted transition-all"
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             type="submit"
                                             disabled={updatingStatus}
-                                            className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black font-extrabold transition-all disabled:opacity-50 cursor-pointer"
+                                            className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-black shadow-xs transition-all disabled:opacity-50"
                                         >
                                             {updatingStatus ? "Saving..." : "Save Status"}
                                         </button>
@@ -612,54 +573,33 @@ export default function ClientsPage() {
                         </div>
                     )}
 
-                    {/* Delete Confirmation Modal (Soft Delete) */}
+                    {/* Delete Confirmation Modal */}
                     {deleteModalUser && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-                            <div className="bg-card border border-border/90 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-                                <div className="flex items-center gap-3 text-rose-500 border-b border-border/60 pb-3">
-                                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
-                                        <AlertTriangle className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base font-bold text-foreground">Confirm Delete Client</h3>
-                                        <p className="text-[11px] text-muted-foreground">Soft Delete Operation</p>
-                                    </div>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+                            <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                                <div className="flex items-center gap-3 text-rose-500">
+                                    <AlertTriangle className="w-6 h-6" />
+                                    <h3 className="font-extrabold text-foreground text-lg">Confirm Soft Delete</h3>
                                 </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Are you sure you want to soft delete client <span className="font-bold text-foreground">{deleteModalUser.name || deleteModalUser.email}</span>?
+                                </p>
 
-                                <div className="space-y-2 text-xs">
-                                    <p className="text-muted-foreground leading-relaxed">
-                                        Are you sure you want to soft delete client <strong className="text-foreground">{deleteModalUser.name || deleteModalUser.email}</strong>?
-                                    </p>
-                                    <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl text-rose-400 text-[11px] leading-relaxed">
-                                        This operation will mark the client account, associated orders, payment transactions, and saved addresses as soft deleted.
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60 text-xs">
+                                <div className="flex items-center justify-end gap-3 pt-2">
                                     <button
                                         type="button"
                                         onClick={() => setDeleteModalUser(null)}
-                                        className="px-4 py-2 rounded-xl font-bold border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer"
+                                        className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:bg-muted transition-all"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="button"
-                                        disabled={deleting}
                                         onClick={handleDeleteUser}
-                                        className="px-4 py-2 rounded-xl font-bold bg-rose-500 hover:bg-rose-600 text-white transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                                        disabled={deleting}
+                                        className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition-all disabled:opacity-50"
                                     >
-                                        {deleting ? (
-                                            <>
-                                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                                Deleting...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                Yes, Delete Client
-                                            </>
-                                        )}
+                                        {deleting ? "Deleting..." : "Delete Account"}
                                     </button>
                                 </div>
                             </div>
@@ -668,34 +608,23 @@ export default function ClientsPage() {
 
                     {/* Impersonation Confirmation Modal */}
                     {impersonateModalUser && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-                            <div className="bg-card border border-border/80 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                                <div className="p-6 space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                                            <LogIn className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-black text-foreground">Login as Client?</h3>
-                                            <p className="text-xs text-muted-foreground font-medium">Impersonate Client Account</p>
-                                        </div>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+                            <div className="bg-card border border-border/90 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+                                <div className="p-5 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-transparent border-b border-border/80 flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                                        <ShieldAlert className="w-5 h-5" />
                                     </div>
+                                    <div>
+                                        <h3 className="font-black text-foreground text-base">Client Impersonation</h3>
+                                        <p className="text-[11px] text-muted-foreground font-medium">Log in to Client Portal as this user</p>
+                                    </div>
+                                </div>
 
-                                    <div className="bg-muted/40 border border-border/60 rounded-xl p-4 space-y-2">
-                                        <p className="text-xs text-muted-foreground font-medium">
-                                            You are about to enter the client account:
-                                        </p>
-                                        <div className="font-bold text-foreground text-sm">
-                                            {impersonateModalUser.name || `${impersonateModalUser.first_name || ''} ${impersonateModalUser.last_name || ''}`.trim() || `Client #${impersonateModalUser.id}`}
-                                        </div>
-                                        <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                                            {impersonateModalUser.email}
-                                        </div>
-                                        {impersonateModalUser.company_name && (
-                                            <div className="text-xs text-muted-foreground font-medium">
-                                                Company: {impersonateModalUser.company_name}
-                                            </div>
-                                        )}
+                                <div className="p-5 space-y-4">
+                                    <div className="p-3 rounded-xl bg-muted/40 border border-border/80 space-y-1">
+                                        <p className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground">Target Client</p>
+                                        <p className="text-xs font-black text-foreground">{impersonateModalUser.name || 'Unnamed Client'}</p>
+                                        <p className="text-xs font-medium text-indigo-400">{impersonateModalUser.email}</p>
                                     </div>
 
                                     <div className="text-xs text-muted-foreground leading-relaxed">
@@ -751,5 +680,17 @@ export default function ClientsPage() {
                 </div>
             )}
         </DashboardLayout>
+    );
+}
+
+export default function ClientsPage() {
+    return (
+        <Suspense fallback={
+            <DashboardLayout>
+                <TableSkeleton rows={8} cols={6} />
+            </DashboardLayout>
+        }>
+            <ClientsContent />
+        </Suspense>
     );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { useAdminListingParams } from "@/hooks/useAdminListingParams";
 import {
     Search,
     Plus,
@@ -54,12 +55,13 @@ interface ApiInventoryLog {
 
 const PAGE_SIZE = 10;
 
-export default function InventoryPage() {
+function InventoryContent() {
+    const { getParam, page, updateParams } = useAdminListingParams();
+    const search = getParam("search", "");
+    const statusFilter = getParam("status", "All");
+
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<ApiInventoryItem[]>([]);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All");
-    const [page, setPage] = useState(1);
     const [deleteId, setDeleteId] = useState<number | string | null>(null);
 
     // Stock Adjustment Modal State (In / Out)
@@ -306,10 +308,7 @@ export default function InventoryPage() {
                                 type="search"
                                 placeholder="Search components by name or SKU code..."
                                 value={search}
-                                onChange={(e) => {
-                                    setSearch(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ search: e.target.value })}
                                 className="w-full pl-9 pr-4 py-2 bg-muted/30 border border-border/80 rounded-xl text-xs text-foreground focus:outline-hidden focus:border-emerald-500 font-medium"
                             />
                         </div>
@@ -317,10 +316,7 @@ export default function InventoryPage() {
                         <div className="w-full md:w-auto">
                             <select
                                 value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => updateParams({ status: e.target.value })}
                                 className="w-full md:w-auto px-3.5 py-2 bg-muted/40 border border-border/80 rounded-xl text-foreground font-bold text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="All">All Stock Statuses</option>
@@ -469,7 +465,7 @@ export default function InventoryPage() {
                             <div className="flex items-center gap-2">
                                 <button
                                     disabled={page === 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    onClick={() => updateParams({ page: Math.max(1, page - 1) })}
                                     className="px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                                 >
                                     <ChevronLeft className="w-4 h-4 inline" /> Prev
@@ -479,7 +475,7 @@ export default function InventoryPage() {
                                 </span>
                                 <button
                                     disabled={page >= totalPages}
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    onClick={() => updateParams({ page: Math.min(totalPages, page + 1) })}
                                     className="px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                                 >
                                     Next <ChevronRight className="w-4 h-4 inline" />
@@ -735,5 +731,13 @@ export default function InventoryPage() {
                 </div>
             )}
         </DashboardLayout>
+    );
+}
+
+export default function InventoryPage() {
+    return (
+        <Suspense fallback={<TableSkeleton rows={7} />}>
+            <InventoryContent />
+        </Suspense>
     );
 }

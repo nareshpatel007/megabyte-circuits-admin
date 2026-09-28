@@ -121,7 +121,7 @@ function OrdersContent() {
         const currentParams = new URLSearchParams(searchParams ? searchParams.toString() : "");
 
         Object.entries(newParamsObj).forEach(([key, val]) => {
-            if (val === null || val === undefined || val === "" || (key === "status" && val === "All")) {
+            if (val === null || val === undefined || val === "") {
                 currentParams.delete(key);
             } else {
                 currentParams.set(key, String(val));
@@ -181,19 +181,21 @@ function OrdersContent() {
 
     // Sync state from URL searchParams (e.g. browser back/forward or direct links)
     useEffect(() => {
-        const s = searchParams?.get("search") || searchParams?.get("q") || "";
-        const st = searchParams?.get("status") || "In Production";
-        const sd = searchParams?.get("start_date") || searchParams?.get("from") || "";
-        const ed = searchParams?.get("end_date") || searchParams?.get("to") || "";
+        if (!searchParams) return;
+        const hasStatus = searchParams.has("status");
+        const s = searchParams.get("search") || searchParams.get("q") || "";
+        const st = searchParams.get("status") || "In Production";
+        const sd = searchParams.get("start_date") || searchParams.get("from") || "";
+        const ed = searchParams.get("end_date") || searchParams.get("to") || "";
 
-        const pRaw = parseInt(searchParams?.get("page") || "1", 10);
+        const pRaw = parseInt(searchParams.get("page") || "1", 10);
         const p = isNaN(pRaw) || pRaw < 1 ? 1 : pRaw;
 
-        const psRaw = parseInt(searchParams?.get("per_page") || searchParams?.get("limit") || "10", 10);
+        const psRaw = parseInt(searchParams.get("per_page") || searchParams.get("limit") || "10", 10);
         const ps = ALLOWED_PER_PAGE.includes(psRaw) ? psRaw : 10;
 
-        const sb = searchParams?.get("sort_by") || searchParams?.get("sort") || "created_at";
-        const so = (searchParams?.get("sort_order") || searchParams?.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
+        const sb = searchParams.get("sort_by") || searchParams.get("sort") || "created_at";
+        const so = (searchParams.get("sort_order") || searchParams.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
 
         setSearch(s);
         setDebouncedSearch(s);
@@ -206,6 +208,11 @@ function OrdersContent() {
         setPageSize(ps);
         setSortBy(sb);
         setSortOrder(so);
+
+        // If opening page without status in URL, default to 'In Production' and update URL
+        if (!hasStatus) {
+            updateUrlParams({ status: "In Production" }, true);
+        }
     }, [searchParams]);
 
     const handleSort = (columnKey: string) => {
@@ -2055,7 +2062,7 @@ function OrdersContent() {
                                 onValueChange={(val) => {
                                     setStatusFilter(val);
                                     setPage(1);
-                                    updateUrlParams({ status: val === "All" ? null : val, page: 1 });
+                                    updateUrlParams({ status: val, page: 1 });
                                 }}
                             >
                                 <SelectTrigger className="h-10 sm:h-11 w-[150px] sm:w-[170px] px-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl text-foreground font-semibold shadow-xs shrink-0">

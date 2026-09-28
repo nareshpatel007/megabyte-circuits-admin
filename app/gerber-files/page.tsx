@@ -30,6 +30,7 @@ import {
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
+import { useAdminListingParams } from "@/hooks/useAdminListingParams";
 
 interface ApiGerberFile {
     id: number;
@@ -65,8 +66,11 @@ interface Stats {
 const PAGE_SIZE = 10;
 
 function GerberFilesContent() {
-    const searchParams = useSearchParams();
-    const initialSearch = searchParams?.get("search") || "";
+    const { searchParams, getParam, page, updateParams } = useAdminListingParams();
+    const search = getParam("search", "");
+    const typeFilter = getParam("type", "all");
+    const attachmentFilter = getParam("attachment", "all");
+    const pageSize = getParam("per_page", 10);
 
     const [loading, setLoading] = useState(true);
     const [files, setFiles] = useState<ApiGerberFile[]>([]);
@@ -77,24 +81,10 @@ function GerberFilesContent() {
         ordered_files: 0
     });
 
-    const [search, setSearch] = useState(initialSearch);
-    const [typeFilter, setTypeFilter] = useState("all"); // all | client | guest
-    const [attachmentFilter, setAttachmentFilter] = useState("all"); // all | attached | unattached
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState<number>(10);
-
     // Modals
     const [previewModalFile, setPreviewModalFile] = useState<ApiGerberFile | null>(null);
     const [deleteModalFile, setDeleteModalFile] = useState<ApiGerberFile | null>(null);
     const [deleting, setDeleting] = useState(false);
-
-    // Sync search state when URL searchParam changes
-    useEffect(() => {
-        const queryParam = searchParams?.get("search");
-        if (queryParam !== undefined && queryParam !== null) {
-            setSearch(queryParam);
-        }
-    }, [searchParams]);
 
     const fetchGerberFiles = async (queryStr: string = search) => {
         setLoading(true);
@@ -302,12 +292,12 @@ function GerberFilesContent() {
                                 type="text"
                                 placeholder="Search Gerber files by name, board, email..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => updateParams({ search: e.target.value })}
                                 className="w-full pl-9 pr-8 py-2 bg-muted/30 dark:bg-muted/20 border border-border/80 rounded-xl text-xs text-foreground focus:outline-none focus:border-emerald-500 font-medium"
                             />
                             {search && (
                                 <button
-                                    onClick={() => setSearch("")}
+                                    onClick={() => updateParams({ search: "" })}
                                     className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground text-xs font-semibold"
                                 >
                                     <X className="w-3.5 h-3.5" />
@@ -318,7 +308,7 @@ function GerberFilesContent() {
                         <div className="flex items-center gap-2.5 shrink-0 w-full md:w-auto justify-end">
                             <select
                                 value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value)}
+                                onChange={(e) => updateParams({ type: e.target.value })}
                                 className="px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="all">All Uploaders</option>
@@ -328,7 +318,7 @@ function GerberFilesContent() {
 
                             <select
                                 value={attachmentFilter}
-                                onChange={(e) => setAttachmentFilter(e.target.value)}
+                                onChange={(e) => updateParams({ attachment: e.target.value })}
                                 className="px-3.5 py-2 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/80 text-xs font-semibold text-foreground focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs"
                             >
                                 <option value="all">All Statuses</option>
@@ -506,8 +496,7 @@ function GerberFilesContent() {
                                         <select
                                             value={pageSize}
                                             onChange={(e) => {
-                                                setPageSize(Number(e.target.value));
-                                                setPage(1);
+                                                updateParams({ per_page: e.target.value, page: 1 });
                                             }}
                                             className="px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
                                         >
@@ -521,7 +510,7 @@ function GerberFilesContent() {
 
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        onClick={() => updateParams({ page: Math.max(1, page - 1) })}
                                         disabled={page === 1}
                                         className="p-1.5 rounded-lg bg-card border border-border/80 hover:bg-muted disabled:opacity-40 disabled:hover:bg-card transition-colors text-foreground cursor-pointer"
                                     >
@@ -531,7 +520,7 @@ function GerberFilesContent() {
                                         {page} / {totalPages}
                                     </span>
                                     <button
-                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                        onClick={() => updateParams({ page: Math.min(totalPages, page + 1) })}
                                         disabled={page === totalPages}
                                         className="p-1.5 rounded-lg bg-card border border-border/80 hover:bg-muted disabled:opacity-40 disabled:hover:bg-card transition-colors text-foreground cursor-pointer"
                                     >
