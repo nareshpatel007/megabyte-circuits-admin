@@ -764,6 +764,7 @@ export default function DashboardPage() {
                                                                             fill={entry.color}
                                                                             stroke="rgba(0,0,0,0.05)"
                                                                             strokeWidth={1}
+                                                                            onClick={() => router.push(`/orders?status=${encodeURIComponent(entry.name)}`)}
                                                                             className="transition-all duration-200 hover:opacity-80 cursor-pointer"
                                                                         />
                                                                     ))}
@@ -822,8 +823,10 @@ export default function DashboardPage() {
                                                 {enhancedDonutData.map((item, idx) => (
                                                     <div
                                                         key={idx}
+                                                        onClick={() => router.push(`/orders?status=${encodeURIComponent(item.name)}`)}
                                                         onMouseEnter={() => setActiveStatusHover(item)}
                                                         onMouseLeave={() => setActiveStatusHover(null)}
+                                                        title={`Click to view all ${item.name} orders`}
                                                         className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${activeStatusHover?.name === item.name
                                                             ? "bg-muted border-foreground/30 scale-105 shadow-xs"
                                                             : "bg-muted/30 border-border/60 hover:bg-muted/60"
@@ -842,9 +845,11 @@ export default function DashboardPage() {
                                             {enhancedDonutData.map((item, idx) => (
                                                 <div
                                                     key={idx}
+                                                    onClick={() => router.push(`/orders?status=${encodeURIComponent(item.name)}`)}
                                                     onMouseEnter={() => setActiveStatusHover(item)}
                                                     onMouseLeave={() => setActiveStatusHover(null)}
-                                                    className="p-2 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/50 transition-colors"
+                                                    title={`Click to view all ${item.name} orders`}
+                                                    className="p-2 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/50 transition-colors cursor-pointer group"
                                                 >
                                                     <div className="flex items-center justify-between text-xs mb-1">
                                                         <div className="flex items-center gap-2 font-bold text-foreground">
@@ -981,7 +986,14 @@ export default function DashboardPage() {
                                                                 >
                                                                     #{order.order_number}
                                                                 </span>
-                                                                <span className="text-[10px] px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider bg-white text-black border border-zinc-300 shadow-2xs">
+                                                                <span
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        router.push(`/orders?status=${encodeURIComponent(order.status)}`);
+                                                                    }}
+                                                                    title={`Click to view all ${order.status} orders`}
+                                                                    className="text-[10px] px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider bg-white text-black border border-zinc-300 shadow-2xs hover:bg-zinc-100 hover:scale-105 transition-all cursor-pointer"
+                                                                >
                                                                     {order.status}
                                                                 </span>
                                                             </div>

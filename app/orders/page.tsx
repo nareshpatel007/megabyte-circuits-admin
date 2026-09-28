@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp } from "lucide-react";
 
@@ -112,6 +112,16 @@ const getPcbLightBg = (colorHex: string) => {
 
 export default function OrdersPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Sync status filter from URL query parameter (e.g. /orders?status=Completed)
+    useEffect(() => {
+        const urlStatus = searchParams?.get("status");
+        if (urlStatus) {
+            setStatusFilter(urlStatus);
+            setPage(1);
+        }
+    }, [searchParams]);
     const { user } = useAuth();
     const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
     const hasPaymentPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("payments.view") : true);
@@ -691,7 +701,18 @@ export default function OrdersPage() {
     }, [jobCardModalOrder]);
 
     const updateJobCardField = (key: string, value: any) => {
-        setJobCardData((prev: any) => prev ? { ...prev, [key]: value } : prev);
+        setJobCardData((prev: any) => {
+            if (!prev) return prev;
+            const updated = { ...prev, [key]: value };
+            if (key === 'ups' || key === 'launched_qty' || key === 'order_qty') {
+                const lQty = parseInt(updated.launched_qty || updated.order_qty || '0', 10);
+                const uQty = parseInt(updated.ups || '1', 10);
+                if (lQty > 0 && uQty > 0) {
+                    updated.panels = String(Math.ceil(lQty / uQty));
+                }
+            }
+            return updated;
+        });
     };
 
     const updateJobCardProcess = (index: number, field: string, value: any) => {
@@ -1268,7 +1289,16 @@ export default function OrdersPage() {
     const formatDate = (dateString?: string | null) => {
         if (!dateString || dateString === 'N/A') return 'N/A';
         try {
-            const d = new Date(dateString);
+            const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            let d: Date;
+            if (match) {
+                const year = parseInt(match[1], 10);
+                const month = parseInt(match[2], 10) - 1;
+                const day = parseInt(match[3], 10);
+                d = new Date(year, month, day);
+            } else {
+                d = new Date(dateString);
+            }
             if (isNaN(d.getTime())) return dateString;
             return d.toLocaleDateString('en-GB', {
                 day: '2-digit',

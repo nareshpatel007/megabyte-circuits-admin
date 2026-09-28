@@ -609,9 +609,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                                                     <td className="py-3.5 px-5 font-bold font-mono text-emerald-400">
                                                                         {ord.order_number || `#ORD-${ord.id}`}
                                                                     </td>
-                                                                    <td className="py-3.5 px-5 font-medium text-foreground">
-                                                                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] bg-muted/40 px-2 py-0.5 rounded border border-border/60 text-muted-foreground" title={gerberName}>
-                                                                            {gerberName.length > 22 ? `${gerberName.substring(0, 20)}...` : gerberName}
+                                                                    <td className="py-3.5 px-5 font-medium text-foreground max-w-[200px]">
+                                                                        <span className="inline-block font-mono text-[11px] bg-muted/40 px-2 py-0.5 rounded border border-border/60 text-muted-foreground whitespace-normal break-words leading-tight" title={gerberName}>
+                                                                            {gerberName}
                                                                         </span>
                                                                     </td>
                                                                     <td className="py-3.5 px-5">

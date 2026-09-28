@@ -228,7 +228,7 @@ export default function OrderDetailPage() {
                 setUpsQty(o.ups_qty || 0);
                 setFinalQty(o.final_qty || 0);
                 setBillNumber(o.bill_number ? String(o.bill_number) : "");
-                setDeliveryDate(o.delivery_date || "");
+                setDeliveryDate(parseDeliveryDateToYYYYMMDD(o.delivery_date));
             }
             if (statusesData.status || statusesData.success) {
                 setStatuses(statusesData.data || []);
@@ -403,6 +403,38 @@ export default function OrderDetailPage() {
             }
         } catch (err) {
             toast.error("Error updating delivery date");
+        }
+    };
+
+    const parseDeliveryDateToYYYYMMDD = (dateStr: string | null | undefined): string => {
+        if (!dateStr || dateStr === 'N/A') return '';
+        const match = String(dateStr).match(/^(\d{4}-\d{2}-\d{2})/);
+        if (match) return match[1];
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatDeliveryDateDisplay = (dateStr?: string | null) => {
+        if (!dateStr || dateStr === 'N/A') return 'N/A';
+        try {
+            const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            let d: Date;
+            if (match) {
+                const year = parseInt(match[1], 10);
+                const month = parseInt(match[2], 10) - 1;
+                const day = parseInt(match[3], 10);
+                d = new Date(year, month, day);
+            } else {
+                d = new Date(dateStr);
+            }
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch {
+            return dateStr || 'N/A';
         }
     };
 
@@ -685,15 +717,7 @@ export default function OrderDetailPage() {
                                 <button
                                     onClick={() => {
                                         const currentDate = order.delivery_date || getMetaValue('delivery_date', '');
-                                        if (currentDate && currentDate !== 'N/A') {
-                                            const d = new Date(currentDate);
-                                            if (!isNaN(d.getTime())) {
-                                                const formatted = d.toISOString().split('T')[0];
-                                                setDeliveryDate(formatted);
-                                            } else {
-                                                setDeliveryDate(currentDate);
-                                            }
-                                        }
+                                        setDeliveryDate(parseDeliveryDateToYYYYMMDD(currentDate));
                                         setEditingDeliveryDate(true);
                                     }}
                                     className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
@@ -706,9 +730,7 @@ export default function OrderDetailPage() {
                         </div>
                         {!editingDeliveryDate ? (
                             <p className={`text-base font-bold font-mono mt-1 ${isPastDeliveryDate(order.delivery_date, order.status) ? "text-red-600 dark:text-red-400 font-extrabold" : "text-foreground"}`}>
-                                {order.delivery_date && !isNaN(new Date(order.delivery_date).getTime())
-                                    ? new Date(order.delivery_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                    : 'N/A'}
+                                {formatDeliveryDateDisplay(order.delivery_date)}
                             </p>
                         ) : (
                             <input

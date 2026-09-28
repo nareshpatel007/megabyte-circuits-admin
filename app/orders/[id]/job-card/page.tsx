@@ -109,7 +109,18 @@ export default function OrderJobCardPage() {
     }, [orderId, uploadingDoc]);
 
     const updateJobCardField = (key: string, value: any) => {
-        setJobCardData((prev: any) => prev ? { ...prev, [key]: value } : prev);
+        setJobCardData((prev: any) => {
+            if (!prev) return prev;
+            const updated = { ...prev, [key]: value };
+            if (key === 'ups' || key === 'launched_qty' || key === 'order_qty') {
+                const lQty = parseInt(updated.launched_qty || updated.order_qty || '0', 10);
+                const uQty = parseInt(updated.ups || '1', 10);
+                if (lQty > 0 && uQty > 0) {
+                    updated.panels = String(Math.ceil(lQty / uQty));
+                }
+            }
+            return updated;
+        });
     };
 
     const updateJobCardProcess = (index: number, field: string, value: any) => {
