@@ -114,14 +114,31 @@ function OrdersContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Sync status filter from URL query parameter (e.g. /orders?status=Completed)
-    useEffect(() => {
-        const urlStatus = searchParams?.get("status");
-        if (urlStatus) {
-            setStatusFilter(urlStatus);
-            setPage(1);
+    const ALLOWED_PER_PAGE = [10, 20, 50, 100, 250, 500, 1000];
+
+    // Helper to update URL query parameters without losing existing unrelated params
+    const updateUrlParams = (newParamsObj: Record<string, string | number | null | undefined>, replace = true) => {
+        const currentParams = new URLSearchParams(searchParams ? searchParams.toString() : "");
+
+        Object.entries(newParamsObj).forEach(([key, val]) => {
+            if (val === null || val === undefined || val === "" || (key === "status" && val === "All")) {
+                currentParams.delete(key);
+            } else {
+                currentParams.set(key, String(val));
+            }
+        });
+
+        const queryString = currentParams.toString();
+        const pathname = typeof window !== "undefined" ? window.location.pathname : "/orders";
+        const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
+
+        if (replace) {
+            router.replace(targetUrl, { scroll: false });
+        } else {
+            router.push(targetUrl, { scroll: false });
         }
-    }, [searchParams]);
+    };
+
     const { user } = useAuth();
     const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
     const hasPaymentPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("payments.view") : true);
@@ -136,30 +153,71 @@ function OrdersContent() {
     const [orders, setOrders] = useState<ApiOrder[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("In Production");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+
+    const [search, setSearch] = useState(() => searchParams?.get("search") || searchParams?.get("q") || "");
+    const [statusFilter, setStatusFilter] = useState(() => searchParams?.get("status") || "In Production");
+    const [startDate, setStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
+    const [endDate, setEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
     // Temporary dates for Popover drafting before clicking Apply
-    const [tempStartDate, setTempStartDate] = useState("");
-    const [tempEndDate, setTempEndDate] = useState("");
+    const [tempStartDate, setTempStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
+    const [tempEndDate, setTempEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
     const [popoverOpen, setPopoverOpen] = useState(false);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState<number>(10);
-    const [sortBy, setSortBy] = useState<string>("created_at");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+    const [page, setPage] = useState<number>(() => {
+        const p = parseInt(searchParams?.get("page") || "1", 10);
+        return isNaN(p) || p < 1 ? 1 : p;
+    });
+    const [pageSize, setPageSize] = useState<number>(() => {
+        const ps = parseInt(searchParams?.get("per_page") || searchParams?.get("limit") || "10", 10);
+        return ALLOWED_PER_PAGE.includes(ps) ? ps : 10;
+    });
+    const [sortBy, setSortBy] = useState<string>(() => searchParams?.get("sort_by") || searchParams?.get("sort") || "created_at");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() => {
+        return (searchParams?.get("sort_order") || searchParams?.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
+    });
     const [totalOrders, setTotalOrders] = useState<number>(0);
     const [totalRecords, setTotalRecords] = useState<number>(0);
     const [apiStats, setApiStats] = useState<any>(null);
 
+    // Sync state from URL searchParams (e.g. browser back/forward or direct links)
+    useEffect(() => {
+        const s = searchParams?.get("search") || searchParams?.get("q") || "";
+        const st = searchParams?.get("status") || "In Production";
+        const sd = searchParams?.get("start_date") || searchParams?.get("from") || "";
+        const ed = searchParams?.get("end_date") || searchParams?.get("to") || "";
+
+        const pRaw = parseInt(searchParams?.get("page") || "1", 10);
+        const p = isNaN(pRaw) || pRaw < 1 ? 1 : pRaw;
+
+        const psRaw = parseInt(searchParams?.get("per_page") || searchParams?.get("limit") || "10", 10);
+        const ps = ALLOWED_PER_PAGE.includes(psRaw) ? psRaw : 10;
+
+        const sb = searchParams?.get("sort_by") || searchParams?.get("sort") || "created_at";
+        const so = (searchParams?.get("sort_order") || searchParams?.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
+
+        setSearch(s);
+        setDebouncedSearch(s);
+        setStatusFilter(st);
+        setStartDate(sd);
+        setEndDate(ed);
+        setTempStartDate(sd);
+        setTempEndDate(ed);
+        setPage(p);
+        setPageSize(ps);
+        setSortBy(sb);
+        setSortOrder(so);
+    }, [searchParams]);
+
     const handleSort = (columnKey: string) => {
-        if (sortBy === columnKey) {
-            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setSortBy(columnKey);
-            setSortOrder("desc");
-        }
+        const newOrder = sortBy === columnKey && sortOrder === "desc" ? "asc" : "desc";
+        setSortBy(columnKey);
+        setSortOrder(newOrder);
         setPage(1);
+        updateUrlParams({
+            sort_by: columnKey,
+            sort_order: newOrder,
+            page: 1
+        });
     };
 
     // Quick preview modal state
@@ -1197,10 +1255,14 @@ function OrdersContent() {
         }
     };
 
-    // Debounce search effect (400ms delay)
+    // Debounce search effect (400ms delay) with URL sync
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(search);
+            const currentUrlSearch = searchParams?.get("search") || searchParams?.get("q") || "";
+            if (search.trim() !== currentUrlSearch) {
+                updateUrlParams({ search: search.trim() || null, page: 1 });
+            }
         }, 400);
         return () => clearTimeout(timer);
     }, [search]);
@@ -1244,6 +1306,13 @@ function OrdersContent() {
                 const rCount = ordersData.total_records ?? tCount;
                 setTotalOrders(tCount);
                 setTotalRecords(rCount);
+
+                const calculatedTotalPages = Math.max(1, Math.ceil(tCount / pageSize));
+                if (page > calculatedTotalPages) {
+                    setPage(calculatedTotalPages);
+                    updateUrlParams({ page: calculatedTotalPages === 1 ? null : calculatedTotalPages });
+                }
+
                 if (ordersData.stats) {
                     setApiStats(ordersData.stats);
                 } else {
@@ -1270,13 +1339,33 @@ function OrdersContent() {
 
     const handleResetFilter = () => {
         setSearch("");
-        setStatusFilter("All");
+        setDebouncedSearch("");
+        setStatusFilter("In Production");
         setStartDate("");
         setEndDate("");
+        setTempStartDate("");
+        setTempEndDate("");
         setActivePreset(null);
         setSortBy("created_at");
         setSortOrder("desc");
         setPage(1);
+
+        updateUrlParams({
+            search: null,
+            q: null,
+            status: null,
+            start_date: null,
+            end_date: null,
+            from: null,
+            to: null,
+            page: null,
+            per_page: null,
+            limit: null,
+            sort_by: null,
+            sort_order: null,
+            sort: null,
+            order: null
+        });
     };
 
     // Helper to parse delivery date string cleanly to YYYY-MM-DD format without timezone shift
@@ -1844,7 +1933,7 @@ function OrdersContent() {
                                                     setTempEndDate("");
                                                     setActivePreset(null);
                                                     setPage(1);
-                                                    fetchData(debouncedSearch);
+                                                    updateUrlParams({ start_date: null, end_date: null, page: 1 });
                                                 }}
                                                 className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
                                                 title="Clear date filter"
@@ -1938,6 +2027,7 @@ function OrdersContent() {
                                                 setActivePreset(null);
                                                 setPage(1);
                                                 setPopoverOpen(false);
+                                                updateUrlParams({ start_date: null, end_date: null, page: 1 });
                                             }}
                                             className="px-3.5 py-1.5 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted h-auto cursor-pointer"
                                         >
@@ -1950,6 +2040,7 @@ function OrdersContent() {
                                                 setEndDate(tempEndDate);
                                                 setPage(1);
                                                 setPopoverOpen(false);
+                                                updateUrlParams({ start_date: tempStartDate || null, end_date: tempEndDate || null, page: 1 });
                                             }}
                                             className="px-4 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs h-auto cursor-pointer"
                                         >
@@ -1961,7 +2052,11 @@ function OrdersContent() {
 
                             <Select
                                 value={statusFilter}
-                                onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
+                                onValueChange={(val) => {
+                                    setStatusFilter(val);
+                                    setPage(1);
+                                    updateUrlParams({ status: val === "All" ? null : val, page: 1 });
+                                }}
                             >
                                 <SelectTrigger className="h-10 sm:h-11 w-[150px] sm:w-[170px] px-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl text-foreground font-semibold shadow-xs shrink-0">
                                     <SelectValue placeholder="All Statuses" />
@@ -2467,8 +2562,10 @@ function OrdersContent() {
                                     <select
                                         value={pageSize}
                                         onChange={(e) => {
-                                            setPageSize(Number(e.target.value));
+                                            const newSize = Number(e.target.value);
+                                            setPageSize(newSize);
                                             setPage(1);
+                                            updateUrlParams({ per_page: newSize === 10 ? null : newSize, page: 1 });
                                         }}
                                         className="px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
                                     >
@@ -2485,7 +2582,11 @@ function OrdersContent() {
                             <div className="flex items-center gap-2">
                                 <button
                                     disabled={page <= 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    onClick={() => {
+                                        const newPage = Math.max(1, page - 1);
+                                        setPage(newPage);
+                                        updateUrlParams({ page: newPage === 1 ? null : newPage });
+                                    }}
                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
@@ -2496,7 +2597,11 @@ function OrdersContent() {
                                 </span>
                                 <button
                                     disabled={page >= totalPages}
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    onClick={() => {
+                                        const newPage = Math.min(totalPages, page + 1);
+                                        setPage(newPage);
+                                        updateUrlParams({ page: newPage });
+                                    }}
                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                                 >
                                     Next
