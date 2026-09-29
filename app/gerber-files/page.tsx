@@ -217,10 +217,6 @@ function GerberFilesContent() {
     const totalPages = Math.ceil(filteredFiles.length / pageSize) || 1;
     const paginatedFiles = filteredFiles.slice((page - 1) * pageSize, page * pageSize);
 
-    useEffect(() => {
-        setPage(1);
-    }, [search, typeFilter, attachmentFilter, pageSize]);
-
     const refreshButton = (
         <button
             onClick={() => fetchGerberFiles()}

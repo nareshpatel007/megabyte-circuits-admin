@@ -90,7 +90,8 @@ export function useAdminListingParams<T extends Record<string, any>>(config: Lis
             }
 
             const queryString = params.toString();
-            const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
+            const basePath = pathname || "";
+            const targetUrl = queryString ? `${basePath}?${queryString}` : basePath;
 
             startTransition(() => {
                 if (options?.push) {
@@ -113,7 +114,8 @@ export function useAdminListingParams<T extends Record<string, any>>(config: Lis
                 if (val) params.set(key, val);
             });
             const queryString = params.toString();
-            const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
+            const basePath = pathname || "";
+            const targetUrl = queryString ? `${basePath}?${queryString}` : basePath;
 
             startTransition(() => {
                 router.replace(targetUrl, { scroll: false });

@@ -94,7 +94,7 @@ const formatRetentionDisplay = (days: string) => {
 };
 
 function EmailLogsContent() {
-    const { searchParams, getParam, page, updateParams } = useAdminListingParams();
+    const { searchParams, getParam, page, updateParams, clearFilters } = useAdminListingParams();
     const search = getParam("search", "");
     const statusFilter = getParam("status", "all");
     const emailTypeFilter = getParam("email_type", "all");
@@ -655,12 +655,10 @@ function EmailLogsContent() {
                                             <span
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setStartDate("");
-                                                    setEndDate("");
                                                     setTempStartDate("");
                                                     setTempEndDate("");
                                                     setActivePreset(null);
-                                                    setPage(1);
+                                                    updateParams({ page: 1, from: null, to: null });
                                                 }}
                                                 className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
                                                 title="Clear date filter"
