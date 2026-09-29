@@ -1641,13 +1641,19 @@ function OrdersContent() {
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
         setStatusModalOrder(order);
         setModalOrderNumber(order.order_number ? String(order.order_number) : "");
-        const defaultPn = order.pn_number 
-            || (order as any).gerber_file?.original_name 
+        const gerberFileName = (order as any).gerber_file?.original_name 
             || (order as any).gerber_file?.file_name 
-            || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['gerber_file_name', 'gerber_name', 'board_name', 'p_n', 'part_number'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
-            || order.board_name 
-            || "";
-        setModalPnNumber(order.pn_number ? String(order.pn_number) : defaultPn);
+            || (order as any).gerber_name
+            || (order as any).gerber_file_name
+            || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['gerber_file_name', 'gerber_name'].includes(m.meta_key?.toLowerCase()))?.meta_value : null);
+
+        const defaultPn = (order.pn_number && String(order.pn_number).trim() !== "")
+            ? String(order.pn_number).trim()
+            : (gerberFileName 
+                || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['p_n', 'part_number', 'board_name'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
+                || order.board_name 
+                || "");
+        setModalPnNumber(defaultPn);
         setModalOrderNumberError("");
         setModalNewStatus(order.status);
         setModalCustomerName(fallbackName);
@@ -1813,9 +1819,7 @@ function OrdersContent() {
                 remark: modalRemark
             };
 
-            if (hasDeliveryDateChanged) {
-                updatePayload.delivery_date = normCurrentDeliveryDate || null;
-            }
+            updatePayload.delivery_date = normCurrentDeliveryDate || null;
 
             const res = await fetch(`/api/admin/orders/${statusModalOrder.id}`, {
                 method: "PUT",
@@ -2780,9 +2784,15 @@ function OrdersContent() {
                 {statusModalOrder && (() => {
                     const modalPcbColorVal = getMetaValue(statusModalOrder, 'pcb_color', getMetaValue(statusModalOrder, 'solder_mask', 'Green'));
                     const modalPcbColor = getPcbColorCode(modalPcbColorVal);
+                    const modalGerberFileName = (statusModalOrder as any)?.gerber_file?.original_name 
+                        || (statusModalOrder as any)?.gerber_file?.file_name 
+                        || (statusModalOrder as any)?.gerber_name
+                        || (statusModalOrder as any)?.gerber_file_name
+                        || (Array.isArray(statusModalOrder.metas) ? statusModalOrder.metas.find((m: any) => ['gerber_file_name', 'gerber_name'].includes(m.meta_key?.toLowerCase()))?.meta_value : null);
+
                     return (
                         <DialogContent
-                            className="max-w-2xl border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            className="max-w-4xl lg:max-w-5xl xl:max-w-6xl w-[96vw] border rounded-2xl p-5 md:p-6 shadow-2xl space-y-4 text-slate-900 max-h-[92vh] overflow-y-auto"
                             style={{
                                 backgroundColor: getPcbLightBg(modalPcbColor),
                                 borderColor: `${modalPcbColor}60`
@@ -2804,21 +2814,31 @@ function OrdersContent() {
                                                 Update Order
                                             </DialogTitle>
                                             <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
-                                                Order #{statusModalOrder.order_number}
+                                                Order #{statusModalOrder.order_number} {modalGerberFileName ? `• Gerber: ${modalGerberFileName}` : ''}
                                             </DialogDescription>
                                         </div>
                                     </div>
 
-                                    {/* Order Quantity Badge in Top Header */}
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 border border-slate-300/80 text-slate-800 shadow-2xs mr-6 sm:mr-8">
-                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Order Qty:</span>
-                                        <span className="font-mono font-black text-sm text-emerald-700">{modalOrderQty} Pcs</span>
+                                    {/* Badges in Top Header */}
+                                    <div className="flex items-center gap-2 mr-6 sm:mr-8">
+                                        {modalDeliveryDate && (
+                                            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 border border-slate-300/80 text-slate-800 shadow-2xs">
+                                                <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
+                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Delivery:</span>
+                                                <span className="font-mono font-bold text-xs text-slate-900">{modalDeliveryDate}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 border border-slate-300/80 text-slate-800 shadow-2xs">
+                                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Order Qty:</span>
+                                            <span className="font-mono font-black text-sm text-emerald-700">{modalOrderQty} Pcs</span>
+                                        </div>
                                     </div>
                                 </div>
                             </DialogHeader>
 
-                            <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <form onSubmit={handleStatusUpdateSubmit} className="space-y-3.5">
+                                {/* Row 1: Core Identifiers & Delivery Date (4 Columns) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
                                             <span>Order Number</span>
@@ -2845,12 +2865,46 @@ function OrdersContent() {
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
                                             <span>P/N Number</span>
+                                            {modalGerberFileName && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModalPnNumber(modalGerberFileName)}
+                                                    title={`Use Gerber name: ${modalGerberFileName}`}
+                                                    className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold underline truncate max-w-[150px] cursor-pointer"
+                                                >
+                                                    {modalPnNumber === modalGerberFileName ? "✓ From Gerber" : `Fill Gerber: ${modalGerberFileName}`}
+                                                </button>
+                                            )}
                                         </label>
                                         <Input
                                             type="text"
                                             value={modalPnNumber}
                                             onChange={(e) => setModalPnNumber(e.target.value)}
-                                            placeholder="P/N Number (e.g. ABC123)..."
+                                            placeholder={modalGerberFileName || "P/N Number (e.g. ABC123)..."}
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                                            <span className="flex items-center gap-1">
+                                                <CalendarIcon className="w-3 h-3 text-blue-600" />
+                                                <span>Delivery Date</span>
+                                            </span>
+                                            {modalDeliveryDate && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModalDeliveryDate("")}
+                                                    className="text-[10px] text-slate-400 hover:text-rose-600 font-semibold cursor-pointer"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            value={modalDeliveryDate}
+                                            onChange={(e) => setModalDeliveryDate(e.target.value)}
                                             className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                         />
                                     </div>
@@ -2871,10 +2925,11 @@ function OrdersContent() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {/* Row 2: Customer, Pipeline Status, Bill Number & Q.No (4 Columns) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
-                                            <span>Select Customer</span>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            Select Customer
                                         </label>
                                         <div className="relative">
                                             <button
@@ -2963,50 +3018,7 @@ function OrdersContent() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Q.No
-                                        </label>
-                                        <Input
-                                            type="text"
-                                            value={modalQNo}
-                                            onChange={(e) => setModalQNo(e.target.value)}
-                                            placeholder="Q.No..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Combo Orders
-                                        </label>
-                                        <ComboSelect
-                                            currentOrderId={statusModalOrder?.id}
-                                            currentOrderNumber={statusModalOrder?.order_number}
-                                            value={modalComboOrders}
-                                            onChange={setModalComboOrders}
-                                            placeholder="Select combo orders..."
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                        Old Order Number
-                                    </label>
-                                    <OldOrderSelect
-                                        currentOrderId={statusModalOrder?.id}
-                                        currentOrderNumber={statusModalOrder?.order_number}
-                                        value={modalOldOrders}
-                                        onChange={setModalOldOrders}
-                                        placeholder="Select old order numbers..."
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1">
                                             <span>Bill Number</span>
@@ -3033,106 +3045,155 @@ function OrdersContent() {
 
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Completed Quantity (Pcs)
+                                            Q.No
                                         </label>
                                         <Input
-                                            type="number"
-                                            min={0}
-                                            value={modalCompletedQty}
-                                            onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Completed Pcs..."
+                                            type="text"
+                                            value={modalQNo}
+                                            onChange={(e) => setModalQNo(e.target.value)}
+                                            placeholder="Q.No..."
                                             className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                {/* Row 3: Combo Orders & Old Orders (2 Columns) */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Failed Quantity (Pcs)
+                                            Combo Orders
                                         </label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            value={modalFailedQty}
-                                            onChange={(e) => setModalFailedQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Failed Pcs..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-rose-600 font-bold shadow-xs h-auto"
+                                        <ComboSelect
+                                            currentOrderId={statusModalOrder?.id}
+                                            currentOrderNumber={statusModalOrder?.order_number}
+                                            value={modalComboOrders}
+                                            onChange={setModalComboOrders}
+                                            placeholder="Select combo orders..."
                                         />
                                     </div>
 
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Launch Quantity
+                                            Old Order Number
                                         </label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            value={modalLaunchQty}
-                                            onChange={(e) => setModalLaunchQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Launch Qty..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Panel Quantity
-                                        </label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            value={modalPanelQty}
-                                            onChange={(e) => setModalPanelQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Panel..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Ups Quantity
-                                        </label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            value={modalUpsQty}
-                                            onChange={(e) => setModalUpsQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Ups..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                            Final Quantity
-                                        </label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            value={modalFinalQty}
-                                            onChange={(e) => setModalFinalQty(parseInt(e.target.value) || 0)}
-                                            placeholder="Final..."
-                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        <OldOrderSelect
+                                            currentOrderId={statusModalOrder?.id}
+                                            currentOrderNumber={statusModalOrder?.order_number}
+                                            value={modalOldOrders}
+                                            onChange={setModalOldOrders}
+                                            placeholder="Select old order numbers..."
                                         />
                                     </div>
                                 </div>
 
+                                {/* Row 4: Production Quantities Bar (6 Columns in 1 Row) */}
+                                <div className="p-3 rounded-xl bg-white/75 border border-slate-200/90 shadow-2xs">
+                                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+                                        <span>Production Quantities</span>
+                                        <span className="text-[10px] font-medium text-slate-400">Launch, panel, ups and completion metrics</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                                        <div>
+                                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                                                Launch Qty
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={modalLaunchQty}
+                                                onChange={(e) => setModalLaunchQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Launch..."
+                                                className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                                                Panel Qty
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={modalPanelQty}
+                                                onChange={(e) => setModalPanelQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Panel..."
+                                                className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                                                Ups Qty
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={modalUpsQty}
+                                                onChange={(e) => setModalUpsQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Ups..."
+                                                className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                                                Completed (Pcs)
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={modalCompletedQty}
+                                                onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Completed..."
+                                                className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                                                Final Qty
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={modalFinalQty}
+                                                onChange={(e) => setModalFinalQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Final..."
+                                                className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[11px] font-bold text-rose-700 block mb-1">
+                                                Failed (Pcs)
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={modalFailedQty}
+                                                onChange={(e) => setModalFailedQty(parseInt(e.target.value) || 0)}
+                                                placeholder="Failed..."
+                                                className="w-full px-3 py-2 text-xs bg-white border-rose-300 rounded-xl text-rose-600 font-bold shadow-xs h-auto"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Row 5: Audit Note / Remark (Compact) */}
                                 <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                    <label className="text-xs font-bold text-slate-700 block mb-1">
                                         Add Audit Note / Remark (Optional)
                                     </label>
                                     <Textarea
-                                        rows={3}
+                                        rows={2}
                                         value={modalRemark}
                                         onChange={(e) => setModalRemark(e.target.value)}
                                         placeholder="Enter reason or details for this status change..."
-                                        className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 resize-none font-medium shadow-xs"
+                                        className="w-full px-3.5 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 resize-none font-medium shadow-xs"
                                     />
                                 </div>
 
+                                {/* Row 6: Modal Actions */}
                                 <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200/80">
                                     <Button
                                         type="button"
