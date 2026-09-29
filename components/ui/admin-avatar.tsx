@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,15 +21,22 @@ export function AdminAvatar({
 }: AdminAvatarProps) {
     const [imageError, setImageError] = useState(false);
 
-    const hasImage = Boolean(src) && !imageError;
+    useEffect(() => {
+        setImageError(false);
+    }, [src]);
+
+    const hasImage = Boolean(src && String(src).trim() !== "" && !imageError);
 
     if (hasImage && src) {
         return (
             <div className={cn("relative overflow-hidden rounded-full shrink-0 border border-white/20 bg-slate-800 shadow-md", className)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
+                    key={src}
                     src={src}
                     alt={name || alt}
+                    crossOrigin="anonymous"
+                    referrerPolicy="no-referrer"
                     onError={() => setImageError(true)}
                     className="w-full h-full object-cover"
                 />

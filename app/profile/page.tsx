@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 function ProfileContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, refreshProfile } = useAuth();
 
     const initialTab = searchParams?.get("tab") === "password" ? "password" : "general";
     const [activeTab, setActiveTab] = useState<"general" | "password">(initialTab);
@@ -124,6 +124,13 @@ function ProfileContent() {
         }
     }, [searchParams]);
 
+    useEffect(() => {
+        const freshAvatar = user?.avatar_url || user?.profile_picture || null;
+        if (freshAvatar) {
+            setAvatarUrl(freshAvatar);
+        }
+    }, [user?.avatar_url, user?.profile_picture]);
+
     // Profile Update Handler
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -193,25 +200,23 @@ function ProfileContent() {
 
         setUploadingAvatar(true);
         try {
-            const token = localStorage.getItem("admin_token");
             const res = await fetch("/api/admin/profile/picture", {
                 method: "POST",
-                headers: {
-                    "Authorization": token ? `Bearer ${token}` : "",
-                    "Accept": "application/json"
-                },
+                headers: getAuthHeaders(),
                 body: formData
             });
 
             const data = await res.json();
             if (res.ok && data.status) {
                 toast.success(data.message || "Profile picture updated successfully");
-                const newAvatar = data.avatar_url || data.profile_picture;
+                const profileObj = data.data || {};
+                const newAvatar = profileObj.avatar_url || profileObj.profile_picture || data.avatar_url || data.profile_picture || null;
                 setAvatarUrl(newAvatar);
                 updateUser({
                     avatar_url: newAvatar,
-                    profile_picture: data.profile_picture
+                    profile_picture: profileObj.profile_picture || data.profile_picture || newAvatar
                 });
+                refreshProfile();
             } else {
                 toast.error(data.message || "Failed to upload image");
             }
@@ -240,6 +245,7 @@ function ProfileContent() {
                     avatar_url: null,
                     profile_picture: null
                 });
+                refreshProfile();
                 setShowRemoveModal(false);
             } else {
                 toast.error(data.message || "Failed to remove profile picture");
