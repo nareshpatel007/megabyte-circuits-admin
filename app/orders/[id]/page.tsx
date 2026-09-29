@@ -143,6 +143,7 @@ export default function OrderDetailPage() {
 
     // Status & Quantity update form
     const [newStatus, setNewStatus] = useState("");
+    const [orderQty, setOrderQty] = useState<number>(0);
     const [completedQty, setCompletedQty] = useState<number>(0);
     const [failedQty, setFailedQty] = useState<number>(0);
     const [qNo, setQNo] = useState("");
@@ -207,6 +208,7 @@ export default function OrderDetailPage() {
                 setOrderNumberError("");
                 setNewStatus(o.status || "");
                 
+                const orderQtyVal = extractQty(o, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], 0);
                 const compQtyVal = extractQty(o, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], 0);
                 const failQtyVal = extractQty(o, 'failed_qty', ['failed_qty', 'failed'], 0);
                 const launchQtyVal = extractQty(o, 'launch_qty', ['launch_qty', 'launch', 'launched_qty', 'launched'], 0);
@@ -214,6 +216,7 @@ export default function OrderDetailPage() {
                 const upsQtyVal = extractQty(o, 'ups_qty', ['ups_qty', 'ups'], 0);
                 const finalQtyVal = extractQty(o, 'final_qty', ['final_qty', 'final', 'completed_qty', 'completed'], compQtyVal);
 
+                setOrderQty(orderQtyVal);
                 setCompletedQty(compQtyVal);
                 setFailedQty(failQtyVal);
                 setLaunchQty(launchQtyVal);
@@ -369,6 +372,7 @@ export default function OrderDetailPage() {
                     order_number: orderNumberState.trim(),
                     status: newStatus,
                     status_id: matchedStatus ? matchedStatus.id : null,
+                    order_qty: orderQty,
                     completed_qty: completedQty,
                     failed_qty: failedQty,
                     q_no: qNo,
@@ -394,6 +398,7 @@ export default function OrderDetailPage() {
                 setOrder(updated);
                 setOrderNumberState(updated?.order_number || orderNumberState.trim());
                 if (updated) {
+                    setOrderQty(extractQty(updated, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], orderQty));
                     setCompletedQty(extractQty(updated, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], completedQty));
                     setFailedQty(extractQty(updated, 'failed_qty', ['failed_qty', 'failed'], failedQty));
                     setLaunchQty(extractQty(updated, 'launch_qty', ['launch_qty', 'launch', 'launched_qty', 'launched'], launchQty));
@@ -1242,6 +1247,18 @@ export default function OrderDetailPage() {
                                         {billNumberError}
                                     </p>
                                 )}
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Order Qty (Pcs)</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={orderQty}
+                                    onChange={(e) => setOrderQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Order Qty..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
                             </div>
 
                             <div>
