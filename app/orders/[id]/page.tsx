@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrderDetailSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
@@ -134,7 +136,40 @@ export default function OrderDetailPage() {
     const router = useRouter();
     const orderId = params?.id;
     const { user } = useAuth();
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
     const hasPaymentPermission = user?.permissions ? user.permissions.includes("payments.view") : true;
+    const hasDeleteOrderPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("orders.delete") || user.permissions.includes("orders.manage")) : false);
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deletingOrder, setDeletingOrder] = useState(false);
+
+    const handleDeleteOrder = async () => {
+        if (!order) return;
+        setDeletingOrder(true);
+        const toastId = toast.loading(`Deleting order #${order.order_number}...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order.id}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            const json = await res.json();
+            if (res.ok && (json.success || json.status)) {
+                toast.success(json.message || `Order #${order.order_number} deleted successfully.`, { id: toastId });
+                setDeleteModalOpen(false);
+                router.push('/orders');
+            } else {
+                toast.error(json.message || "Failed to delete order.", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error deleting order.", { id: toastId });
+        } finally {
+            setDeletingOrder(false);
+        }
+    };
 
     const [order, setOrder] = useState<ApiOrder | null>(null);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
@@ -702,12 +737,22 @@ export default function OrderDetailPage() {
     );
 
     const backActionButton = (
-        <button
-            onClick={() => router.push('/orders')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border/80 rounded-xl hover:bg-muted text-foreground font-bold text-xs transition-all cursor-pointer shadow-xs"
-        >
-            <ArrowLeft className="w-4 h-4" /> Back to Orders List
-        </button>
+        <div className="flex items-center gap-2">
+            <button
+                onClick={() => router.push('/orders')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-card border border-border/80 rounded-xl hover:bg-muted text-foreground font-bold text-xs transition-all cursor-pointer shadow-xs"
+            >
+                <ArrowLeft className="w-4 h-4" /> Back to Orders List
+            </button>
+            {hasDeleteOrderPermission && (
+                <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs"
+                >
+                    <Trash2 className="w-4 h-4" /> Delete Order
+                </button>
+            )}
+        </div>
     );
 
     return (
@@ -1407,6 +1452,46 @@ export default function OrderDetailPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Soft Delete Confirmation Modal */}
+                <Dialog open={deleteModalOpen} onOpenChange={(open) => !open && setDeleteModalOpen(false)}>
+                    {order && (
+                        <DialogContent className="max-w-md border rounded-2xl p-6 shadow-2xl space-y-4 bg-card text-card-foreground border-rose-500/30">
+                            <DialogHeader className="pb-2 border-b border-border/60">
+                                <DialogTitle className="text-lg font-black text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                                    Delete Order #{order.order_number}?
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground mt-1 font-medium leading-relaxed">
+                                    Are you sure you want to delete order <span className="font-bold text-foreground">#{order.order_number}</span>?
+                                    <br />
+                                    This order will be moved to the deleted state/recycle bin and will not be permanently removed.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="flex items-center justify-end gap-2.5 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setDeleteModalOpen(false)}
+                                    disabled={deletingOrder}
+                                    className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl border-border h-auto cursor-pointer"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleDeleteOrder}
+                                    disabled={deletingOrder}
+                                    className="inline-flex items-center gap-1.5 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50 h-auto"
+                                >
+                                    <Trash2 className={`w-3.5 h-3.5 ${deletingOrder ? 'animate-spin' : ''}`} />
+                                    {deletingOrder ? "Deleting..." : "Delete Order"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    )}
+                </Dialog>
             </div>
         </DashboardLayout>
     );

@@ -149,7 +149,7 @@ function OrdersContent() {
     const hasReorderPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.reorder") : false);
     const hasGenerateJobCardPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.generate_job_card") : false);
     const hasAddFilmPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.add_film") : false);
-    const hasDeleteOrderPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("orders.delete") || user.permissions.includes("orders.manage")) : true);
+    const hasDeleteOrderPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("orders.delete") || user.permissions.includes("orders.manage")) : false);
 
     const [deleteModalOrder, setDeleteModalOrder] = useState<ApiOrder | null>(null);
     const [deletingOrder, setDeletingOrder] = useState(false);
@@ -170,8 +170,14 @@ function OrdersContent() {
             const json = await res.json();
             if (res.ok && (json.success || json.status)) {
                 toast.success(json.message || `Order #${deleteModalOrder.order_number} deleted successfully.`, { id: toastId });
+                const deletedId = deleteModalOrder.id;
                 setDeleteModalOrder(null);
-                fetchData(debouncedSearch);
+                setOrders(prev => prev.filter(o => o.id !== deletedId));
+                if (orders.length <= 1 && page > 1) {
+                    setPage(p => Math.max(1, p - 1));
+                } else {
+                    fetchData(debouncedSearch);
+                }
             } else {
                 toast.error(json.message || "Failed to delete order.", { id: toastId });
             }
@@ -2618,6 +2624,18 @@ function OrdersContent() {
                                                                     </button>
                                                                 )}
 
+                                                                {/* Delete Order Icon Button */}
+                                                                {hasDeleteOrderPermission && (
+                                                                    <button
+                                                                        onClick={() => setDeleteModalOrder(order)}
+                                                                        title="Delete Order"
+                                                                        aria-label="Delete Order"
+                                                                        className="p-1.5 bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                    >
+                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
+
                                                                 {/* View Detail Page Icon Button */}
                                                                 <Link
                                                                     href={`/orders/${order.order_number}`}
@@ -3070,6 +3088,46 @@ function OrdersContent() {
                         </DialogContent>
                     );
                 })()}
+            </Dialog>
+
+            {/* Soft Delete Confirmation Modal */}
+            <Dialog open={!!deleteModalOrder} onOpenChange={(open) => !open && setDeleteModalOrder(null)}>
+                {deleteModalOrder && (
+                    <DialogContent className="max-w-md border rounded-2xl p-6 shadow-2xl space-y-4 bg-card text-card-foreground border-rose-500/30">
+                        <DialogHeader className="pb-2 border-b border-border/60">
+                            <DialogTitle className="text-lg font-black text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                                Delete Order #{deleteModalOrder.order_number}?
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground mt-1 font-medium leading-relaxed">
+                                Are you sure you want to delete order <span className="font-bold text-foreground">#{deleteModalOrder.order_number}</span>?
+                                <br />
+                                This order will be moved to the deleted state/recycle bin and will not be permanently removed.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setDeleteModalOrder(null)}
+                                disabled={deletingOrder}
+                                className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl border-border h-auto cursor-pointer"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleDeleteOrder}
+                                disabled={deletingOrder}
+                                className="inline-flex items-center gap-1.5 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50 h-auto"
+                            >
+                                <Trash2 className={`w-3.5 h-3.5 ${deletingOrder ? 'animate-spin' : ''}`} />
+                                {deletingOrder ? "Deleting..." : "Delete Order"}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                )}
             </Dialog>
 
             {/* Quick Preview Modal */}

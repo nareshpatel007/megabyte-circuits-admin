@@ -529,35 +529,9 @@ export default function OrderJobCardPage() {
                                             />
                                         </div>
 
-                                        {jobCardData.is_single_side ? (
-                                            <div className="flex items-center gap-4">
-                                                <label className="flex items-center gap-1.5 cursor-pointer font-extrabold text-xs">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!jobCardData.expose}
-                                                        onChange={(e) => updateJobCardField("expose", e.target.checked)}
-                                                        className="w-4 h-4 accent-indigo-600 rounded"
-                                                    />
-                                                    Expose
-                                                </label>
-                                                <label className="flex items-center gap-1.5 cursor-pointer font-extrabold text-xs">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!jobCardData.print_and_etch}
-                                                        onChange={(e) => updateJobCardField("print_and_etch", e.target.checked)}
-                                                        className="w-4 h-4 accent-indigo-600 rounded"
-                                                    />
-                                                    Print &amp; Etch
-                                                </label>
-                                                <div className="text-right font-black text-base tracking-wider ml-2">
-                                                    1- SIDE JOB CARD
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="text-right font-black text-lg tracking-wider">
-                                                JOB CARD <span className="text-indigo-700 ml-1">{jobCardData.job_type}</span>
-                                            </div>
-                                        )}
+                                        <div className="text-right font-black text-base sm:text-lg tracking-wider">
+                                            {jobCardData.is_single_side ? "1- SIDE JOB CARD" : `JOB CARD ${jobCardData.job_type || ""}`}
+                                        </div>
                                     </div>
 
                                     {/* Dates Grid (Date Only - NO TIME) */}
