@@ -397,9 +397,6 @@ export default function StaffPage() {
                                                 <tr key={user.id} className="hover:bg-muted/20 transition-colors">
                                                     <td className="py-4 px-6 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black flex items-center justify-center text-sm border border-emerald-500/20 shrink-0">
-                                                                {user.name.charAt(0).toUpperCase()}
-                                                            </div>
                                                             <div>
                                                                 <p className="font-extrabold text-foreground text-sm">
                                                                     {user.name}
