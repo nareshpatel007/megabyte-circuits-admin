@@ -24,6 +24,7 @@ interface StatusItem {
 interface ApiOrder {
     id: number;
     order_number: string;
+    pn_number?: string | null;
     board_name?: string;
     gerber_name?: string;
     gerber_preview_data?: string;

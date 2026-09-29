@@ -60,6 +60,7 @@ interface ApiOrder {
     user?: CustomerUser | null;
     status_id: number | null;
     order_number: string;
+    pn_number?: string | null;
     order_type?: string | null;
     quotation_source?: string | null;
     jlcpcb_file_key?: string | null;
@@ -740,6 +741,7 @@ function OrdersContent() {
     // Change status modal state
     const [statusModalOrder, setStatusModalOrder] = useState<ApiOrder | null>(null);
     const [modalOrderNumber, setModalOrderNumber] = useState("");
+    const [modalPnNumber, setModalPnNumber] = useState("");
     const [modalOrderNumberError, setModalOrderNumberError] = useState("");
     const [modalNewStatus, setModalNewStatus] = useState("");
     const [modalCustomerName, setModalCustomerName] = useState("");
@@ -1639,6 +1641,7 @@ function OrdersContent() {
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
         setStatusModalOrder(order);
         setModalOrderNumber(order.order_number ? String(order.order_number) : "");
+        setModalPnNumber(order.pn_number ? String(order.pn_number) : "");
         setModalOrderNumberError("");
         setModalNewStatus(order.status);
         setModalCustomerName(fallbackName);
@@ -1783,6 +1786,7 @@ function OrdersContent() {
 
             const updatePayload: any = {
                 order_number: modalOrderNumber.trim(),
+                pn_number: modalPnNumber.trim(),
                 order_qty: modalOrderQty,
                 quantity: modalOrderQty,
                 status: modalNewStatus,
@@ -2405,6 +2409,17 @@ function OrdersContent() {
                                                                     #{order.order_number}
                                                                 </span>
                                                             )}
+                                                            {order.pn_number && (
+                                                                <div className="mt-0.5">
+                                                                    <span
+                                                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-muted/70 text-foreground border border-border/80"
+                                                                        title={`Part Number: ${order.pn_number}`}
+                                                                    >
+                                                                        <span className="text-muted-foreground font-semibold">P/N:</span>
+                                                                        <span className="font-mono font-bold truncate max-w-[130px]">{order.pn_number}</span>
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                             {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
                                                                 <div className="mt-1 flex flex-wrap items-center gap-1">
                                                                     {(() => {
@@ -2789,7 +2804,7 @@ function OrdersContent() {
                             </DialogHeader>
 
                             <form onSubmit={handleStatusUpdateSubmit} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
                                             <span>Order Number</span>
@@ -2811,6 +2826,19 @@ function OrdersContent() {
                                                 {modalOrderNumberError}
                                             </p>
                                         )}
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                                            <span>P/N Number</span>
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            value={modalPnNumber}
+                                            onChange={(e) => setModalPnNumber(e.target.value)}
+                                            placeholder="P/N Number (e.g. ABC123)..."
+                                            className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
+                                        />
                                     </div>
 
                                     <div>

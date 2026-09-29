@@ -216,6 +216,7 @@ export default function CreateOrderPage() {
     const [silkscreenTech, setSilkscreenTech] = useState<string>("Ink-jet Printing Silkscreen");
     const [inspectionReport, setInspectionReport] = useState<string>("No");
     const [pcbRemark, setPcbRemark] = useState<string>("");
+    const [pnNumber, setPnNumber] = useState<string>("");
 
     const validateDimensions = (w: number, h: number, l: number) => {
         if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return;
@@ -822,6 +823,10 @@ export default function CreateOrderPage() {
                 setLayerCount(layerCountVal);
                 setDimensionUnit("mm");
 
+                if (!pnNumber && file?.name) {
+                    setPnNumber(file.name);
+                }
+
                 toast.success(`Gerber processed successfully! Auto-detected ${layerCountVal} Layers, ${widthVal} x ${heightVal} mm`);
             } else {
                 toast.error(data.error || "Gerber processing failed. Please verify archive files.");
@@ -849,6 +854,9 @@ export default function CreateOrderPage() {
 
             const formData = new FormData();
             formData.append("board_name", defaultBoardName);
+            if (pnNumber.trim()) {
+                formData.append("pn_number", pnNumber.trim());
+            }
             formData.append("user_id", selectedClientId);
             formData.append("customer_name", customerName);
             formData.append("user_email", userEmail);
@@ -1155,6 +1163,18 @@ export default function CreateOrderPage() {
 
                         {/* Core Quote Options Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* P/N Number */}
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1">P/N Number</label>
+                                <Input
+                                    type="text"
+                                    placeholder="Enter P/N (e.g. ABC123)"
+                                    value={pnNumber}
+                                    onChange={(e) => setPnNumber(e.target.value)}
+                                    className="h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
+                                />
+                            </div>
+
                             {/* Base Material */}
                             <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1">Base Material</label>
@@ -1830,9 +1850,14 @@ export default function CreateOrderPage() {
                     <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 pb-3 gap-2">
                             <div>
-                                <h3 className="text-sm font-bold text-foreground">3. Gerber File Selection / Upload</h3>
-                                <p className="text-xs text-muted-foreground font-medium">
-                                    Select an existing client Gerber file or upload a new ZIP/RAR archive
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-bold text-foreground">3. Gerber File Selection / Upload</h3>
+                                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                        Optional
+                                    </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                    You can upload a Gerber ZIP/RAR file, or continue without one.
                                 </p>
                             </div>
                             {clientGerberFiles.length > 0 && (

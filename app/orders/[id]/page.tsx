@@ -78,6 +78,7 @@ interface ApiOrder {
     layers?: string | number | null;
     status_id: number | null;
     order_number: string;
+    pn_number?: string | null;
     q_no?: string | number | null;
     c_g?: string | null;
     combo?: string | null;
@@ -199,6 +200,10 @@ export default function OrderDetailPage() {
     const [orderNumberState, setOrderNumberState] = useState("");
     const [orderNumberError, setOrderNumberError] = useState("");
 
+    // P/N Number edit state
+    const [editingPnNumber, setEditingPnNumber] = useState(false);
+    const [pnNumberState, setPnNumberState] = useState("");
+
     // Delivery date state & edit
     const [editingDeliveryDate, setEditingDeliveryDate] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState("");
@@ -241,6 +246,7 @@ export default function OrderDetailPage() {
                 setOrder(o);
                 setOrderNumberState(o.order_number || "");
                 setOrderNumberError("");
+                setPnNumberState(o.pn_number ? String(o.pn_number) : "");
                 setNewStatus(o.status || "");
                 
                 const orderQtyVal = extractQty(o, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], 0);
@@ -259,6 +265,7 @@ export default function OrderDetailPage() {
                 setUpsQty(upsQtyVal);
                 setFinalQty(finalQtyVal);
                 setQNo(o.q_no ? String(o.q_no) : "");
+                setPnNumberState(o.pn_number ? String(o.pn_number) : "");
                 setCombo(o.combo ? String(o.combo) : "");
 
                 let initialComboItems: ComboOrderItem[] = [];
@@ -354,6 +361,35 @@ export default function OrderDetailPage() {
         }
     };
 
+    const handleSavePnNumber = async () => {
+        const cleanPn = pnNumberState.trim();
+        const toastId = toast.loading("Updating P/N Number...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    pn_number: cleanPn
+                })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("P/N Number updated successfully", { id: toastId });
+                setEditingPnNumber(false);
+                setOrder((prev) => (prev ? { ...prev, pn_number: cleanPn || null } : prev));
+                setPnNumberState(cleanPn);
+            } else {
+                toast.error(data.message || "Failed to update P/N Number", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error("Error updating P/N Number", { id: toastId });
+        }
+    };
+
     const handleUpdateStatus = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newStatus) return;
@@ -405,6 +441,7 @@ export default function OrderDetailPage() {
                 },
                 body: JSON.stringify({
                     order_number: orderNumberState.trim(),
+                    pn_number: pnNumberState.trim(),
                     status: newStatus,
                     status_id: matchedStatus ? matchedStatus.id : null,
                     order_qty: orderQty,
@@ -433,6 +470,7 @@ export default function OrderDetailPage() {
                 setOrder(updated);
                 setOrderNumberState(updated?.order_number || orderNumberState.trim());
                 if (updated) {
+                    setPnNumberState(updated.pn_number || pnNumberState.trim());
                     setOrderQty(extractQty(updated, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], orderQty));
                     setCompletedQty(extractQty(updated, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], completedQty));
                     setFailedQty(extractQty(updated, 'failed_qty', ['failed_qty', 'failed'], failedQty));
@@ -601,9 +639,15 @@ export default function OrderDetailPage() {
 
     const orderStatusStr = (order?.status || 'Pending').toString().toLowerCase();
     const currentStatusColor = statuses.find(s => s && s.name && s.name.toString().toLowerCase() === orderStatusStr)?.color || "#10b981";
-    const gerberUrl = getMetaValue('gerber_file_url', getMetaValue('gerber_file', getMetaValue('gerber_url', getMetaValue('gerber_path', getMetaValue('gerber', '')))));
-    const boardNameVal = order.board_name || getMetaValue('board_name', getMetaValue('gerber_file_name', getMetaValue('gerber_name', '')));
-    const gerberFileName = getMetaValue('gerber_file_name', getMetaValue('gerber_name', getMetaValue('file_name', boardNameVal ? `${boardNameVal}_gerber.zip` : 'Gerber_Files.zip')));
+    const productTypeVal = getMetaValue('product_type', 'pcb').toLowerCase();
+    const isPartProduct = productTypeVal === 'part';
+    const gerberFileRel = (order as any)?.gerber_file || (order as any)?.gerberFile;
+    const rawGerberUrl = getMetaValue('gerber_file_url', getMetaValue('gerber_url', getMetaValue('gerber_path', '')));
+    const gerberUrl = (gerberFileRel?.file_url) || (rawGerberUrl && rawGerberUrl !== 'N/A' && !rawGerberUrl.includes('null') ? rawGerberUrl : '');
+    const rawGerberName = (gerberFileRel?.original_name || gerberFileRel?.file_name) || getMetaValue('gerber_file_name', getMetaValue('gerber_name', ''));
+    const hasActualGerber = !isPartProduct && Boolean(order?.gerber_file_id || gerberFileRel || (gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '') || rawGerberName);
+    const gerberFileName = rawGerberName || (gerberUrl ? gerberUrl.split('/').pop() : '');
+    const boardNameVal = order.board_name || getMetaValue('board_name', '');
     const layerCount = getMetaValue('layers', getMetaValue('layer', '2'));
 
     // Color code mapping for PCB Color property - matches getPcbColorCode used across orders list and dashboard
@@ -619,8 +663,6 @@ export default function OrderDetailPage() {
     };
     const pcbColorVal = getMetaValue('pcb_color', getMetaValue('solder_mask', getMetaValue('coverlay_color', getMetaValue('color', 'Green'))));
     const orderNumColor = getPcbColorCode(pcbColorVal);
-    const productTypeVal = getMetaValue('product_type', 'pcb').toLowerCase();
-    const isPartProduct = productTypeVal === 'part';
 
     // Filter out preview_data, board_name, build_time, and parent_order_number from technical parameters display
     const filteredMetas = order.metas ? order.metas.filter(m => {
@@ -788,7 +830,40 @@ export default function OrderDetailPage() {
         <DashboardLayout title={pageHeaderTitle as any} action={backActionButton}>
             <div className="space-y-6 w-full">
                 {/* Primary Highlights Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
+                        <div className="flex justify-between items-center">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">P/N Number</p>
+                            {!editingPnNumber ? (
+                                <button
+                                    onClick={() => {
+                                        setPnNumberState(order.pn_number || '');
+                                        setEditingPnNumber(true);
+                                    }}
+                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                >
+                                    Edit
+                                </button>
+                            ) : (
+                                <button onClick={handleSavePnNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                    <Save className="w-3 h-3" /> Save
+                                </button>
+                            )}
+                        </div>
+                        {!editingPnNumber ? (
+                            <p className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1 truncate" title={order.pn_number || 'N/A'}>
+                                {order.pn_number || <span className="text-muted-foreground font-normal text-sm">N/A</span>}
+                            </p>
+                        ) : (
+                            <input
+                                type="text"
+                                value={pnNumberState}
+                                onChange={(e) => setPnNumberState(e.target.value)}
+                                placeholder="Enter P/N..."
+                                className="mt-1 w-full text-xs font-mono font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                            />
+                        )}
+                    </div>
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Value</p>
                         <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
@@ -870,8 +945,8 @@ export default function OrderDetailPage() {
                     </div>
                 </div>
 
-                {/* Gerber File Download / Preview Card (Only shown for PCB / Stencil orders, hidden for Part orders) */}
-                {!isPartProduct && (
+                {/* Gerber File Download / Preview Card (Only shown if an actual Gerber file exists, completely hidden otherwise) */}
+                {hasActualGerber && (
                     <div className="bg-gradient-to-r from-emerald-500/10 via-card to-card border border-emerald-500/30 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-20 h-20 rounded-2xl bg-[#0c3b19] flex items-center justify-center p-1 overflow-hidden shrink-0 border border-emerald-500/30 shadow-md">
@@ -892,35 +967,29 @@ export default function OrderDetailPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3 w-full md:w-auto">
-                            {(gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '') || gerberFileName ? (
-                                <>
-                                    {gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '' && (
-                                        <a
-                                            href={gerberUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-card border border-border/80 text-foreground font-bold rounded-xl hover:bg-muted text-xs transition-all w-full md:w-auto"
-                                        >
-                                            <Eye className="w-4 h-4 text-emerald-500" /> View Gerber File
-                                        </a>
-                                    )}
-                                    <a
-                                        href={gerberUrl && gerberUrl !== 'N/A' ? gerberUrl : `#`}
-                                        download={gerberFileName}
-                                        onClick={(e) => {
-                                            if (!gerberUrl || gerberUrl === 'N/A') {
-                                                e.preventDefault();
-                                                toast.info(`Gerber File Name: ${gerberFileName}`);
-                                            }
-                                        }}
-                                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 text-xs shadow-md transition-all w-full md:w-auto"
-                                    >
-                                        <Download className="w-4 h-4" /> Download Gerber File
-                                    </a>
-                                </>
-                            ) : (
-                                <span className="text-xs text-muted-foreground italic">No Gerber file uploaded for this order.</span>
+                            {gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '' && (
+                                <a
+                                    href={gerberUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-card border border-border/80 text-foreground font-bold rounded-xl hover:bg-muted text-xs transition-all w-full md:w-auto"
+                                >
+                                    <Eye className="w-4 h-4 text-emerald-500" /> View Gerber File
+                                </a>
                             )}
+                            <a
+                                href={gerberUrl && gerberUrl !== 'N/A' ? gerberUrl : `#`}
+                                download={gerberFileName}
+                                onClick={(e) => {
+                                    if (!gerberUrl || gerberUrl === 'N/A') {
+                                        e.preventDefault();
+                                        toast.info(`Gerber File Name: ${gerberFileName}`);
+                                    }
+                                }}
+                                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 text-xs shadow-md transition-all w-full md:w-auto"
+                            >
+                                <Download className="w-4 h-4" /> Download Gerber File
+                            </a>
                         </div>
                     </div>
                 )}
@@ -1051,6 +1120,10 @@ export default function OrderDetailPage() {
                                 1. PCB Basic Specifications
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">P/N Number</p>
+                                    <p className="font-mono font-bold text-foreground mt-0.5">{order.pn_number || 'N/A'}</p>
+                                </div>
                                 <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase">Base Material</p>
                                     <p className="font-bold text-foreground mt-0.5">{getMetaValue('base_material', getMetaValue('material', 'FR-4'))}</p>
@@ -1251,6 +1324,17 @@ export default function OrderDetailPage() {
                                 {orderNumberError && (
                                     <p className="text-[11px] font-semibold text-rose-500 mt-1">{orderNumberError}</p>
                                 )}
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">P/N Number</label>
+                                <input
+                                    type="text"
+                                    value={pnNumberState}
+                                    onChange={(e) => setPnNumberState(e.target.value)}
+                                    placeholder="P/N Number..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-mono font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
                             </div>
 
                             <div>
