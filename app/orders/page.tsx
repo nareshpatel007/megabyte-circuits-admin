@@ -149,6 +149,38 @@ function OrdersContent() {
     const hasReorderPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.reorder") : false);
     const hasGenerateJobCardPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.generate_job_card") : false);
     const hasAddFilmPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.add_film") : false);
+    const hasDeleteOrderPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("orders.delete") || user.permissions.includes("orders.manage")) : true);
+
+    const [deleteModalOrder, setDeleteModalOrder] = useState<ApiOrder | null>(null);
+    const [deletingOrder, setDeletingOrder] = useState(false);
+
+    const handleDeleteOrder = async () => {
+        if (!deleteModalOrder) return;
+        setDeletingOrder(true);
+        const toastId = toast.loading(`Deleting order #${deleteModalOrder.order_number}...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${deleteModalOrder.id}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            const json = await res.json();
+            if (res.ok && (json.success || json.status)) {
+                toast.success(json.message || `Order #${deleteModalOrder.order_number} deleted successfully.`, { id: toastId });
+                setDeleteModalOrder(null);
+                fetchData(debouncedSearch);
+            } else {
+                toast.error(json.message || "Failed to delete order.", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error deleting order.", { id: toastId });
+        } finally {
+            setDeletingOrder(false);
+        }
+    };
 
     const [orders, setOrders] = useState<ApiOrder[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);

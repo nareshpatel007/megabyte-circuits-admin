@@ -529,9 +529,35 @@ export default function OrderJobCardPage() {
                                             />
                                         </div>
 
-                                        <div className="text-right font-black text-lg tracking-wider">
-                                            {jobCardData.job_type}
-                                        </div>
+                                        {jobCardData.is_single_side ? (
+                                            <div className="flex items-center gap-4">
+                                                <label className="flex items-center gap-1.5 cursor-pointer font-extrabold text-xs">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!jobCardData.expose}
+                                                        onChange={(e) => updateJobCardField("expose", e.target.checked)}
+                                                        className="w-4 h-4 accent-indigo-600 rounded"
+                                                    />
+                                                    Expose
+                                                </label>
+                                                <label className="flex items-center gap-1.5 cursor-pointer font-extrabold text-xs">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!jobCardData.print_and_etch}
+                                                        onChange={(e) => updateJobCardField("print_and_etch", e.target.checked)}
+                                                        className="w-4 h-4 accent-indigo-600 rounded"
+                                                    />
+                                                    Print &amp; Etch
+                                                </label>
+                                                <div className="text-right font-black text-base tracking-wider ml-2">
+                                                    1- SIDE JOB CARD
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-right font-black text-lg tracking-wider">
+                                                JOB CARD <span className="text-indigo-700 ml-1">{jobCardData.job_type}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Dates Grid (Date Only - NO TIME) */}
@@ -732,24 +758,62 @@ export default function OrderJobCardPage() {
                                             />
                                         </div>
                                         <div>
-                                            <span className="font-bold block text-[10px] uppercase">Shearing Cut:</span>
+                                            <span className="font-bold block text-[10px] uppercase">{jobCardData.is_single_side ? "Shearing Cut:" : "FPT Program:"}</span>
                                             <input
                                                 type="text"
-                                                value={jobCardData.shearing_cut || ""}
-                                                onChange={(e) => updateJobCardField("shearing_cut", e.target.value)}
+                                                value={jobCardData.is_single_side ? (jobCardData.shearing_cut || "") : (jobCardData.fpt_program || "")}
+                                                onChange={(e) => updateJobCardField(jobCardData.is_single_side ? "shearing_cut" : "fpt_program", e.target.value)}
+                                                placeholder={jobCardData.is_single_side ? "" : "MNF-1 / MNF-2"}
                                                 className="w-full px-2 py-0.5 bg-slate-50 border border-slate-300 font-bold rounded text-xs"
                                             />
                                         </div>
-                                        <div>
-                                            <span className="font-bold block text-[10px] uppercase">Internal Cutouts:</span>
-                                            <input
-                                                type="text"
-                                                value={jobCardData.internal_cutouts || ""}
-                                                onChange={(e) => updateJobCardField("internal_cutouts", e.target.value)}
-                                                className="w-full px-2 py-0.5 bg-slate-50 border border-slate-300 font-bold rounded text-xs"
-                                            />
-                                        </div>
+                                        {jobCardData.is_single_side ? (
+                                            <div>
+                                                <span className="font-bold block text-[10px] uppercase">Internal Cutouts Reqd.?:</span>
+                                                <input
+                                                    type="text"
+                                                    value={jobCardData.internal_cutouts || ""}
+                                                    onChange={(e) => updateJobCardField("internal_cutouts", e.target.value)}
+                                                    className="w-full px-2 py-0.5 bg-slate-50 border border-slate-300 font-bold rounded text-xs"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <span className="font-bold block text-[10px] uppercase">2nd stage reqd.?:</span>
+                                                <input
+                                                    type="text"
+                                                    value={jobCardData.second_stage || ""}
+                                                    onChange={(e) => updateJobCardField("second_stage", e.target.value)}
+                                                    placeholder="Yes / No"
+                                                    className="w-full px-2 py-0.5 bg-slate-50 border border-slate-300 font-bold rounded text-xs"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
+                                    {!jobCardData.is_single_side && (
+                                        <div className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-2">
+                                            <div>
+                                                <span className="font-bold block text-[10px] uppercase">Copper Area:</span>
+                                                <input
+                                                    type="text"
+                                                    value={jobCardData.copper_area || ""}
+                                                    onChange={(e) => updateJobCardField("copper_area", e.target.value)}
+                                                    placeholder="Amp"
+                                                    className="w-full px-2 py-0.5 bg-slate-50 border border-slate-300 font-bold rounded text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <span className="font-bold block text-[10px] uppercase">Internal Cutouts Reqd.?:</span>
+                                                <input
+                                                    type="text"
+                                                    value={jobCardData.internal_cutouts || ""}
+                                                    onChange={(e) => updateJobCardField("internal_cutouts", e.target.value)}
+                                                    placeholder="No"
+                                                    className="w-full px-2 py-0.5 bg-slate-50 border border-slate-300 font-bold rounded text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Notes */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t-2 border-black pt-2">
