@@ -164,6 +164,10 @@ export default function SettingsPage() {
         GOOGLE_CLIENT_ID: "",
         GOOGLE_CLIENT_SECRET: "",
         GOOGLE_REDIRECT_URI: "",
+        // Google reCAPTCHA
+        RECAPTCHA_ENABLED: "false",
+        RECAPTCHA_SITE_KEY: "",
+        RECAPTCHA_SECRET_KEY: "",
     });
 
     const fetchCredentials = async () => {
@@ -777,6 +781,73 @@ export default function SettingsPage() {
                                 value={creds.GOOGLE_REDIRECT_URI || ""}
                                 onChange={(val) => handleChange("GOOGLE_REDIRECT_URI", val)}
                             />
+                        </div>
+                    </SettingsSection>
+
+                    <SettingsSection
+                        title="Google reCAPTCHA Protection"
+                        isSaving={savingGroup === "recaptcha"}
+                        onSave={() => handleSaveGroup("recaptcha", [
+                            "RECAPTCHA_ENABLED",
+                            "RECAPTCHA_SITE_KEY",
+                            "RECAPTCHA_SECRET_KEY"
+                        ])}
+                    >
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3.5 bg-muted/30 border border-border/60 rounded-xl">
+                                <div>
+                                    <p className="text-xs font-bold text-foreground uppercase tracking-wider">reCAPTCHA Status</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">Enable or disable Google reCAPTCHA validation on the website contact form</p>
+                                </div>
+                                <div className="flex items-center bg-background border border-border/80 rounded-lg p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleChange("RECAPTCHA_ENABLED", "false")}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${(creds.RECAPTCHA_ENABLED === "false" || !creds.RECAPTCHA_ENABLED)
+                                            ? "bg-slate-500 text-white shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Disabled
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleChange("RECAPTCHA_ENABLED", "true")}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${creds.RECAPTCHA_ENABLED === "true"
+                                            ? "bg-emerald-500 text-white shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Enabled
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <PlainInput
+                                    label="RECAPTCHA SITE KEY (v2 Checkbox)"
+                                    placeholder="e.g. 6Ld..."
+                                    value={creds.RECAPTCHA_SITE_KEY || ""}
+                                    onChange={(val) => handleChange("RECAPTCHA_SITE_KEY", val)}
+                                />
+                                <MaskedInput
+                                    label="RECAPTCHA SECRET KEY"
+                                    placeholder="e.g. 6Ld..."
+                                    value={creds.RECAPTCHA_SECRET_KEY || ""}
+                                    onChange={(val) => handleChange("RECAPTCHA_SECRET_KEY", val)}
+                                />
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                                Obtain v2 Checkbox (&ldquo;I&apos;m not a robot&rdquo;) credentials from the{" "}
+                                <a
+                                    href="https://www.google.com/recaptcha/admin"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary hover:underline font-semibold"
+                                >
+                                    Google reCAPTCHA Console
+                                </a>.
+                            </p>
                         </div>
                     </SettingsSection>
                 </div>
