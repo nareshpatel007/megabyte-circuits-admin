@@ -167,6 +167,26 @@ export default function OrderDetailPage() {
     const [editingDeliveryDate, setEditingDeliveryDate] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState("");
 
+    const extractQty = (targetOrder: any, directKey: string, metaKeys: string[], fallbackVal = 0): number => {
+        if (!targetOrder) return fallbackVal;
+        const directVal = targetOrder[directKey];
+        if (directVal !== undefined && directVal !== null && directVal !== "" && !isNaN(Number(directVal)) && Number(directVal) > 0) {
+            return Number(directVal);
+        }
+        if (Array.isArray(targetOrder.metas)) {
+            for (const k of metaKeys) {
+                const found = targetOrder.metas.find((m: any) => m.meta_key && m.meta_key.toLowerCase() === k.toLowerCase());
+                if (found && found.meta_value !== undefined && found.meta_value !== null && found.meta_value !== "" && !isNaN(Number(found.meta_value))) {
+                    return Number(found.meta_value);
+                }
+            }
+        }
+        if (directVal !== undefined && directVal !== null && directVal !== "" && !isNaN(Number(directVal))) {
+            return Number(directVal);
+        }
+        return fallbackVal;
+    };
+
     const fetchOrderDetail = async () => {
         try {
             const token = localStorage.getItem("admin_token");
@@ -186,8 +206,20 @@ export default function OrderDetailPage() {
                 setOrderNumberState(o.order_number || "");
                 setOrderNumberError("");
                 setNewStatus(o.status || "");
-                setCompletedQty(o.completed_qty || 0);
-                setFailedQty(o.failed_qty || 0);
+                
+                const compQtyVal = extractQty(o, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], 0);
+                const failQtyVal = extractQty(o, 'failed_qty', ['failed_qty', 'failed'], 0);
+                const launchQtyVal = extractQty(o, 'launch_qty', ['launch_qty', 'launch', 'launched_qty', 'launched'], 0);
+                const panelQtyVal = extractQty(o, 'panel_qty', ['panel_qty', 'panel'], 0);
+                const upsQtyVal = extractQty(o, 'ups_qty', ['ups_qty', 'ups'], 0);
+                const finalQtyVal = extractQty(o, 'final_qty', ['final_qty', 'final', 'completed_qty', 'completed'], compQtyVal);
+
+                setCompletedQty(compQtyVal);
+                setFailedQty(failQtyVal);
+                setLaunchQty(launchQtyVal);
+                setPanelQty(panelQtyVal);
+                setUpsQty(upsQtyVal);
+                setFinalQty(finalQtyVal);
                 setQNo(o.q_no ? String(o.q_no) : "");
                 setCombo(o.combo ? String(o.combo) : "");
 
@@ -223,10 +255,6 @@ export default function OrderDetailPage() {
                     }));
                 }
                 setOldOrdersState(initialOldItems);
-                setLaunchQty(o.launch_qty || 0);
-                setPanelQty(o.panel_qty || 0);
-                setUpsQty(o.ups_qty || 0);
-                setFinalQty(o.final_qty || 0);
                 setBillNumber(o.bill_number ? String(o.bill_number) : "");
                 setDeliveryDate(parseDeliveryDateToYYYYMMDD(o.delivery_date));
             }
@@ -361,9 +389,18 @@ export default function OrderDetailPage() {
 
             const data = await res.json();
             if (res.ok && (data.status || data.success)) {
+                const updated = data.data;
                 toast.success(`Order details updated successfully`, { id: toastId });
-                setOrder(data.data);
-                setOrderNumberState(data.data?.order_number || orderNumberState.trim());
+                setOrder(updated);
+                setOrderNumberState(updated?.order_number || orderNumberState.trim());
+                if (updated) {
+                    setCompletedQty(extractQty(updated, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], completedQty));
+                    setFailedQty(extractQty(updated, 'failed_qty', ['failed_qty', 'failed'], failedQty));
+                    setLaunchQty(extractQty(updated, 'launch_qty', ['launch_qty', 'launch', 'launched_qty', 'launched'], launchQty));
+                    setPanelQty(extractQty(updated, 'panel_qty', ['panel_qty', 'panel'], panelQty));
+                    setUpsQty(extractQty(updated, 'ups_qty', ['ups_qty', 'ups'], upsQty));
+                    setFinalQty(extractQty(updated, 'final_qty', ['final_qty', 'final', 'completed_qty', 'completed'], finalQty));
+                }
                 setRemark("");
             } else {
                 const errMsg = data.errors?.order_number?.[0] || data.errors?.bill_number?.[0] || data.message || data.error || "Failed to update order";
@@ -698,22 +735,21 @@ export default function OrderDetailPage() {
 
                     {/* Quantity Fulfillment Breakdown Card */}
                     {(() => {
-                        const totalQtyVal = parseInt(getMetaValue('qty', getMetaValue('quantity', '5'))) || 0;
-                        const compQty = order.completed_qty || 0;
-                        const pendQty = Math.max(0, totalQtyVal - compQty);
+                        const orderQtyVal = extractQty(order, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], 0);
+                        const finalQtyVal = extractQty(order, 'final_qty', ['final_qty', 'final', 'completed_qty', 'completed'], 0);
                         return (
                             <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm space-y-1">
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity Breakdown</p>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400" title="Completed Qty">
-                                        {compQty} Done
+                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400" title="Order Qty">
+                                        Order Qty: {orderQtyVal}
                                     </span>
                                     <span className="text-muted-foreground">/</span>
-                                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400" title="Pending Qty">
-                                        {pendQty} Pending
+                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400" title="Final Qty">
+                                        Final Qty: {finalQtyVal}
                                     </span>
                                 </div>
-                                <p className="text-[11px] text-muted-foreground font-medium pt-0.5">Total: {totalQtyVal} Pcs</p>
+                                <p className="text-[11px] text-muted-foreground font-medium pt-0.5">Total: {orderQtyVal} Pcs</p>
                             </div>
                         );
                     })()}
