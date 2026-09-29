@@ -263,9 +263,14 @@ export default function OrderDetailPage() {
                 setLaunchQty(launchQtyVal);
                 setPanelQty(panelQtyVal);
                 setUpsQty(upsQtyVal);
-                setFinalQty(finalQtyVal);
-                setQNo(o.q_no ? String(o.q_no) : "");
-                setPnNumberState(o.pn_number ? String(o.pn_number) : "");
+                const defaultPn = o.pn_number 
+                    || o.gerber_file?.original_name 
+                    || o.gerber_file?.file_name 
+                    || (Array.isArray(o.metas) ? o.metas.find((m: any) => ['gerber_file_name', 'gerber_name', 'board_name', 'p_n', 'part_number'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
+                    || o.board_name 
+                    || "";
+
+                setPnNumberState(o.pn_number ? String(o.pn_number) : (defaultPn ? String(defaultPn) : ""));
                 setCombo(o.combo ? String(o.combo) : "");
 
                 let initialComboItems: ComboOrderItem[] = [];
@@ -645,9 +650,24 @@ export default function OrderDetailPage() {
     const rawGerberUrl = getMetaValue('gerber_file_url', getMetaValue('gerber_url', getMetaValue('gerber_path', '')));
     const gerberUrl = (gerberFileRel?.file_url) || (rawGerberUrl && rawGerberUrl !== 'N/A' && !rawGerberUrl.includes('null') ? rawGerberUrl : '');
     const rawGerberName = (gerberFileRel?.original_name || gerberFileRel?.file_name) || getMetaValue('gerber_file_name', getMetaValue('gerber_name', ''));
-    const hasActualGerber = !isPartProduct && Boolean(order?.gerber_file_id || gerberFileRel || (gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '') || rawGerberName);
+    // Only show Gerber file section if an actual file physically exists (valid URL or verified file)
+    const hasActualGerber = !isPartProduct && Boolean(
+        (order as any)?.has_actual_gerber ?? (
+            (order?.gerber_file_id || gerberFileRel) &&
+            gerberUrl &&
+            gerberUrl !== 'N/A' &&
+            gerberUrl.trim() !== '' &&
+            !gerberUrl.includes('null')
+        )
+    );
     const gerberFileName = rawGerberName || (gerberUrl ? gerberUrl.split('/').pop() : '');
     const boardNameVal = order.board_name || getMetaValue('board_name', '');
+    const fallbackPnNumber = order.pn_number 
+        || rawGerberName 
+        || (gerberUrl ? gerberUrl.split('/').pop() : '') 
+        || boardNameVal 
+        || getMetaValue('p_n', getMetaValue('part_number', ''));
+    const effectivePn = order.pn_number || fallbackPnNumber;
     const layerCount = getMetaValue('layers', getMetaValue('layer', '2'));
 
     // Color code mapping for PCB Color property - matches getPcbColorCode used across orders list and dashboard
@@ -837,7 +857,7 @@ export default function OrderDetailPage() {
                             {!editingPnNumber ? (
                                 <button
                                     onClick={() => {
-                                        setPnNumberState(order.pn_number || '');
+                                        setPnNumberState(effectivePn || '');
                                         setEditingPnNumber(true);
                                     }}
                                     className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
@@ -851,8 +871,8 @@ export default function OrderDetailPage() {
                             )}
                         </div>
                         {!editingPnNumber ? (
-                            <p className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1 truncate" title={order.pn_number || 'N/A'}>
-                                {order.pn_number || <span className="text-muted-foreground font-normal text-sm">N/A</span>}
+                            <p className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1 truncate" title={effectivePn || 'N/A'}>
+                                {effectivePn || <span className="text-muted-foreground font-normal text-sm">N/A</span>}
                             </p>
                         ) : (
                             <input
@@ -1122,7 +1142,7 @@ export default function OrderDetailPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                                 <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase">P/N Number</p>
-                                    <p className="font-mono font-bold text-foreground mt-0.5">{order.pn_number || 'N/A'}</p>
+                                    <p className="font-mono font-bold text-foreground mt-0.5">{effectivePn || 'N/A'}</p>
                                 </div>
                                 <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase">Base Material</p>

@@ -1641,7 +1641,13 @@ function OrdersContent() {
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
         setStatusModalOrder(order);
         setModalOrderNumber(order.order_number ? String(order.order_number) : "");
-        setModalPnNumber(order.pn_number ? String(order.pn_number) : "");
+        const defaultPn = order.pn_number 
+            || (order as any).gerber_file?.original_name 
+            || (order as any).gerber_file?.file_name 
+            || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['gerber_file_name', 'gerber_name', 'board_name', 'p_n', 'part_number'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
+            || order.board_name 
+            || "";
+        setModalPnNumber(order.pn_number ? String(order.pn_number) : defaultPn);
         setModalOrderNumberError("");
         setModalNewStatus(order.status);
         setModalCustomerName(fallbackName);
@@ -2409,17 +2415,25 @@ function OrdersContent() {
                                                                     #{order.order_number}
                                                                 </span>
                                                             )}
-                                                            {order.pn_number && (
-                                                                <div className="mt-0.5">
-                                                                    <span
-                                                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-muted/70 text-foreground border border-border/80"
-                                                                        title={`Part Number: ${order.pn_number}`}
-                                                                    >
-                                                                        <span className="text-muted-foreground font-semibold">P/N:</span>
-                                                                        <span className="font-mono font-bold truncate max-w-[130px]">{order.pn_number}</span>
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                            {(() => {
+                                                                const rowPn = order.pn_number 
+                                                                    || (order as any).gerber_file?.original_name 
+                                                                    || (order as any).gerber_file?.file_name 
+                                                                    || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['gerber_file_name', 'gerber_name', 'board_name', 'p_n', 'part_number'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
+                                                                    || order.board_name;
+                                                                if (!rowPn) return null;
+                                                                return (
+                                                                    <div className="mt-0.5">
+                                                                        <span
+                                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-muted/70 text-foreground border border-border/80"
+                                                                            title={`Part Number: ${rowPn}`}
+                                                                        >
+                                                                            <span className="text-muted-foreground font-semibold">P/N:</span>
+                                                                            <span className="font-mono font-bold truncate max-w-[130px]">{rowPn}</span>
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                             {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
                                                                 <div className="mt-1 flex flex-wrap items-center gap-1">
                                                                     {(() => {
