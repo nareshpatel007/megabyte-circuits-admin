@@ -40,34 +40,17 @@ const secondaryNavItems: NavItem[] = [
     { href: "/roles", label: "Roles", icon: Shield, permission: "role.view" },
 ];
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function MobileBottomNav() {
     const pathname = usePathname();
     const [moreOpen, setMoreOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const [userPermissions, setUserPermissions] = useState<string[]>([]);
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-
-    useEffect(() => {
-        const checkPermissions = () => {
-            const userDataStr = localStorage.getItem("user");
-            if (userDataStr) {
-                try {
-                    const u = JSON.parse(userDataStr);
-                    if (u.role && u.role.toLowerCase() === "super admin") {
-                        setIsSuperAdmin(true);
-                    }
-                    if (Array.isArray(u.permissions)) {
-                        setUserPermissions(u.permissions);
-                    }
-                } catch (e) {}
-            }
-        };
-
-        checkPermissions();
-        window.addEventListener("storage", checkPermissions);
-        return () => window.removeEventListener("storage", checkPermissions);
-    }, []);
+    const { user } = useAuth();
+    const isSuperAdmin = (user?.role && user.role.toLowerCase() === "super admin") || 
+                         (Array.isArray(user?.permissions) && user.permissions.includes("*"));
+    const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
 
     const hasPermission = (perm?: string | string[]) => {
         if (!perm || isSuperAdmin) return true;

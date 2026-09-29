@@ -82,6 +82,8 @@ const navItems: NavItem[] = [
     },
 ];
 
+import { useAuth } from "@/lib/auth-context";
+
 interface SidebarProps {
     collapsed: boolean;
     onCollapse: (v: boolean) => void;
@@ -97,8 +99,11 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
         "Settings": isSettingsActive,
         "Blog Management": isBlogActive,
     });
-    const [userPermissions, setUserPermissions] = useState<string[]>([]);
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+    const { user } = useAuth();
+    const isSuperAdmin = (user?.role && user.role.toLowerCase() === "super admin") || 
+                         (Array.isArray(user?.permissions) && user.permissions.includes("*"));
+    const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
 
     useEffect(() => {
         if (pathname) {
@@ -110,39 +115,22 @@ export default function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClo
         }
     }, [pathname]);
 
-    useEffect(() => {
-        const checkPermissions = () => {
-            const userDataStr = localStorage.getItem("user");
-            if (userDataStr) {
-                try {
-                    const u = JSON.parse(userDataStr);
-                    if (u.role && u.role.toLowerCase() === "super admin") {
-                        setIsSuperAdmin(true);
-                    }
-                    if (Array.isArray(u.permissions)) {
-                        setUserPermissions(u.permissions);
-                    }
-                } catch (e) { }
-            }
-        };
-
-        checkPermissions();
-        window.addEventListener("storage", checkPermissions);
-        return () => window.removeEventListener("storage", checkPermissions);
-    }, []);
-
     const hasPermission = (perm?: string) => {
         if (!perm || isSuperAdmin) return true;
         return userPermissions.includes(perm);
     };
 
-    const filteredNavItems = navItems.filter((item) => {
+    const filteredNavItems = navItems.reduce<NavItem[]>((acc, item) => {
         if (item.children) {
             const validChildren = item.children.filter((c) => hasPermission(c.permission));
-            return validChildren.length > 0;
+            if (validChildren.length > 0) {
+                acc.push({ ...item, children: validChildren });
+            }
+        } else if (hasPermission(item.permission)) {
+            acc.push(item);
         }
-        return hasPermission(item.permission);
-    });
+        return acc;
+    }, []);
 
     const renderContent = (mobile = false) => {
         const isCollapsed = !mobile && collapsed;

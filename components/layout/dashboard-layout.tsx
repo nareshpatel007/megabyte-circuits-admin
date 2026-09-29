@@ -9,6 +9,7 @@ import { Toaster } from "sonner";
 import { useTheme } from "@/lib/theme-context";
 import { ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -28,6 +29,11 @@ const PAGE_PERMISSIONS: { prefix: string; perm: string }[] = [
     { prefix: "/roles", perm: "role.view" },
     { prefix: "/settings/statuses", perm: "settings.order_status" },
     { prefix: "/settings", perm: "settings.general" },
+    { prefix: "/admin/blogs", perm: "blog.view" },
+    { prefix: "/admin/blog-categories", perm: "blog_category.view" },
+    { prefix: "/admin/blog-tags", perm: "blog_tag.view" },
+    { prefix: "/admin/blog-comments", perm: "blog_comment.view" },
+    { prefix: "/email-logs", perm: "email_logs.view" },
     { prefix: "/system-health", perm: "system_health.view" },
 ];
 
@@ -56,6 +62,7 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
         });
     };
     const { theme } = useTheme();
+    const { user } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
 
@@ -64,29 +71,18 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
 
     useEffect(() => {
         const verifyPagePermission = () => {
-            setVerifying(true);
-            setAccessDenied(false);
-
             try {
-                const token = localStorage.getItem("admin_token");
-                const auth = localStorage.getItem("isAuthenticated");
+                const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+                const auth = typeof window !== "undefined" ? localStorage.getItem("isAuthenticated") : null;
 
                 if (!token || auth !== "true") {
                     router.replace("/login");
                     return;
                 }
 
-                const userStr = localStorage.getItem("user");
-                let perms: string[] = [];
-                let isSuper = false;
-
-                if (userStr) {
-                    try {
-                        const u = JSON.parse(userStr);
-                        isSuper = (u.role && u.role.toLowerCase() === "super admin");
-                        perms = Array.isArray(u.permissions) ? u.permissions : [];
-                    } catch (e) {}
-                }
+                const isSuper = (user?.role && user.role.toLowerCase() === "super admin") || 
+                                (Array.isArray(user?.permissions) && user.permissions.includes("*"));
+                const perms = Array.isArray(user?.permissions) ? user.permissions : [];
 
                 if (isSuper) {
                     setAccessDenied(false);
@@ -114,7 +110,7 @@ export default function DashboardLayout({ children, title, subtitle, action }: D
         };
 
         verifyPagePermission();
-    }, [pathname, router]);
+    }, [pathname, router, user]);
 
     return (
         <div className="flex h-screen bg-background overflow-hidden relative">

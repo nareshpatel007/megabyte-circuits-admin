@@ -25,6 +25,7 @@ interface AuthContextType {
     logout: () => void;
     updateUser: (updatedData: Partial<User>) => void;
     refreshProfile: () => Promise<void>;
+    refreshPermissions: () => Promise<string[] | null>;
     isLoading: boolean;
 }
 
@@ -61,9 +62,107 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null);
             }
             refreshProfile();
+            refreshPermissions();
         }
         setIsLoading(false);
     }, [router]);
+
+    const refreshPermissions = async (): Promise<string[] | null> => {
+        try {
+            const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+            if (!token) return null;
+
+            const permRes = await fetch("/api/admin/my-permissions", {
+                headers: { Authorization: `Bearer ${token}` },
+                cache: "no-store",
+            });
+
+            if (!permRes.ok) {
+                if (permRes.status === 401) {
+                    logout();
+                }
+                return null;
+            }
+
+            const permData = await permRes.json();
+            if (permData && permData.status && Array.isArray(permData.permissions)) {
+                const freshPermissions: string[] = permData.permissions;
+                const freshRole: string | undefined = permData.role;
+                const isSuper: boolean = !!permData.is_super_admin;
+
+                setUser((prev) => {
+                    if (!prev) return null;
+
+                    const prevPerms = prev.permissions || [];
+                    const prevRole = prev.role;
+                    const targetRole = freshRole || (isSuper ? "Super Admin" : prevRole);
+
+                    const isSameLength = prevPerms.length === freshPermissions.length;
+                    const isSamePerms = isSameLength && prevPerms.every((p, idx) => p === freshPermissions[idx]);
+                    const isSameRole = prevRole === targetRole;
+
+                    if (isSamePerms && isSameRole) {
+                        return prev;
+                    }
+
+                    const updated: User = {
+                        ...prev,
+                        role: targetRole,
+                        permissions: freshPermissions,
+                    };
+                    localStorage.setItem("user", JSON.stringify(updated));
+
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                            new CustomEvent("permissions-updated", {
+                                detail: {
+                                    permissions: freshPermissions,
+                                    role: targetRole,
+                                    isSuperAdmin: isSuper,
+                                },
+                            })
+                        );
+                    }
+
+                    return updated;
+                });
+
+                return freshPermissions;
+            }
+        } catch (e) {
+            console.error("Failed to fetch fresh permissions", e);
+        }
+        return null;
+    };
+
+    // Poll permissions every 10 seconds while logged in
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        // Run once on authentication
+        refreshPermissions();
+
+        // 10-second polling interval
+        const intervalId = setInterval(() => {
+            refreshPermissions();
+        }, 10000);
+
+        // Immediate check when returning to tab
+        const handleVisibilityOrFocus = () => {
+            if (typeof document !== "undefined" && document.visibilityState === "visible") {
+                refreshPermissions();
+            }
+        };
+
+        window.addEventListener("visibilitychange", handleVisibilityOrFocus);
+        window.addEventListener("focus", handleVisibilityOrFocus);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+            window.removeEventListener("focus", handleVisibilityOrFocus);
+        };
+    }, [isAuthenticated]);
 
     const refreshProfile = async () => {
         try {
@@ -236,7 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, updateUser, refreshProfile, isLoading }}>
+        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, updateUser, refreshProfile, refreshPermissions, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
