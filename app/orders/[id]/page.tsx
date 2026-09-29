@@ -580,17 +580,19 @@ export default function OrderDetailPage() {
     const gerberFileName = getMetaValue('gerber_file_name', getMetaValue('gerber_name', getMetaValue('file_name', boardNameVal ? `${boardNameVal}_gerber.zip` : 'Gerber_Files.zip')));
     const layerCount = getMetaValue('layers', getMetaValue('layer', '2'));
 
-    // Color code mapping for PCB Color property
-    const pcbColorName = getMetaValue('pcb_color', getMetaValue('color', 'Green')).toLowerCase();
-    const getPcbHexColor = (colorStr: string) => {
-        if (colorStr.includes("red")) return "#ef4444";
-        if (colorStr.includes("blue")) return "#2563eb";
-        if (colorStr.includes("yellow")) return "#d97706";
-        if (colorStr.includes("white")) return "#475569";
-        if (colorStr.includes("black")) return "#000000";
-        if (colorStr.includes("purple")) return "#9333ea";
-        return "#10b981"; // Default Green
+    // Color code mapping for PCB Color property - matches getPcbColorCode used across orders list and dashboard
+    const getPcbColorCode = (col: string) => {
+        const lower = (col || "").toLowerCase().trim();
+        if (lower.includes("red")) return "#ef4444";
+        if (lower.includes("blue")) return "#3b82f6";
+        if (lower.includes("black")) return "#3f3f46";
+        if (lower.includes("yellow")) return "#d97706";
+        if (lower.includes("white")) return "#0284c7";
+        if (lower.includes("purple")) return "#9333ea";
+        return "#10b981";
     };
+    const pcbColorVal = getMetaValue('pcb_color', getMetaValue('solder_mask', getMetaValue('coverlay_color', getMetaValue('color', 'Green'))));
+    const orderNumColor = getPcbColorCode(pcbColorVal);
     const productTypeVal = getMetaValue('product_type', 'pcb').toLowerCase();
     const isPartProduct = productTypeVal === 'part';
 
@@ -678,7 +680,7 @@ export default function OrderDetailPage() {
                 </div>
             ) : (
                 <div className="flex items-center gap-2">
-                    <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : (isJlcpcbOrder ? "#7c3aed" : "#059669") }}>
+                    <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : orderNumColor }}>
                         Order #{order.order_number}
                     </h1>
                     <button
@@ -688,7 +690,8 @@ export default function OrderDetailPage() {
                             setOrderNumberState(order.order_number || "");
                             setOrderNumberError("");
                         }}
-                        className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer opacity-85 hover:opacity-100 transition-opacity"
+                        style={{ color: isPartProduct ? "#2563eb" : orderNumColor }}
                     >
                         [Edit]
                     </button>
