@@ -24,7 +24,8 @@ import {
     RotateCcw,
     ShieldCheck,
     Search,
-    ChevronsUpDown
+    ChevronsUpDown,
+    Calculator
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -376,9 +377,38 @@ export default function CreateOrderPage() {
     const [orderValue, setOrderValue] = useState<string>("2500");
     const [deliveryDate, setDeliveryDate] = useState<string>("");
 
-    // Manual Payment
+    // Manual Payment & Pricing Method
     const [paymentCompleted, setPaymentCompleted] = useState<boolean>(false);
-    const [paymentMethod, setPaymentMethod] = useState<string>("Cash / Admin Manual");
+    const [paymentMethod, setPaymentMethod] = useState<string>("Manual Payment");
+    const [pricingMethod, setPricingMethod] = useState<"auto" | "pcb_rate" | "price_per_sqm">("auto");
+    const [pcbRate, setPcbRate] = useState<string>("100");
+    const [pricePerSqm, setPricePerSqm] = useState<string>("5000");
+    const [gstOptionsList, setGstOptionsList] = useState<number[]>([0, 5, 12, 18, 20]);
+    const [gstRate, setGstRate] = useState<number>(18);
+    const [paymentReference, setPaymentReference] = useState<string>("");
+    const [paymentDate, setPaymentDate] = useState<string>("");
+    const [paymentNotes, setPaymentNotes] = useState<string>("");
+
+    useEffect(() => {
+        const fetchGstSettings = async () => {
+            try {
+                const token = localStorage.getItem("admin_token");
+                const res = await fetch("/api/admin/gst-settings", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const json = await res.json();
+                if (json.success && json.data) {
+                    if (Array.isArray(json.data.rates)) setGstOptionsList(json.data.rates);
+                    if (json.data.active_rate) setGstRate(Number(json.data.active_rate));
+                }
+            } catch (err) {
+                console.error("Failed to load GST settings:", err);
+            }
+        };
+        fetchGstSettings();
+        const d = new Date();
+        setPaymentDate(d.toISOString().split("T")[0]);
+    }, []);
 
     // Client Search & Combobox State
     const [clientComboboxOpen, setClientComboboxOpen] = useState(false);
@@ -875,16 +905,47 @@ export default function CreateOrderPage() {
             if (pcbRemark) formData.append("pcb_remark", pcbRemark);
             formData.append("lead_time_days", selectedDay.toString());
 
-            // Financials
-            formData.append("unit_price", unitPrice);
-            formData.append("order_value", orderValue);
+            // Financials & Pricing Calculation
+            const unitMult = dimensionUnit === "inches" ? 25.4 : 1;
+            const lengthMm = (parseFloat(boardWidth) || 100) * unitMult;
+            const widthMm = (parseFloat(boardLength) || 100) * unitMult;
+            const qtyPcs = Math.max(1, parseInt(quantity, 10) || 1);
+            const areaPerBoardSqm = (lengthMm * widthMm) / 1000000;
+            const totalAreaSqm = areaPerBoardSqm * qtyPcs;
+
+            let calculatedSubtotal = 0;
+            if (pricingMethod === "pcb_rate") {
+                calculatedSubtotal = (parseFloat(pcbRate) || 0) * qtyPcs;
+            } else if (pricingMethod === "price_per_sqm") {
+                calculatedSubtotal = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
+            } else {
+                calculatedSubtotal = parseFloat(orderValue) || 0;
+            }
+
+            const calculatedGst = calculatedSubtotal * (gstRate / 100);
+            const finalOrderTotal = calculatedSubtotal + calculatedGst;
+            const computedUnitPrice = qtyPcs > 0 ? (calculatedSubtotal / qtyPcs) : 0;
+
+            formData.append("pricing_method", pricingMethod);
+            formData.append("pcb_rate", pcbRate);
+            formData.append("price_per_sqm", pricePerSqm);
+            formData.append("gst_rate", gstRate.toString());
+            formData.append("subtotal", calculatedSubtotal.toFixed(2));
+            formData.append("gst_amount", calculatedGst.toFixed(2));
+            formData.append("unit_price", computedUnitPrice.toFixed(2));
+            formData.append("order_value", finalOrderTotal.toFixed(2));
+
             if (deliveryDate) {
                 formData.append("delivery_date", deliveryDate);
             }
 
             // Payment
-            formData.append("payment_status", paymentCompleted ? "completed" : "pending");
+            const isManualPay = paymentCompleted || paymentMethod === "Manual Payment" || paymentMethod.includes("Manual");
+            formData.append("payment_status", isManualPay ? "completed" : "pending");
             formData.append("payment_method", paymentMethod);
+            if (paymentReference) formData.append("payment_reference", paymentReference);
+            if (paymentDate) formData.append("payment_date", paymentDate);
+            if (paymentNotes) formData.append("payment_notes", paymentNotes);
 
             // Gerber File (Upload new file or select existing client file)
             if (gerberMode === "select" && selectedGerberFileId) {
@@ -2131,34 +2192,214 @@ export default function CreateOrderPage() {
                             })()}
                         </div>
 
+                        {/* Pricing Method & Calculation Controls */}
+                        {(() => {
+                            const unitMult = dimensionUnit === "inches" ? 25.4 : 1;
+                            const lengthMm = (parseFloat(boardWidth) || 100) * unitMult;
+                            const widthMm = (parseFloat(boardLength) || 100) * unitMult;
+                            const qtyPcs = Math.max(1, parseInt(quantity, 10) || 1);
+                            const areaPerBoardSqm = (lengthMm * widthMm) / 1000000;
+                            const totalAreaSqm = areaPerBoardSqm * qtyPcs;
+
+                            let subtotalCalc = 0;
+                            if (pricingMethod === "pcb_rate") {
+                                subtotalCalc = (parseFloat(pcbRate) || 0) * qtyPcs;
+                            } else if (pricingMethod === "price_per_sqm") {
+                                subtotalCalc = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
+                            } else {
+                                subtotalCalc = parseFloat(orderValue) || 0;
+                            }
+
+                            const gstAmt = subtotalCalc * (gstRate / 100);
+                            const totalAmt = subtotalCalc + gstAmt;
+
+                            return (
+                                <div className="space-y-4 pt-3 border-t border-border/60">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/20 border border-border/80 p-4 rounded-xl">
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Pricing Method</label>
+                                            <div className="flex gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPricingMethod("auto")}
+                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                        pricingMethod === "auto"
+                                                            ? "bg-emerald-500 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:bg-muted"
+                                                    }`}
+                                                >
+                                                    Auto
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPricingMethod("pcb_rate")}
+                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                        pricingMethod === "pcb_rate"
+                                                            ? "bg-emerald-500 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:bg-muted"
+                                                    }`}
+                                                >
+                                                    PCB Rate
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPricingMethod("price_per_sqm")}
+                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                        pricingMethod === "price_per_sqm"
+                                                            ? "bg-emerald-500 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:bg-muted"
+                                                    }`}
+                                                >
+                                                    SQM
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {pricingMethod === "pcb_rate" && (
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground block mb-1">PCB Rate (₹ / pc)</label>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={pcbRate}
+                                                    onChange={(e) => setPcbRate(e.target.value)}
+                                                    className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-mono font-bold text-foreground"
+                                                    placeholder="Rate per board"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {pricingMethod === "price_per_sqm" && (
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground block mb-1">Price per SQM (₹ / m²)</label>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={pricePerSqm}
+                                                    onChange={(e) => setPricePerSqm(e.target.value)}
+                                                    className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-mono font-bold text-foreground"
+                                                    placeholder="Rate per SQM"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground block mb-1">GST Rate</label>
+                                            <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
+                                                <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-bold text-foreground">
+                                                    <SelectValue placeholder="Select GST" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {gstOptionsList.map((rate) => (
+                                                        <SelectItem key={rate} value={rate.toString()}>
+                                                            {rate}% GST
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    {/* Pricing Summary Card */}
+                                    <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl space-y-2 text-xs">
+                                        <div className="font-bold text-foreground text-xs border-b border-emerald-500/20 pb-1.5 flex justify-between items-center">
+                                            <span className="flex items-center gap-1.5">
+                                                <Calculator className="w-4 h-4 text-emerald-500" />
+                                                Financial Summary & Price Breakdown
+                                            </span>
+                                            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 capitalize">
+                                                Pricing Mode: {pricingMethod === "pcb_rate" ? "PCB Rate" : pricingMethod === "price_per_sqm" ? "Price per SQM" : "Automatic Lead-Time Matrix"}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                                            <div className="flex justify-between items-center p-2.5 bg-card/60 rounded-lg border border-border/60">
+                                                <span className="text-muted-foreground font-semibold">Subtotal (Base PCB):</span>
+                                                <span className="font-mono font-bold text-foreground">₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center p-2.5 bg-card/60 rounded-lg border border-border/60">
+                                                <span className="text-muted-foreground font-semibold">GST ({gstRate}%):</span>
+                                                <span className="font-mono font-bold text-foreground">₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                                                <span className="font-black text-foreground">Final Order Total:</span>
+                                                <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                                    ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         {/* Manual Payment Section */}
-                        <div className="pt-2 border-t border-border/60 space-y-3">
+                        <div className="pt-3 border-t border-border/60 space-y-3">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
                                     checked={paymentCompleted}
-                                    onChange={(e) => setPaymentCompleted(e.target.checked)}
+                                    onChange={(e) => {
+                                        setPaymentCompleted(e.target.checked);
+                                        if (e.target.checked) setPaymentMethod("Manual Payment");
+                                    }}
                                     className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 border-border/80 bg-muted/30 cursor-pointer"
                                 />
                                 <span className="text-xs font-bold text-foreground">Mark Payment Completed Manually</span>
                             </label>
 
-                            {paymentCompleted && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/20 border border-border/80 p-4 rounded-xl">
+                            {(paymentCompleted || paymentMethod === "Manual Payment") && (
+                                <div className="space-y-3 bg-muted/20 border border-border/80 p-4 rounded-xl">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Method</label>
+                                            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                                <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground">
+                                                    <SelectValue placeholder="Select Payment Method" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Manual Payment">Manual Payment (Admin Record)</SelectItem>
+                                                    <SelectItem value="Bank Transfer / NEFT">Bank Transfer / NEFT / RTGS</SelectItem>
+                                                    <SelectItem value="Cash / Admin Manual">Cash / Admin Manual</SelectItem>
+                                                    <SelectItem value="UPI / QR">UPI / QR Code</SelectItem>
+                                                    <SelectItem value="Razorpay Online">Razorpay Online</SelectItem>
+                                                    <SelectItem value="Credit / Debit Card">Credit / Debit Card</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Reference / Txn ID</label>
+                                            <Input
+                                                type="text"
+                                                value={paymentReference}
+                                                onChange={(e) => setPaymentReference(e.target.value)}
+                                                className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-mono font-semibold text-foreground"
+                                                placeholder="Auto-generated if empty"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Date</label>
+                                            <Input
+                                                type="date"
+                                                value={paymentDate}
+                                                onChange={(e) => setPaymentDate(e.target.value)}
+                                                className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground"
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div>
-                                        <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Method</label>
-                                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                                            <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground">
-                                                <SelectValue placeholder="Select Payment Method" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Bank Transfer / NEFT">Bank Transfer / NEFT / RTGS</SelectItem>
-                                                <SelectItem value="Cash / Admin Manual">Cash / Admin Manual</SelectItem>
-                                                <SelectItem value="UPI / QR">UPI / QR Code</SelectItem>
-                                                <SelectItem value="Razorpay Online">Razorpay Online</SelectItem>
-                                                <SelectItem value="Credit / Debit Card">Credit / Debit Card</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Notes / Remarks</label>
+                                        <Input
+                                            type="text"
+                                            value={paymentNotes}
+                                            onChange={(e) => setPaymentNotes(e.target.value)}
+                                            className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground"
+                                            placeholder="Optional notes regarding manual payment transaction..."
+                                        />
                                     </div>
                                 </div>
                             )}

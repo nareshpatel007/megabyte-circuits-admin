@@ -17,6 +17,7 @@ import {
     Phone,
     Building,
     UserPlus,
+    Plus,
     Pencil,
     Trash2,
     RefreshCw,
@@ -269,34 +270,29 @@ function ClientsContent() {
         <div className="flex items-center gap-2">
             <Link
                 href="/clients/merge"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 transition-all shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 transition-all shadow-xs cursor-pointer whitespace-nowrap"
             >
                 <GitMerge className="w-4 h-4" />
                 Merge Clients
             </Link>
             <Link
                 href="/clients/new"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-black transition-all shadow-xs cursor-pointer whitespace-nowrap"
             >
-                <UserPlus className="w-4 h-4" />
-                Add New Client
+                <Plus className="w-4 h-4" />
+                Create New Client
             </Link>
         </div>
     );
 
     return (
-        <DashboardLayout headerActions={headerActions}>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Client Management</h1>
-                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                        Manage registered client accounts, order limits, credit balances and permissions.
-                    </p>
-                </div>
-            </div>
-
+        <DashboardLayout
+            title="Client Management"
+            subtitle="Manage registered client accounts, order limits, credit balances and permissions."
+            action={headerActions}
+        >
             {loading ? (
-                <TableSkeleton rows={8} cols={6} />
+                <TableSkeleton rows={8} />
             ) : (
                 <div className="space-y-6">
                     {/* Metrics Cards */}
@@ -686,8 +682,11 @@ function ClientsContent() {
 export default function ClientsPage() {
     return (
         <Suspense fallback={
-            <DashboardLayout>
-                <TableSkeleton rows={8} cols={6} />
+            <DashboardLayout
+                title="Client Management"
+                subtitle="Manage registered client accounts, order limits, credit balances and permissions."
+            >
+                <TableSkeleton rows={8} />
             </DashboardLayout>
         }>
             <ClientsContent />

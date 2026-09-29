@@ -33,7 +33,28 @@ const PAGE_PERMISSIONS: { prefix: string; perm: string }[] = [
 
 export default function DashboardLayout({ children, title, subtitle, action }: DashboardLayoutProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsedState] = useState<boolean>(() => {
+        if (typeof window !== "undefined") {
+            try {
+                return localStorage.getItem("admin_sidebar_collapsed") === "true";
+            } catch (e) {
+                return false;
+            }
+        }
+        return false;
+    });
+
+    const setCollapsed = (val: boolean | ((prev: boolean) => boolean)) => {
+        setCollapsedState((prev) => {
+            const next = typeof val === "function" ? val(prev) : val;
+            try {
+                localStorage.setItem("admin_sidebar_collapsed", String(next));
+            } catch (e) {
+                console.error("Failed to save sidebar state to localStorage", e);
+            }
+            return next;
+        });
+    };
     const { theme } = useTheme();
     const pathname = usePathname();
     const router = useRouter();
