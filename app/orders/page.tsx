@@ -115,7 +115,7 @@ function OrdersContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const ALLOWED_PER_PAGE = [10, 20, 50, 100, 250, 500, 1000];
+    const ALLOWED_PER_PAGE = [10, 20, 50, 100];
 
     // Helper to update URL query parameters without losing existing unrelated params
     const updateUrlParams = (newParamsObj: Record<string, string | number | null | undefined>, replace = true) => {
@@ -1641,17 +1641,17 @@ function OrdersContent() {
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
         setStatusModalOrder(order);
         setModalOrderNumber(order.order_number ? String(order.order_number) : "");
-        const gerberFileName = (order as any).gerber_file?.original_name 
-            || (order as any).gerber_file?.file_name 
+        const gerberFileName = (order as any).gerber_file?.original_name
+            || (order as any).gerber_file?.file_name
             || (order as any).gerber_name
             || (order as any).gerber_file_name
             || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['gerber_file_name', 'gerber_name'].includes(m.meta_key?.toLowerCase()))?.meta_value : null);
 
         const defaultPn = (order.pn_number && String(order.pn_number).trim() !== "")
             ? String(order.pn_number).trim()
-            : (gerberFileName 
+            : (gerberFileName
                 || (Array.isArray(order.metas) ? order.metas.find((m: any) => ['p_n', 'part_number', 'board_name'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
-                || order.board_name 
+                || order.board_name
                 || "");
         setModalPnNumber(defaultPn);
         setModalOrderNumberError("");
@@ -2720,9 +2720,6 @@ function OrdersContent() {
                                         <option value={20}>20</option>
                                         <option value={50}>50</option>
                                         <option value={100}>100</option>
-                                        <option value={250}>250</option>
-                                        <option value={500}>500</option>
-                                        <option value={1000}>1000</option>
                                     </select>
                                 </div>
                             </div>
@@ -2765,8 +2762,8 @@ function OrdersContent() {
                 {statusModalOrder && (() => {
                     const modalPcbColorVal = getMetaValue(statusModalOrder, 'pcb_color', getMetaValue(statusModalOrder, 'solder_mask', 'Green'));
                     const modalPcbColor = getPcbColorCode(modalPcbColorVal);
-                    const modalGerberFileName = (statusModalOrder as any)?.gerber_file?.original_name 
-                        || (statusModalOrder as any)?.gerber_file?.file_name 
+                    const modalGerberFileName = (statusModalOrder as any)?.gerber_file?.original_name
+                        || (statusModalOrder as any)?.gerber_file?.file_name
                         || (statusModalOrder as any)?.gerber_name
                         || (statusModalOrder as any)?.gerber_file_name
                         || (Array.isArray(statusModalOrder.metas) ? statusModalOrder.metas.find((m: any) => ['gerber_file_name', 'gerber_name'].includes(m.meta_key?.toLowerCase()))?.meta_value : null);
@@ -2795,7 +2792,7 @@ function OrdersContent() {
                                                 Update Order
                                             </DialogTitle>
                                             <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
-                                                Order #{statusModalOrder.order_number} {modalGerberFileName ? `• Gerber: ${modalGerberFileName}` : ''}
+                                                Order #{statusModalOrder.order_number}
                                             </DialogDescription>
                                         </div>
                                     </div>
@@ -2846,16 +2843,6 @@ function OrdersContent() {
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
                                             <span>P/N Number</span>
-                                            {modalGerberFileName && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setModalPnNumber(modalGerberFileName)}
-                                                    title={`Use Gerber name: ${modalGerberFileName}`}
-                                                    className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold underline truncate max-w-[150px] cursor-pointer"
-                                                >
-                                                    {modalPnNumber === modalGerberFileName ? "✓ From Gerber" : `Fill Gerber: ${modalGerberFileName}`}
-                                                </button>
-                                            )}
                                         </label>
                                         <Input
                                             type="text"
