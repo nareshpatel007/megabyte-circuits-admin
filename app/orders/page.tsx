@@ -4307,7 +4307,7 @@ function OrdersContent() {
 
             {/* Reorder Confirmation & Customization Dialog */}
             <Dialog open={!!reorderModalOrder} onOpenChange={(open) => !open && setReorderModalOrder(null)}>
-                <DialogContent className="max-w-lg rounded-2xl p-6 shadow-2xl bg-card text-foreground border border-border/80">
+                <DialogContent className="max-w-4xl sm:max-w-4xl w-[92vw] rounded-2xl p-6 shadow-2xl bg-card text-foreground border border-border/80">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
                             <Copy className="w-5 h-5 text-blue-600" />
@@ -4354,229 +4354,235 @@ function OrdersContent() {
 
                         return (
                             <form onSubmit={handleReorderSubmit} className="space-y-4 py-2">
-                                <div className="max-h-[65vh] overflow-y-auto pr-1 space-y-4">
-                                    <div className="bg-muted/40 p-3.5 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-muted-foreground font-semibold">Original Order #:</span>
-                                            <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-muted-foreground font-semibold">Customer:</span>
-                                            <span className="font-bold text-foreground">{custName}</span>
-                                        </div>
-                                        {reorderModalOrder.board_name && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[75vh] overflow-y-auto pr-1">
+                                    {/* Left Column: Order Specifications & Pricing Inputs */}
+                                    <div className="space-y-4">
+                                        <div className="bg-muted/40 p-4 rounded-xl border border-border/60 space-y-2 text-xs font-medium">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-muted-foreground font-semibold">Board Name:</span>
-                                                <span className="font-bold text-foreground truncate max-w-[200px]">{reorderModalOrder.board_name}</span>
+                                                <span className="text-muted-foreground font-semibold">Original Order #:</span>
+                                                <span className="font-mono font-bold text-foreground">#{reorderModalOrder.order_number}</span>
                                             </div>
-                                        )}
-                                        <div className="flex justify-between items-center pt-1 border-t border-border/40 text-[11px]">
-                                            <span className="text-muted-foreground">Dimensions:</span>
-                                            <span className="font-mono font-semibold">{dimLen} x {dimWid} mm ({areaPerBoardSqm.toFixed(4)} m²/board)</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-xs font-bold text-foreground block mb-1">
-                                                Order Quantity (Pcs) <span className="text-red-500">*</span>
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                min="1"
-                                                value={reorderQty}
-                                                onChange={(e) => setReorderQty(Math.max(1, parseInt(e.target.value) || 0))}
-                                                className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-2 focus:ring-blue-500/20"
-                                                placeholder="Quantity..."
-                                                required
-                                            />
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-muted-foreground font-semibold">Customer:</span>
+                                                <span className="font-bold text-foreground">{custName}</span>
+                                            </div>
+                                            {reorderModalOrder.board_name && (
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-muted-foreground font-semibold">Board Name:</span>
+                                                    <span className="font-bold text-foreground truncate max-w-[220px]">{reorderModalOrder.board_name}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between items-center pt-1 border-t border-border/40 text-[11px]">
+                                                <span className="text-muted-foreground">Dimensions:</span>
+                                                <span className="font-mono font-semibold">{dimLen} x {dimWid} mm ({areaPerBoardSqm.toFixed(4)} m²/board)</span>
+                                            </div>
                                         </div>
 
-                                        <div>
-                                            <label className="text-xs font-bold text-foreground block mb-1">
-                                                Delivery Date Option
-                                            </label>
-                                            <Input
-                                                type="date"
-                                                value={reorderDeliveryDate}
-                                                onChange={(e) => setReorderDeliveryDate(e.target.value)}
-                                                className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-2 focus:ring-blue-500/20"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Pricing Options */}
-                                    <div className="p-3.5 bg-background border border-border rounded-xl space-y-3">
-                                        <label className="text-xs font-bold text-foreground block">
-                                            Pricing Method
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setReorderPricingMethod('pcb_rate')}
-                                                className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                                                    reorderPricingMethod === 'pcb_rate'
-                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                        : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
-                                                }`}
-                                            >
-                                                PCB Rate
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setReorderPricingMethod('price_per_sqm')}
-                                                className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                                                    reorderPricingMethod === 'price_per_sqm'
-                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                        : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
-                                                }`}
-                                            >
-                                                Price per SQM
-                                            </button>
-                                        </div>
-
-                                        {reorderPricingMethod === 'pcb_rate' ? (
-                                            <div className="space-y-1 pt-1">
-                                                <label className="text-xs font-semibold text-muted-foreground block">
-                                                    PCB Rate (₹ per piece)
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-xs font-bold text-foreground block mb-1">
+                                                    Order Quantity (Pcs) <span className="text-red-500">*</span>
                                                 </label>
                                                 <Input
                                                     type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={reorderPcbRate}
-                                                    onChange={(e) => setReorderPcbRate(e.target.value)}
-                                                    className="w-full h-9 text-xs font-mono font-bold rounded-xl border border-input bg-background"
-                                                    placeholder="e.g. 100"
+                                                    min="1"
+                                                    value={reorderQty}
+                                                    onChange={(e) => setReorderQty(Math.max(1, parseInt(e.target.value) || 0))}
+                                                    className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-2 focus:ring-blue-500/20"
+                                                    placeholder="Quantity..."
+                                                    required
                                                 />
-                                                <p className="text-[10px] text-muted-foreground pt-0.5">
-                                                    PCB Amount = ₹{parseFloat(reorderPcbRate) || 0} × {reorderQty.toLocaleString()} Pcs = ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </p>
                                             </div>
-                                        ) : (
-                                            <div className="space-y-1 pt-1">
-                                                <label className="text-xs font-semibold text-muted-foreground block">
-                                                    Price per SQM (₹ per m²)
+
+                                            <div>
+                                                <label className="text-xs font-bold text-foreground block mb-1">
+                                                    Delivery Date Option
                                                 </label>
                                                 <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={reorderPricePerSqm}
-                                                    onChange={(e) => setReorderPricePerSqm(e.target.value)}
-                                                    className="w-full h-9 text-xs font-mono font-bold rounded-xl border border-input bg-background"
-                                                    placeholder="e.g. 5000"
+                                                    type="date"
+                                                    value={reorderDeliveryDate}
+                                                    onChange={(e) => setReorderDeliveryDate(e.target.value)}
+                                                    className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-2 focus:ring-blue-500/20"
                                                 />
-                                                <p className="text-[10px] text-muted-foreground pt-0.5">
-                                                    Total Area = {totalAreaSqm.toFixed(4)} m² ({dimLen}×{dimWid}mm × {reorderQty} Pcs)
-                                                </p>
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
 
-                                    {/* GST Selection */}
-                                    <div className="p-3.5 bg-background border border-border rounded-xl space-y-2">
-                                        <div className="flex justify-between items-center">
+                                        {/* Pricing Options */}
+                                        <div className="p-3.5 bg-background border border-border rounded-xl space-y-3">
                                             <label className="text-xs font-bold text-foreground block">
-                                                GST Rate
+                                                Pricing Method
                                             </label>
-                                            <span className="text-[10px] text-muted-foreground font-semibold">Configured in DB</span>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReorderPricingMethod('pcb_rate')}
+                                                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                                        reorderPricingMethod === 'pcb_rate'
+                                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                            : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    PCB Rate
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReorderPricingMethod('price_per_sqm')}
+                                                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                                        reorderPricingMethod === 'price_per_sqm'
+                                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                            : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    Price per SQM
+                                                </button>
+                                            </div>
+
+                                            {reorderPricingMethod === 'pcb_rate' ? (
+                                                <div className="space-y-1 pt-1">
+                                                    <label className="text-xs font-semibold text-muted-foreground block">
+                                                        PCB Rate (₹ per piece)
+                                                    </label>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={reorderPcbRate}
+                                                        onChange={(e) => setReorderPcbRate(e.target.value)}
+                                                        className="w-full h-9 text-xs font-mono font-bold rounded-xl border border-input bg-background"
+                                                        placeholder="e.g. 100"
+                                                    />
+                                                    <p className="text-[10px] text-muted-foreground pt-0.5">
+                                                        PCB Amount = ₹{parseFloat(reorderPcbRate) || 0} × {reorderQty.toLocaleString()} Pcs = ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1 pt-1">
+                                                    <label className="text-xs font-semibold text-muted-foreground block">
+                                                        Price per SQM (₹ per m²)
+                                                    </label>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={reorderPricePerSqm}
+                                                        onChange={(e) => setReorderPricePerSqm(e.target.value)}
+                                                        className="w-full h-9 text-xs font-mono font-bold rounded-xl border border-input bg-background"
+                                                        placeholder="e.g. 5000"
+                                                    />
+                                                    <p className="text-[10px] text-muted-foreground pt-0.5">
+                                                        Total Area = {totalAreaSqm.toFixed(4)} m² ({dimLen}×{dimWid}mm × {reorderQty} Pcs)
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
-                                        <select
-                                            value={reorderGstRate}
-                                            onChange={(e) => setReorderGstRate(Number(e.target.value))}
-                                            className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground px-3 shadow-xs focus:ring-2 focus:ring-blue-500/20"
-                                        >
-                                            {gstOptionsList.map((rate) => (
-                                                <option key={rate} value={rate}>
-                                                    {rate}% GST
-                                                </option>
-                                            ))}
-                                        </select>
+
+                                        {/* GST Selection */}
+                                        <div className="p-3.5 bg-background border border-border rounded-xl space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-bold text-foreground block">
+                                                    GST Rate
+                                                </label>
+                                                <span className="text-[10px] text-muted-foreground font-semibold">Configured in DB</span>
+                                            </div>
+                                            <select
+                                                value={reorderGstRate}
+                                                onChange={(e) => setReorderGstRate(Number(e.target.value))}
+                                                className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground px-3 shadow-xs focus:ring-2 focus:ring-blue-500/20"
+                                            >
+                                                {gstOptionsList.map((rate) => (
+                                                    <option key={rate} value={rate}>
+                                                        {rate}% GST
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    {/* Pricing Summary Card */}
-                                    <div className="p-3.5 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-1.5 text-xs">
-                                        <div className="font-bold text-foreground text-xs border-b border-border/40 pb-1.5 flex justify-between items-center">
-                                            <span>Pricing Summary</span>
-                                            <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 capitalize">
-                                                Mode: {reorderPricingMethod === 'pcb_rate' ? 'PCB Rate' : 'Price per SQM'}
-                                            </span>
+                                    {/* Right Column: Pricing Summary & Payment Configuration */}
+                                    <div className="space-y-4">
+                                        {/* Pricing Summary Card */}
+                                        <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-2.5 text-xs">
+                                            <div className="font-bold text-foreground text-xs border-b border-border/40 pb-2 flex justify-between items-center">
+                                                <span className="text-sm font-black text-foreground">Pricing Summary</span>
+                                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 capitalize px-2 py-0.5 rounded-md bg-blue-500/10">
+                                                    Mode: {reorderPricingMethod === 'pcb_rate' ? 'PCB Rate' : 'Price per SQM'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-muted-foreground pt-1">
+                                                <span>Subtotal (Base PCB Amount):</span>
+                                                <span className="font-mono font-bold text-foreground text-xs">₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-muted-foreground">
+                                                <span>GST ({reorderGstRate}%):</span>
+                                                <span className="font-mono font-bold text-foreground text-xs">₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-blue-500/20 text-base">
+                                                <span className="font-black text-foreground">Total Amount:</span>
+                                                <span className="font-mono font-black text-blue-600 dark:text-blue-400 text-lg">
+                                                    ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between items-center text-muted-foreground">
-                                            <span>Subtotal (Base PCB Amount):</span>
-                                            <span className="font-mono font-bold text-foreground">₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-muted-foreground">
-                                            <span>GST ({reorderGstRate}%):</span>
-                                            <span className="font-mono font-bold text-foreground">₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-1 border-t border-blue-500/20 text-sm">
-                                            <span className="font-black text-foreground">Total Amount:</span>
-                                            <span className="font-mono font-black text-blue-600 dark:text-blue-400">
-                                                ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
-                                    </div>
 
-                                    {/* Payment Section */}
-                                    <div className="p-3.5 bg-background border border-border rounded-xl space-y-3">
-                                        <label className="text-xs font-bold text-foreground block">
-                                            Payment Method
-                                        </label>
-                                        <select
-                                            value={reorderPaymentMethod}
-                                            onChange={(e) => setReorderPaymentMethod(e.target.value)}
-                                            className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground px-3 shadow-xs focus:ring-2 focus:ring-blue-500/20"
-                                        >
-                                            <option value="Manual Payment">Manual Payment (Admin Record)</option>
-                                            <option value="Online">Online / Deferred Payment</option>
-                                        </select>
+                                        {/* Payment Section */}
+                                        <div className="p-4 bg-background border border-border rounded-xl space-y-3">
+                                            <label className="text-xs font-bold text-foreground block">
+                                                Payment Method
+                                            </label>
+                                            <select
+                                                value={reorderPaymentMethod}
+                                                onChange={(e) => setReorderPaymentMethod(e.target.value)}
+                                                className="w-full h-9 text-xs font-bold rounded-xl border border-input bg-background text-foreground px-3 shadow-xs focus:ring-2 focus:ring-blue-500/20"
+                                            >
+                                                <option value="Manual Payment">Manual Payment (Admin Record)</option>
+                                                <option value="Online">Online / Deferred Payment</option>
+                                            </select>
 
-                                        {reorderPaymentMethod === 'Manual Payment' && (
-                                            <div className="space-y-2.5 pt-1 border-t border-border/40">
-                                                <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                                                    Manual Payment Record Details
-                                                </p>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {reorderPaymentMethod === 'Manual Payment' && (
+                                                <div className="space-y-3 pt-2 border-t border-border/40">
+                                                    <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                                                        Manual Payment Record Details
+                                                    </p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                        <div>
+                                                            <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                                                Payment Reference / Txn ID
+                                                            </label>
+                                                            <Input
+                                                                type="text"
+                                                                value={reorderPaymentRef}
+                                                                onChange={(e) => setReorderPaymentRef(e.target.value)}
+                                                                className="w-full h-9 text-xs font-mono rounded-lg border border-input bg-background"
+                                                                placeholder="Auto-generated if empty..."
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                                                Payment Date
+                                                            </label>
+                                                            <Input
+                                                                type="date"
+                                                                value={reorderPaymentDate}
+                                                                onChange={(e) => setReorderPaymentDate(e.target.value)}
+                                                                className="w-full h-9 text-xs rounded-lg border border-input bg-background"
+                                                            />
+                                                        </div>
+                                                    </div>
                                                     <div>
-                                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
-                                                            Payment Reference / Txn ID
+                                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                                            Payment Notes / Remarks
                                                         </label>
                                                         <Input
                                                             type="text"
-                                                            value={reorderPaymentRef}
-                                                            onChange={(e) => setReorderPaymentRef(e.target.value)}
-                                                            className="w-full h-8 text-xs font-mono rounded-lg border border-input bg-background"
-                                                            placeholder="Auto-generated if empty..."
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
-                                                            Payment Date
-                                                        </label>
-                                                        <Input
-                                                            type="date"
-                                                            value={reorderPaymentDate}
-                                                            onChange={(e) => setReorderPaymentDate(e.target.value)}
-                                                            className="w-full h-8 text-xs rounded-lg border border-input bg-background"
+                                                            value={reorderPaymentNotes}
+                                                            onChange={(e) => setReorderPaymentNotes(e.target.value)}
+                                                            className="w-full h-9 text-xs rounded-lg border border-input bg-background"
+                                                            placeholder="e.g. Received via NEFT / Cash"
                                                         />
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
-                                                        Payment Notes / Remarks
-                                                    </label>
-                                                    <Input
-                                                        type="text"
-                                                        value={reorderPaymentNotes}
-                                                        onChange={(e) => setReorderPaymentNotes(e.target.value)}
-                                                        className="w-full h-8 text-xs rounded-lg border border-input bg-background"
-                                                        placeholder="e.g. Received via NEFT / Cash"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
