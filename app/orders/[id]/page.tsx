@@ -493,6 +493,16 @@ export default function OrderDetailPage() {
     const parseDeliveryDateToYYYYMMDD = (dateStr: string | null | undefined): string => {
         if (!dateStr || dateStr === 'N/A') return '';
         const str = String(dateStr).trim();
+        // If it contains time or UTC marker (e.g. 2026-10-09T18:30:00.000000Z), parse with Date to convert to local date
+        if (str.includes('T') || str.includes('Z')) {
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+        }
         const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (match) return `${match[1]}-${match[2]}-${match[3]}`;
         const d = new Date(str);
@@ -506,15 +516,20 @@ export default function OrderDetailPage() {
     const formatDeliveryDateDisplay = (dateStr?: string | null) => {
         if (!dateStr || dateStr === 'N/A') return 'N/A';
         try {
-            const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            const str = String(dateStr).trim();
             let d: Date;
-            if (match) {
-                const year = parseInt(match[1], 10);
-                const month = parseInt(match[2], 10) - 1;
-                const day = parseInt(match[3], 10);
-                d = new Date(year, month, day);
+            if (str.includes('T') || str.includes('Z')) {
+                d = new Date(str);
             } else {
-                d = new Date(dateStr);
+                const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (match) {
+                    const year = parseInt(match[1], 10);
+                    const month = parseInt(match[2], 10) - 1;
+                    const day = parseInt(match[3], 10);
+                    d = new Date(year, month, day);
+                } else {
+                    d = new Date(str);
+                }
             }
             if (isNaN(d.getTime())) return dateStr;
             return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -538,7 +553,18 @@ export default function OrderDetailPage() {
             }
         }
         try {
-            const d = new Date(dateString);
+            const str = String(dateString).trim();
+            let d: Date;
+            if (str.includes('T') || str.includes('Z')) {
+                d = new Date(str);
+            } else {
+                const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (match) {
+                    d = new Date(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10));
+                } else {
+                    d = new Date(str);
+                }
+            }
             if (isNaN(d.getTime())) return false;
             const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
             const now = new Date();
