@@ -63,6 +63,19 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 // Populate seen IDs on first fetch so we don't alert on existing items
                 if (seenIdsRef.current.size === 0) {
                     data.data.forEach((n: AdminNotificationItem) => seenIdsRef.current.add(n.id));
+                } else {
+                    // Show notification for newly received unread items
+                    data.data.forEach((n: AdminNotificationItem) => {
+                        if (!seenIdsRef.current.has(n.id) && !n.is_read) {
+                            seenIdsRef.current.add(n.id);
+                            toast.info(n.title, { description: n.message });
+                            showBrowserNotification({
+                                title: n.title,
+                                message: n.message,
+                                action_url: n.action_url
+                            });
+                        }
+                    });
                 }
             }
         } catch (e) {
@@ -95,6 +108,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
     };
 
     useEffect(() => {
+        // Request browser notification permission if not yet decided
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission().catch(() => {});
+        }
+
         fetchNotifications();
 
         // Real-time EventSource Stream for Admin Notifications
