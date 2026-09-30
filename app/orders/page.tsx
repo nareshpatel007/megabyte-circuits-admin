@@ -2245,6 +2245,9 @@ function OrdersContent() {
                                                     </span>
                                                 </div>
                                             </th>
+											<th className="py-2 px-3.5 whitespace-nowrap">
+												Q No.
+											</th>
                                             <th
                                                 onClick={() => handleSort('order_number')}
                                                 className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
@@ -2338,7 +2341,7 @@ function OrdersContent() {
                                     <tbody className="divide-y divide-border/40">
                                         {paginated.length === 0 ? (
                                             <tr>
-                                                <td colSpan={10} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
+                                                <td colSpan={11} className="px-5 py-16 text-center text-muted-foreground text-sm font-medium">
                                                     No orders matched your search or status filter.
                                                 </td>
                                             </tr>
@@ -2394,6 +2397,12 @@ function OrdersContent() {
                                                                 {order.status}
                                                             </span>
                                                         </td>
+														{/* Q No. */}
+														<td className="py-1.5 px-3.5 whitespace-nowrap">
+															<span className="font-mono text-xs font-bold">
+																{order.q_number || "—"}
+															</span>
+														</td>
                                                         {/* 2. Order Number */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             {hasChangeStatusPermission ? (
