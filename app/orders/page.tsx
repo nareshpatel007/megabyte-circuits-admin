@@ -1928,7 +1928,7 @@ function OrdersContent() {
                         <div className="space-y-2.5">
                             {/* Row 1: Order Counts & Value */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                                <div className="className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2">
+                                <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
                                         <ShoppingBag className="w-3.5 h-3.5" />
                                     </div>
