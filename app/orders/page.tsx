@@ -1928,9 +1928,9 @@ function OrdersContent() {
                         <div className="space-y-2.5">
                             {/* Row 1: Order Counts & Value */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                        <ShoppingBag className="w-4 h-4" />
+                                <div className="className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                        <ShoppingBag className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
@@ -2185,14 +2185,109 @@ function OrdersContent() {
                                 </PopoverContent>
                             </Popover>
 
-                            <Select
-                                value={statusFilter}
-                                onValueChange={(val) => {
-                                    setStatusFilter(val);
-                                    setPage(1);
-                                    updateUrlParams({ status: val, page: 1 });
-                                }}
-                            >
+                            <Popover>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										className="h-10 sm:h-11 w-[135px] px-3 bg-card border-border/80 rounded-xl text-xs font-bold text-foreground shadow-xs shrink-0 justify-between"
+									>
+										<span>
+											{statusFilter === "All" ? "All Statuses" : statusFilter}
+										</span>
+										<ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+									</Button>
+								</PopoverTrigger>
+
+								<PopoverContent
+									align="end"
+									className="w-[220px] p-2 bg-card border-border/80 rounded-xl shadow-xl"
+								>
+									<div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2 py-1.5">
+										Filter Status
+									</div>
+
+									{/* Main Statuses */}
+									{["Pending", "Ready to Ship", "In Production"].map((status) => (
+										<button
+											key={status}
+											type="button"
+											onClick={() => {
+												setStatusFilter(status);
+												setPage(1);
+												updateUrlParams({ status, page: 1 });
+											}}
+											className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold hover:bg-muted transition-colors text-left"
+										>
+											<Check
+												className={`w-4 h-4 ${
+													statusFilter === status
+														? "text-emerald-500 opacity-100"
+														: "opacity-0"
+												}`}
+											/>
+											<span>{status}</span>
+										</button>
+									))}
+
+									{/* Other Statuses */}
+									<div className="border-t border-border/60 my-1.5" />
+
+									<div className="max-h-[220px] overflow-y-auto">
+										{statuses
+											.filter(
+												(s) =>
+													!["Pending", "Ready to Ship", "In Production"]
+														.includes(s.name)
+											)
+											.map((s) => (
+												<button
+													key={s.id}
+													type="button"
+													onClick={() => {
+														setStatusFilter(s.name);
+														setPage(1);
+														updateUrlParams({
+															status: s.name,
+															page: 1
+														});
+													}}
+													className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold hover:bg-muted transition-colors text-left"
+												>
+													<Check
+														className={`w-4 h-4 ${
+															statusFilter === s.name
+																? "text-emerald-500"
+																: "opacity-0"
+														}`}
+													/>
+													<span>{s.name}</span>
+												</button>
+											))}
+									</div>
+
+									{/* All */}
+									<div className="border-t border-border/60 mt-1.5 pt-1.5">
+										<button
+											type="button"
+											onClick={() => {
+												setStatusFilter("All");
+												setPage(1);
+												updateUrlParams({ status: "All", page: 1 });
+											}}
+											className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold hover:bg-muted transition-colors text-left"
+										>
+											<Check
+												className={`w-4 h-4 ${
+													statusFilter === "All"
+														? "text-emerald-500"
+														: "opacity-0"
+												}`}
+											/>
+											All Statuses
+										</button>
+									</div>
+								</PopoverContent>
+							</Popover>
                                 <SelectTrigger className="h-10 sm:h-11 w-[150px] sm:w-[170px] px-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl text-foreground font-semibold shadow-xs shrink-0">
                                     <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
