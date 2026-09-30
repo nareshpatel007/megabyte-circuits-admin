@@ -1936,94 +1936,96 @@ function OrdersContent() {
                 <div className="w-full space-y-5">
                     {/* Stats Section */}
                     {hasStatisticsPermission && (
-                        <div className="space-y-2.5">
-                            {/* Row 1: Order Counts & Value */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                        <ShoppingBag className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
-                                        <h3 className="text-lg font-black text-foreground leading-tight mt-0.5">{statsTotalOrders}</h3>
-                                    </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                            {/* Total Orders */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                    <ShoppingBag className="w-4 h-4" />
                                 </div>
-
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                                        <Clock className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">In Progress</p>
-                                        <h3 className="text-lg font-black text-amber-500 leading-tight mt-0.5">{statsActiveOrders}</h3>
-                                    </div>
-                                </div>
-
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
-                                        <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5">{statsCompletedOrders}</h3>
-                                    </div>
-                                </div>
-
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-                                        <Package className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Value</p>
-                                        <h3 className="text-lg font-black text-emerald-600 dark:text-emerald-400 leading-tight mt-0.5">
-                                            {hasPaymentPermission
-                                                ? `₹${statsTotalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                                                : "XXXX"}
-                                        </h3>
-                                    </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Total Orders</p>
+                                    <h3 className="text-lg font-black text-foreground leading-tight mt-0.5 truncate">{statsTotalOrders}</h3>
                                 </div>
                             </div>
 
-                            {/* Row 2: PCB Quantity Breakdown (Excludes Part Orders) */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-                                        <Layers className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ordered Qty</p>
-                                        <h3 className="text-lg font-black text-foreground leading-tight mt-0.5">{statsTotalQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
-                                    </div>
+                            {/* In Progress */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                    <Clock className="w-4 h-4" />
                                 </div>
-
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                        <Rocket className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Launch Qty</p>
-                                        <h3 className="text-lg font-black text-blue-600 dark:text-blue-400 leading-tight mt-0.5">{statsLaunchQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
-                                    </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">In Progress</p>
+                                    <h3 className="text-lg font-black text-amber-500 leading-tight mt-0.5 truncate">{statsActiveOrders}</h3>
                                 </div>
+                            </div>
 
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Final Qty</p>
-                                        <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5">{statsCompletedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
-                                    </div>
+                            {/* Completed */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-4 h-4" />
                                 </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Completed</p>
+                                    <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5 truncate">{statsCompletedOrders}</h3>
+                                </div>
+                            </div>
 
-                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                                        <AlertCircle className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Failed Qty</p>
-                                        <h3 className="text-lg font-black text-rose-500 leading-tight mt-0.5">{statsFailedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
-                                    </div>
+                            {/* Total Value */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                                    <Package className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Total Value</p>
+                                    <h3 className="text-lg font-black text-emerald-600 dark:text-emerald-400 leading-tight mt-0.5 truncate">
+                                        {hasPaymentPermission
+                                            ? `₹${statsTotalOrderValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                                            : "XXXX"}
+                                    </h3>
+                                </div>
+                            </div>
+
+                            {/* Ordered Qty */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                                    <Layers className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Ordered Qty</p>
+                                    <h3 className="text-lg font-black text-foreground leading-tight mt-0.5 truncate">{statsTotalQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                </div>
+                            </div>
+
+                            {/* Launch Qty */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                    <Rocket className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Launch Qty</p>
+                                    <h3 className="text-lg font-black text-blue-600 dark:text-blue-400 leading-tight mt-0.5 truncate">{statsLaunchQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                </div>
+                            </div>
+
+                            {/* Final Qty */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Final Qty</p>
+                                    <h3 className="text-lg font-black text-emerald-500 leading-tight mt-0.5 truncate">{statsCompletedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
+                                </div>
+                            </div>
+
+                            {/* Failed Qty */}
+                            <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+                                    <AlertCircle className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Failed Qty</p>
+                                    <h3 className="text-lg font-black text-rose-500 leading-tight mt-0.5 truncate">{statsFailedQty} <span className="text-[10px] text-muted-foreground font-bold">Pcs</span></h3>
                                 </div>
                             </div>
                         </div>
