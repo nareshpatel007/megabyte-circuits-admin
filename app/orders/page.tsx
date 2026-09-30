@@ -201,6 +201,17 @@ function OrdersContent() {
     const [tempStartDate, setTempStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
     const [tempEndDate, setTempEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
     const [popoverOpen, setPopoverOpen] = useState(false);
+    const [otherStatusesOpen, setOtherStatusesOpen] = useState(false);
+    const [isStatusDragOver, setIsStatusDragOver] = useState(false);
+
+    const handleSelectStatus = (status: string) => {
+        setStatusFilter(status);
+        setPage(1);
+        updateUrlParams({
+            status,
+            page: 1
+        });
+    };
 
     const [page, setPage] = useState<number>(() => {
         const p = parseInt(searchParams?.get("page") || "1", 10);
@@ -1928,9 +1939,9 @@ function OrdersContent() {
                         <div className="space-y-2.5">
                             {/* Row 1: Order Counts & Value */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                                <div className="bg-card border border-border/80 rounded-xl p-2.5 shadow-2xs flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                        <ShoppingBag className="w-3.5 h-3.5" />
+                                <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                                        <ShoppingBag className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Orders</p>
@@ -2185,110 +2196,215 @@ function OrdersContent() {
                                 </PopoverContent>
                             </Popover>
 
-                            <Popover>
-								<PopoverTrigger asChild>
-									<Button
-										variant="outline"
-										className="h-10 sm:h-11 w-[135px] px-3 bg-card border-border/80 rounded-xl text-xs font-bold text-foreground shadow-xs shrink-0 justify-between"
-									>
-										<span>
-											{statusFilter === "All" ? "All Statuses" : statusFilter}
-										</span>
-										<ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground" />
-									</Button>
-								</PopoverTrigger>
+                            {/* Compact Drag and Drop Status Filter */}
+                            {(() => {
+                                const MAIN_STATUSES = ["Pending", "Ready to Ship", "In Production"];
+                                const otherStatuses = (() => {
+                                    const list: string[] = ["All"];
+                                    statuses.forEach((s) => {
+                                        if (s && s.name && !MAIN_STATUSES.includes(s.name) && !list.includes(s.name)) {
+                                            list.push(s.name);
+                                        }
+                                    });
+                                    const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval"];
+                                    defaults.forEach((d) => {
+                                        if (!MAIN_STATUSES.includes(d) && !list.includes(d)) {
+                                            list.push(d);
+                                        }
+                                    });
+                                    return list;
+                                })();
+                                const isOtherStatusActive = !MAIN_STATUSES.includes(statusFilter);
 
-								<PopoverContent
-									align="end"
-									className="w-[220px] p-2 bg-card border-border/80 rounded-xl shadow-xl"
-								>
-									<div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2 py-1.5">
-										Filter Status
-									</div>
+                                return (
+                                    <div
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.dataTransfer.dropEffect = "copy";
+                                            setIsStatusDragOver(true);
+                                        }}
+                                        onDragLeave={() => setIsStatusDragOver(false)}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsStatusDragOver(false);
+                                            const dropped = e.dataTransfer.getData("text/plain");
+                                            if (dropped) {
+                                                handleSelectStatus(dropped);
+                                            }
+                                        }}
+                                        className={`flex flex-wrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
+                                            }`}
+                                    >
+                                        <span className="text-xs font-bold text-muted-foreground px-1.5 sm:px-2 flex items-center gap-1 shrink-0 select-none">
+                                            Status:
+                                        </span>
 
-									{/* Main Statuses */}
-									{["Pending", "Ready to Ship", "In Production"].map((status) => (
-										<button
-											key={status}
-											type="button"
-											onClick={() => {
-												setStatusFilter(status);
-												setPage(1);
-												updateUrlParams({ status, page: 1 });
-											}}
-											className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold hover:bg-muted transition-colors text-left"
-										>
-											<Check
-												className={`w-4 h-4 ${
-													statusFilter === status
-														? "text-emerald-500 opacity-100"
-														: "opacity-0"
-												}`}
-											/>
-											<span>{status}</span>
-										</button>
-									))}
+                                        {/* 1. Pending */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Pending")}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
+                                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
+                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "Pending" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            Pending
+                                        </button>
 
-									{/* Other Statuses */}
-									<div className="border-t border-border/60 my-1.5" />
+                                        {/* 2. Ready to Ship */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Ready to Ship")}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Ready to Ship"
+                                                    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-2xs"
+                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Ready to Ship" ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "Ready to Ship" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            Ready to Ship
+                                        </button>
 
-									<div className="max-h-[220px] overflow-y-auto">
-										{statuses
-											.filter(
-												(s) =>
-													!["Pending", "Ready to Ship", "In Production"]
-														.includes(s.name)
-											)
-											.map((s) => (
-												<button
-													key={s.id}
-													type="button"
-													onClick={() => {
-														setStatusFilter(s.name);
-														setPage(1);
-														updateUrlParams({
-															status: s.name,
-															page: 1
-														});
-													}}
-													className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold hover:bg-muted transition-colors text-left"
-												>
-													<Check
-														className={`w-4 h-4 ${
-															statusFilter === s.name
-																? "text-emerald-500"
-																: "opacity-0"
-														}`}
-													/>
-													<span>{s.name}</span>
-												</button>
-											))}
-									</div>
+                                        {/* 3. In Production */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("In Production")}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "In Production"
+                                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-2xs"
+                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "In Production" ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "In Production" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            In Production
+                                        </button>
 
-									{/* All */}
-									<div className="border-t border-border/60 mt-1.5 pt-1.5">
-										<button
-											type="button"
-											onClick={() => {
-												setStatusFilter("All");
-												setPage(1);
-												updateUrlParams({ status: "All", page: 1 });
-											}}
-											className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold hover:bg-muted transition-colors text-left"
-										>
-											<Check
-												className={`w-4 h-4 ${
-													statusFilter === "All"
-														? "text-emerald-500"
-														: "opacity-0"
-												}`}
-											/>
-											All Statuses
-										</button>
-									</div>
-								</PopoverContent>
-							</Popover>
-                            </Select>
+                                        {/* Drop Status Container */}
+                                        <div
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.dataTransfer.dropEffect = "copy";
+                                                setIsStatusDragOver(true);
+                                            }}
+                                            onDragLeave={(e) => {
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                                const dropped = e.dataTransfer.getData("text/plain");
+                                                if (dropped) {
+                                                    handleSelectStatus(dropped);
+                                                }
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isStatusDragOver
+                                                    ? "border-emerald-500 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border-dashed scale-[1.02]"
+                                                    : isOtherStatusActive
+                                                        ? "border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold border-solid shadow-2xs"
+                                                        : "border-dashed border-border/80 bg-muted/30 text-muted-foreground"
+                                                }`}
+                                        >
+                                            {isOtherStatusActive ? (
+                                                <div className="flex items-center gap-1.5 select-none">
+                                                    <span className="w-3.5 h-3.5 rounded bg-purple-500 text-white flex items-center justify-center text-[10px]">
+                                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                                    </span>
+                                                    <span>{statusFilter}</span>
+                                                    <span
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleSelectStatus("In Production");
+                                                        }}
+                                                        className="ml-1 p-0.5 rounded-md hover:bg-purple-500/20 text-purple-500 hover:text-purple-700 cursor-pointer"
+                                                        title="Clear status filter"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="select-none text-[11px] sm:text-xs">
+                                                    {isStatusDragOver ? "Drop status here" : "[ Drop status here ]"}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Expandable "Other Statuses" Panel */}
+                                        <Popover open={otherStatusesOpen} onOpenChange={setOtherStatusesOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className={`h-8 sm:h-9 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shrink-0 ${isOtherStatusActive
+                                                            ? "border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                                            : "border-border/80 bg-background/60 hover:bg-accent text-foreground"
+                                                        }`}
+                                                >
+                                                    [ Other Statuses ]
+                                                    <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${otherStatusesOpen ? "rotate-180" : ""}`} />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="z-50 w-56 sm:w-64 p-2 bg-card border border-border/80 rounded-xl shadow-xl space-y-1 text-foreground"
+                                                align="end"
+                                                sideOffset={6}
+                                            >
+                                                <div className="px-2 py-1.5 border-b border-border/50 flex items-center justify-between">
+                                                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                                                        Other Statuses
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground/70 font-medium">
+                                                        Drag or click
+                                                    </span>
+                                                </div>
+
+                                                <div className="max-h-56 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                                                    {otherStatuses.map((stName) => {
+                                                        const isSelected = statusFilter === stName;
+                                                        return (
+                                                            <div
+                                                                key={stName}
+                                                                draggable
+                                                                onDragStart={(e) => {
+                                                                    e.dataTransfer.setData("text/plain", stName);
+                                                                    e.dataTransfer.effectAllowed = "copy";
+                                                                }}
+                                                                onClick={() => {
+                                                                    handleSelectStatus(stName);
+                                                                    setOtherStatusesOpen(false);
+                                                                }}
+                                                                className={`group flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-grab active:cursor-grabbing transition-all border ${isSelected
+                                                                        ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs"
+                                                                        : "bg-background hover:bg-muted/70 text-foreground border-transparent hover:border-border/50"
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-muted-foreground shrink-0" />
+                                                                    <span className="truncate">{stName}</span>
+                                                                </div>
+                                                                {isSelected && (
+                                                                    <span className="w-4 h-4 rounded-full bg-purple-500 text-white flex items-center justify-center shrink-0">
+                                                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -2330,9 +2446,9 @@ function OrdersContent() {
                                                     </span>
                                                 </div>
                                             </th>
-											<th className="py-2 px-3.5 whitespace-nowrap">
-												Q No.
-											</th>
+                                            <th className="py-2 px-3.5 whitespace-nowrap">
+                                                Q No.
+                                            </th>
                                             <th
                                                 onClick={() => handleSort('order_number')}
                                                 className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
@@ -2345,9 +2461,9 @@ function OrdersContent() {
                                                     </span>
                                                 </div>
                                             </th>
-											<th className="py-2 px-3.5 whitespace-nowrap">
-												Bill Number
-											</th>
+                                            <th className="py-2 px-3.5 whitespace-nowrap">
+                                                Bill Number
+                                            </th>
                                             <th
                                                 onClick={() => handleSort('customer_name')}
                                                 className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
@@ -2482,12 +2598,12 @@ function OrdersContent() {
                                                                 {order.status}
                                                             </span>
                                                         </td>
-														{/* Q No. */}
-														<td className="py-1.5 px-3.5 whitespace-nowrap">
-															<span className="font-mono text-xs font-bold">
-																{order.q_no || "—"}
-															</span>
-														</td>
+                                                        {/* Q No. */}
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                                            <span className="font-mono text-xs font-bold">
+                                                                {order.q_no || "—"}
+                                                            </span>
+                                                        </td>
                                                         {/* 2. Order Number */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             {hasChangeStatusPermission ? (
@@ -2565,20 +2681,19 @@ function OrdersContent() {
                                                                 </div>
                                                             )}
                                                         </td>
-														{/* Bill Number */}
-														<td className="py-1.5 px-3.5 whitespace-nowrap">
-															<span
-																className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${
-																	order.bill_number && String(order.bill_number).trim() !== ""
-																		? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-																		: "text-muted-foreground bg-muted/30 border-border/60"
-																}`}
-															>
-																{order.bill_number && String(order.bill_number).trim() !== ""
-																	? order.bill_number
-																	: "—"}
-															</span>
-														</td>
+                                                        {/* Bill Number */}
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                                            <span
+                                                                className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${order.bill_number && String(order.bill_number).trim() !== ""
+                                                                        ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                                                        : "text-muted-foreground bg-muted/30 border-border/60"
+                                                                    }`}
+                                                            >
+                                                                {order.bill_number && String(order.bill_number).trim() !== ""
+                                                                    ? order.bill_number
+                                                                    : "—"}
+                                                            </span>
+                                                        </td>
                                                         {/* 3. Customer */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             {(() => {
