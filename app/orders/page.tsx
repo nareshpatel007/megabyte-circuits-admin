@@ -2400,7 +2400,7 @@ function OrdersContent() {
 														{/* Q No. */}
 														<td className="py-1.5 px-3.5 whitespace-nowrap">
 															<span className="font-mono text-xs font-bold">
-																{order.q_number || "—"}
+																{order.q_no || "—"}
 															</span>
 														</td>
                                                         {/* 2. Order Number */}
