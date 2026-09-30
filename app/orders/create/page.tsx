@@ -1567,7 +1567,7 @@ export default function CreateOrderPage() {
                                             <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
                                         ) : material === "Rogers" || material === "PTFE Teflon" ? (
                                             <>
-                                                <SelectItem value="OSP">OSP</SelectItem>
+                                                <SelectItem value="ROLLER TIN">ROLLER TIN</SelectItem>
                                                 <SelectItem value="ENIG">ENIG (Immersion Gold)</SelectItem>
                                                 <SelectItem value="HASL(with lead)" disabled>HASL (with lead) - N/A</SelectItem>
                                                 <SelectItem value="LeadFree HASL" disabled>LeadFree HASL - N/A</SelectItem>
