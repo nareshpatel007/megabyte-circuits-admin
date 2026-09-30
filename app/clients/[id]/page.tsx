@@ -23,7 +23,9 @@ import {
     Pencil,
     Trash2,
     AlertTriangle,
-    LogIn
+    LogIn,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { ClientDetailSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -55,6 +57,9 @@ interface ClientOrder {
     status?: string;
     status_name?: string;
     order_value?: number;
+    pn_number?: string | null;
+    part_number?: string | null;
+    board_name?: string | null;
     gerber_file_name?: string;
     gerber_file_sys_name?: string;
     created_at?: string;
@@ -171,6 +176,16 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     });
 
     const [activeTab, setActiveTab] = useState<"orders" | "transactions" | "addresses">("orders");
+
+    // Orders Pagination
+    const [ordersPage, setOrdersPage] = useState(1);
+    const [ordersPageSize, setOrdersPageSize] = useState(10);
+    const totalOrders = orders.length;
+    const totalOrderPages = Math.max(1, Math.ceil(totalOrders / ordersPageSize));
+    const safeOrdersPage = Math.min(Math.max(1, ordersPage), totalOrderPages);
+    const ordersStartIndex = (safeOrdersPage - 1) * ordersPageSize;
+    const ordersEndIndex = Math.min(ordersStartIndex + ordersPageSize, totalOrders);
+    const paginatedOrders = orders.slice(ordersStartIndex, ordersEndIndex);
 
     // Modals state
     const [showStatusModal, setShowStatusModal] = useState(false);
@@ -588,57 +603,121 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                                 <p className="text-xs text-muted-foreground">When the client places orders, they will appear here.</p>
                                             </div>
                                         ) : (
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-xs text-left">
-                                                    <thead>
-                                                        <tr className="border-b border-border/60 bg-muted/20 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
-                                                            <th className="py-3 px-5">Order #</th>
-                                                            <th className="py-3 px-5">Gerber File</th>
-                                                            <th className="py-3 px-5">Status</th>
-                                                            <th className="py-3 px-5">Order Value</th>
-                                                            <th className="py-3 px-5">Date</th>
-                                                            <th className="py-3 px-5 text-right">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-border/40">
-                                                        {orders.map((ord) => {
-                                                            const stLower = (ord.status_name || ord.status || "pending").toLowerCase();
-                                                            const gerberName = ord.gerber_file_name || ord.gerber_file_sys_name || "gerber_archive.zip";
-                                                            return (
-                                                                <tr key={ord.id} className="hover:bg-muted/20 transition-colors">
-                                                                    <td className="py-3.5 px-5 font-bold font-mono text-emerald-400">
-                                                                        {ord.order_number || `#ORD-${ord.id}`}
-                                                                    </td>
-                                                                    <td className="py-3.5 px-5 font-medium text-foreground max-w-[200px]">
-                                                                        <span className="inline-block font-mono text-[11px] bg-muted/40 px-2 py-0.5 rounded border border-border/60 text-muted-foreground whitespace-normal break-words leading-tight" title={gerberName}>
-                                                                            {gerberName}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="py-3.5 px-5">
-                                                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${orderStatusStyles[stLower] || orderStatusStyles.pending}`}>
-                                                                            {ord.status_name || ord.status || "Pending"}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="py-3.5 px-5 font-bold text-foreground">
-                                                                        ₹{Number(ord.order_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                                    </td>
-                                                                    <td className="py-3.5 px-5 text-muted-foreground font-mono text-[11px]">
-                                                                        {formatDate(ord.created_at)}
-                                                                    </td>
-                                                                    <td className="py-3.5 px-5 text-right">
-                                                                        <Link
-                                                                            href={`/orders/${ord.id}`}
-                                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 hover:underline"
-                                                                        >
-                                                                            View <ExternalLink className="w-3 h-3" />
-                                                                        </Link>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            <>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-xs text-left">
+                                                        <thead>
+                                                            <tr className="border-b border-border/60 bg-muted/20 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
+                                                                <th className="py-3 px-5">Order #</th>
+                                                                <th className="py-3 px-5">PN Number</th>
+                                                                <th className="py-3 px-5">Status</th>
+                                                                <th className="py-3 px-5">Order Value</th>
+                                                                <th className="py-3 px-5">Date</th>
+                                                                <th className="py-3 px-5 text-right">Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border/40">
+                                                            {paginatedOrders.map((ord) => {
+                                                                const stLower = (ord.status_name || ord.status || "pending").toLowerCase();
+                                                                const pnDisplay = (ord.pn_number && String(ord.pn_number).trim() !== "")
+                                                                    ? String(ord.pn_number).trim()
+                                                                    : (ord.board_name || ord.part_number || "—");
+                                                                return (
+                                                                    <tr key={ord.id} className="hover:bg-muted/20 transition-colors">
+                                                                        <td className="py-3.5 px-5 font-bold font-mono text-emerald-400">
+                                                                            {ord.order_number || `#ORD-${ord.id}`}
+                                                                        </td>
+                                                                        <td className="py-3.5 px-5 font-medium text-foreground max-w-[220px]">
+                                                                            {pnDisplay !== "—" ? (
+                                                                                <span
+                                                                                    className="inline-block font-mono text-[11px] bg-muted/40 px-2 py-0.5 rounded border border-border/60 text-foreground font-semibold whitespace-normal break-words leading-tight"
+                                                                                    title={pnDisplay}
+                                                                                >
+                                                                                    {pnDisplay}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-muted-foreground/50 font-mono text-[11px]">—</span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="py-3.5 px-5">
+                                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${orderStatusStyles[stLower] || orderStatusStyles.pending}`}>
+                                                                                {ord.status_name || ord.status || "Pending"}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="py-3.5 px-5 font-bold text-foreground">
+                                                                            ₹{Number(ord.order_value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                        </td>
+                                                                        <td className="py-3.5 px-5 text-muted-foreground font-mono text-[11px]">
+                                                                            {formatDate(ord.created_at)}
+                                                                        </td>
+                                                                        <td className="py-3.5 px-5 text-right">
+                                                                            <Link
+                                                                                href={`/orders/${ord.id}`}
+                                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 hover:underline"
+                                                                            >
+                                                                                View <ExternalLink className="w-3 h-3" />
+                                                                            </Link>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                {/* Orders Pagination Footer */}
+                                                {totalOrders > 0 && (
+                                                    <div className="p-4 border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
+                                                        <div className="flex flex-wrap items-center gap-3">
+                                                            <p className="text-xs text-muted-foreground font-medium">
+                                                                Showing <span className="font-bold text-foreground">{ordersStartIndex + 1}</span> to{" "}
+                                                                <span className="font-bold text-foreground">{ordersEndIndex}</span> of{" "}
+                                                                <span className="font-bold text-foreground">{totalOrders}</span> orders
+                                                            </p>
+                                                            <div className="flex items-center gap-1.5 ml-1">
+                                                                <span className="text-[11px] text-muted-foreground">Per page:</span>
+                                                                <select
+                                                                    value={ordersPageSize}
+                                                                    onChange={(e) => {
+                                                                        setOrdersPageSize(Number(e.target.value));
+                                                                        setOrdersPage(1);
+                                                                    }}
+                                                                    className="px-2 py-1 text-xs rounded-lg border border-border/80 bg-background text-foreground font-medium focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+                                                                >
+                                                                    <option value={5}>5</option>
+                                                                    <option value={10}>10</option>
+                                                                    <option value={20}>20</option>
+                                                                    <option value={50}>50</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => setOrdersPage(Math.max(1, safeOrdersPage - 1))}
+                                                                disabled={safeOrdersPage <= 1}
+                                                                className="px-3 py-1.5 rounded-xl border border-border/80 bg-background/50 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed text-foreground transition-all flex items-center gap-1 text-xs font-semibold cursor-pointer"
+                                                            >
+                                                                <ChevronLeft className="w-4 h-4" />
+                                                                <span>Prev</span>
+                                                            </button>
+
+                                                            <span className="text-xs font-bold text-foreground px-2">
+                                                                Page {safeOrdersPage} of {totalOrderPages}
+                                                            </span>
+
+                                                            <button
+                                                                onClick={() => setOrdersPage(Math.min(totalOrderPages, safeOrdersPage + 1))}
+                                                                disabled={safeOrdersPage >= totalOrderPages}
+                                                                className="px-3 py-1.5 rounded-xl border border-border/80 bg-background/50 hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed text-foreground transition-all flex items-center gap-1 text-xs font-semibold cursor-pointer"
+                                                            >
+                                                                <span>Next</span>
+                                                                <ChevronRight className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 )}
