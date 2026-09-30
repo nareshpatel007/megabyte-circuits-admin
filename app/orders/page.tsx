@@ -2288,16 +2288,6 @@ function OrdersContent() {
 									</div>
 								</PopoverContent>
 							</Popover>
-                                <SelectTrigger className="h-10 sm:h-11 w-[150px] sm:w-[170px] px-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl text-foreground font-semibold shadow-xs shrink-0">
-                                    <SelectValue placeholder="All Statuses" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="All">All Statuses</SelectItem>
-                                    <SelectItem value="In Production">In Production</SelectItem>
-                                    {statuses.map((s) => (
-                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
                             </Select>
                         </div>
                     </div>
