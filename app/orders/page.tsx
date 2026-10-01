@@ -1667,7 +1667,7 @@ function OrdersContent() {
         const initialUpsQty = order.ups_qty || 0;
         const initialLaunchQty = order.launch_qty || ((initialPanelQty > 0 && initialUpsQty > 0) ? (initialPanelQty * initialUpsQty) : 0);
         const initialFinalQty = typeof order.final_qty === 'number' ? order.final_qty : initialCompletedQty;
-        const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
+        const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0);
 
         const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
@@ -1943,7 +1943,7 @@ function OrdersContent() {
         return sum + comp;
     }, 0);
     const statsFailedQty = nonPartFilteredOrders.reduce((sum, o) => {
-        const fail = typeof o.failed_qty === 'number' ? o.failed_qty : (parseInt(getMetaValue(o, 'failed_qty', '0')) || 0);
+        const fail = typeof o.failed_qty === 'number' ? o.failed_qty : (parseInt(getMetaValue(o, 'failed_qty', getMetaValue(o, 'fail_qty', '0')), 10) || 0);
         return sum + fail;
     }, 0);
 
@@ -2633,11 +2633,9 @@ function OrdersContent() {
                                                         ? order.completed_qty
                                                         : (parseInt(getMetaValue(order, 'final_qty', getMetaValue(order, 'completed_qty', '0')), 10) || 0));
 
-                                                const failedQty = launchQty > 0
-                                                    ? Math.max(0, launchQty - completedQty)
-                                                    : (typeof order.failed_qty === 'number'
-                                                        ? order.failed_qty
-                                                        : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0));
+                                                const failedQty = typeof order.failed_qty === 'number'
+                                                    ? order.failed_qty
+                                                    : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0);
 
                                                 const pendingQty = Math.max(0, totalQty - completedQty - failedQty);
                                                 const productTypeVal = getMetaValue(order, 'product_type', 'pcb').toLowerCase();
