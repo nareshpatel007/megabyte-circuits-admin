@@ -44,8 +44,10 @@ interface OrderNote {
     id: number;
     pcb_order_id: number;
     admin_id: number;
+    created_by?: number;
     admin_name?: string;
     admin_username?: string;
+    name?: string;
     note: string;
     created_at: string;
 }
@@ -180,14 +182,30 @@ export default function OrderDetailPage() {
         setAddingNote(true);
         const toastId = toast.loading("Adding internal note...");
         try {
-            const token = localStorage.getItem("admin_token");
+            const token = typeof window !== "undefined" ? (localStorage.getItem("admin_token") || "") : "";
+            const savedAdminUser = typeof window !== "undefined" ? (localStorage.getItem("user") || localStorage.getItem("admin_user")) : null;
+            let loggedInAdminId = user?.id || null;
+            let loggedInAdminName = user?.name || user?.username || null;
+            if ((!loggedInAdminId || !loggedInAdminName) && savedAdminUser) {
+                try {
+                    const parsed = JSON.parse(savedAdminUser);
+                    loggedInAdminId = loggedInAdminId || parsed.id || null;
+                    loggedInAdminName = loggedInAdminName || parsed.name || parsed.username || null;
+                } catch (e) { }
+            }
+
             const res = await fetch(`/api/admin/orders/${order.id}/notes`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ note: newNoteText.trim() })
+                body: JSON.stringify({
+                    note: newNoteText.trim(),
+                    created_by: loggedInAdminId,
+                    admin_id: loggedInAdminId,
+                    admin_name: loggedInAdminName
+                })
             });
             const json = await res.json();
             if (res.ok && (json.status || json.success)) {
@@ -2433,10 +2451,10 @@ export default function OrderDetailPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] flex items-center justify-center border border-amber-500/20">
-                                                {(note.admin_name || note.admin_username || "S").charAt(0).toUpperCase()}
+                                                {(note.admin_name || note.admin_username || note.name || user?.name || "A").charAt(0).toUpperCase()}
                                             </div>
                                             <span className="font-bold text-xs text-foreground">
-                                                {note.admin_name || note.admin_username || "Staff / Admin"}
+                                                {note.admin_name || note.admin_username || note.name || (user?.name ? user.name : "Admin")}
                                             </span>
                                             <span className="text-[11px] text-muted-foreground font-medium">
                                                 {note.created_at ? new Date(note.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
