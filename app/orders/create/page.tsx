@@ -665,10 +665,6 @@ export default function CreateOrderPage() {
     // Quick Add Client Submit Handler
     const handleQuickAddClient = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newClientEmail.trim()) {
-            toast.error("Email address is required");
-            return;
-        }
         if (!newClientFirstName.trim() && !newClientLastName.trim()) {
             toast.error("Client name is required");
             return;
@@ -2519,14 +2515,13 @@ export default function CreateOrderPage() {
 
                                 <div>
                                     <label className="text-xs font-bold text-muted-foreground block mb-1">
-                                        Email Address <span className="text-red-500">*</span>
+                                        Email Address
                                     </label>
                                     <Input
                                         type="email"
                                         placeholder="client@example.com"
                                         value={newClientEmail}
                                         onChange={(e) => setNewClientEmail(e.target.value)}
-                                        required
                                         className="h-9 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground"
                                     />
                                 </div>
