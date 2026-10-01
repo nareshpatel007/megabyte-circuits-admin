@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink, Trash2, AlertTriangle, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink, Trash2, AlertTriangle, X, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { OrderDetailSkeleton } from "@/components/ui/skeleton";
 import GerberBoardPreview from "@/components/GerberBoardPreview";
@@ -172,6 +173,71 @@ export default function OrderDetailPage() {
         }
     };
 
+    const handleAddNote = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!newNoteText.trim() || !order || addingNote) return;
+        setAddingNote(true);
+        const toastId = toast.loading("Adding internal note...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order.id}/notes`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ note: newNoteText.trim() })
+            });
+            const json = await res.json();
+            if (res.ok && (json.status || json.success)) {
+                toast.success("Internal note added successfully", { id: toastId });
+                setNewNoteText("");
+                const notesRes = await fetch(`/api/admin/orders/${order.id}/notes`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const notesJson = await notesRes.json();
+                if (notesJson.status && Array.isArray(notesJson.data)) {
+                    setNotesList(notesJson.data);
+                } else if (json.data && json.data.id) {
+                    setNotesList(prev => [json.data, ...prev]);
+                }
+            } else {
+                toast.error(json.message || "Failed to add internal note", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error adding internal note", { id: toastId });
+        } finally {
+            setAddingNote(false);
+        }
+    };
+
+    const confirmDeleteNote = async (noteId: number) => {
+        if (deletingNoteId !== null) return;
+        setDeletingNoteId(noteId);
+        const toastId = toast.loading("Deleting internal note...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/notes/${noteId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            const json = await res.json();
+            if (res.ok && (json.status || json.success)) {
+                toast.success("Note deleted successfully", { id: toastId });
+                setNotesList(prev => prev.filter(n => n.id !== noteId));
+                setNoteToDelete(null);
+            } else {
+                toast.error(json.message || "Failed to delete note", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error deleting note", { id: toastId });
+        } finally {
+            setDeletingNoteId(null);
+        }
+    };
+
     const [order, setOrder] = useState<ApiOrder | null>(null);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -234,6 +300,13 @@ export default function OrderDetailPage() {
     const [editingOrderCg, setEditingOrderCg] = useState(false);
     const [inlineCgState, setInlineCgState] = useState("");
 
+    // Internal Notes states
+    const [notesList, setNotesList] = useState<OrderNote[]>([]);
+    const [newNoteText, setNewNoteText] = useState("");
+    const [addingNote, setAddingNote] = useState(false);
+    const [deletingNoteId, setDeletingNoteId] = useState<number | null>(null);
+    const [noteToDelete, setNoteToDelete] = useState<OrderNote | null>(null);
+
     const extractQty = (targetOrder: any, directKey: string, metaKeys: string[], fallbackVal = 0): number => {
         if (!targetOrder) return fallbackVal;
         const directVal = targetOrder[directKey];
@@ -270,6 +343,7 @@ export default function OrderDetailPage() {
             if (orderData.status || orderData.success) {
                 const o = orderData.data;
                 setOrder(o);
+                setNotesList(Array.isArray(o.notes) ? o.notes : []);
                 setOrderNumberState(o.order_number || "");
                 setOrderNumberError("");
                 setPnNumberState(o.pn_number ? String(o.pn_number) : "");
@@ -2259,6 +2333,94 @@ export default function OrderDetailPage() {
                     </form>
                 </div>
 
+                {/* Internal Notes Section */}
+                <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-sm space-y-5">
+                    <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <ClipboardList className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2">
+                                    Internal Production Notes
+                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                        {notesList.length}
+                                    </span>
+                                </h3>
+                                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                    Internal notes for staff, engineers, and production team (not visible to customers).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Add New Note Input */}
+                    <form onSubmit={handleAddNote} className="space-y-3">
+                        <div className="relative">
+                            <Textarea
+                                value={newNoteText}
+                                onChange={(e) => setNewNoteText(e.target.value)}
+                                placeholder="Write an internal note for this order (e.g. PCB fabrication instruction, quality alert, component check)..."
+                                rows={2}
+                                className="w-full text-xs bg-background border border-border/80 rounded-xl p-3 text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y min-h-[70px]"
+                            />
+                        </div>
+                        <div className="flex justify-end">
+                            <Button
+                                type="submit"
+                                disabled={addingNote || !newNoteText.trim()}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50 h-auto"
+                            >
+                                <Plus className={`w-3.5 h-3.5 ${addingNote ? 'animate-spin' : ''}`} />
+                                {addingNote ? "Adding Note..." : "Add Note"}
+                            </Button>
+                        </div>
+                    </form>
+
+                    {/* Notes List */}
+                    <div className="space-y-3 pt-1">
+                        {notesList.length === 0 ? (
+                            <div className="p-6 rounded-xl border border-dashed border-border/70 text-center bg-muted/10">
+                                <ClipboardList className="w-6 h-6 text-muted-foreground/60 mx-auto mb-2" />
+                                <p className="text-xs font-semibold text-muted-foreground">No internal notes added yet.</p>
+                                <p className="text-[11px] text-muted-foreground/70 mt-0.5">Use the box above to add notes for this order.</p>
+                            </div>
+                        ) : (
+                            notesList.map((note) => (
+                                <div
+                                    key={note.id}
+                                    className="p-4 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/30 transition-all space-y-2 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] flex items-center justify-center border border-amber-500/20">
+                                                {(note.admin_name || note.admin_username || "S").charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="font-bold text-xs text-foreground">
+                                                {note.admin_name || note.admin_username || "Staff / Admin"}
+                                            </span>
+                                            <span className="text-[11px] text-muted-foreground font-medium">
+                                                {note.created_at ? new Date(note.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNoteToDelete(note)}
+                                            title="Delete Note"
+                                            className="p-1.5 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-foreground font-medium whitespace-pre-wrap leading-relaxed pl-8">
+                                        {note.note}
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
                 {/* System Activity Logs Table */}
                 <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-sm space-y-4">
                     <h3 className="text-sm font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2">
@@ -2343,6 +2505,48 @@ export default function OrderDetailPage() {
                                 >
                                     <Trash2 className={`w-3.5 h-3.5 ${deletingOrder ? 'animate-spin' : ''}`} />
                                     {deletingOrder ? "Deleting..." : "Delete Order"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    )}
+                </Dialog>
+
+                {/* Delete Note Confirmation Dialog */}
+                <Dialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+                    {noteToDelete && (
+                        <DialogContent className="max-w-md border rounded-2xl p-6 shadow-2xl space-y-4 bg-card text-card-foreground border-rose-500/30">
+                            <DialogHeader className="pb-2 border-b border-border/60">
+                                <DialogTitle className="text-base font-black text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                                    Delete Internal Note?
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground mt-1 font-medium leading-relaxed">
+                                    Are you sure you want to delete this internal note? This action cannot be undone.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-foreground font-normal italic text-xs max-h-24 overflow-y-auto">
+                                "{noteToDelete.note}"
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2.5 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setNoteToDelete(null)}
+                                    disabled={deletingNoteId !== null}
+                                    className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl border-border h-auto cursor-pointer"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => confirmDeleteNote(noteToDelete.id)}
+                                    disabled={deletingNoteId !== null}
+                                    className="inline-flex items-center gap-1.5 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50 h-auto"
+                                >
+                                    <Trash2 className={`w-3.5 h-3.5 ${deletingNoteId !== null ? 'animate-spin' : ''}`} />
+                                    {deletingNoteId !== null ? "Deleting..." : "Delete Note"}
                                 </Button>
                             </div>
                         </DialogContent>

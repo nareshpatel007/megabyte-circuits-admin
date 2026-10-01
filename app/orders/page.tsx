@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp, ClipboardList } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -41,6 +41,16 @@ interface StatusHistory {
     admin_name: string;
     status_name: string;
     remark: string | null;
+    created_at: string;
+}
+
+interface OrderNote {
+    id: number;
+    pcb_order_id: number;
+    admin_id: number;
+    admin_name?: string;
+    admin_username?: string;
+    note: string;
     created_at: string;
 }
 
@@ -830,6 +840,15 @@ function OrdersContent() {
     const [logsData, setLogsData] = useState<any[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
 
+    // Internal Notes modal state
+    const [notesModalOrder, setNotesModalOrder] = useState<ApiOrder | null>(null);
+    const [notesModalList, setNotesModalList] = useState<OrderNote[]>([]);
+    const [loadingOrderNotes, setLoadingOrderNotes] = useState(false);
+    const [modalNewNote, setModalNewNote] = useState("");
+    const [submittingModalNote, setSubmittingModalNote] = useState(false);
+    const [deletingModalNoteId, setDeletingModalNoteId] = useState<number | null>(null);
+    const [modalNoteToDelete, setModalNoteToDelete] = useState<OrderNote | null>(null);
+
     // Add / Edit Film modal state
     const [filmModalOrder, setFilmModalOrder] = useState<ApiOrder | null>(null);
     const [filmDateTime, setFilmDateTime] = useState("");
@@ -1276,6 +1295,94 @@ function OrdersContent() {
             toast.error("Error loading order logs");
         } finally {
             setLoadingLogs(false);
+        }
+    };
+
+    const openNotesModal = async (order: ApiOrder) => {
+        setNotesModalOrder(order);
+        setNotesModalList([]);
+        setModalNewNote("");
+        setModalNoteToDelete(null);
+        setLoadingOrderNotes(true);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order.order_number}/notes`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (json.status || json.success) {
+                setNotesModalList(json.data || []);
+            } else {
+                toast.error(json.message || "Failed to load internal notes");
+            }
+        } catch (e) {
+            console.error("Failed to fetch order notes:", e);
+            toast.error("Error loading internal notes");
+        } finally {
+            setLoadingOrderNotes(false);
+        }
+    };
+
+    const handleAddModalNote = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!modalNewNote.trim() || !notesModalOrder || submittingModalNote) return;
+        setSubmittingModalNote(true);
+        const toastId = toast.loading("Adding internal note...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${notesModalOrder.order_number}/notes`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ note: modalNewNote.trim() })
+            });
+            const json = await res.json();
+            if (res.ok && (json.status || json.success)) {
+                toast.success("Internal note added successfully", { id: toastId });
+                setModalNewNote("");
+                const notesRes = await fetch(`/api/admin/orders/${notesModalOrder.order_number}/notes`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const notesJson = await notesRes.json();
+                if (notesJson.status && Array.isArray(notesJson.data)) {
+                    setNotesModalList(notesJson.data);
+                } else if (json.data && json.data.id) {
+                    setNotesModalList(prev => [json.data, ...prev]);
+                }
+            } else {
+                toast.error(json.message || "Failed to add internal note", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error adding internal note", { id: toastId });
+        } finally {
+            setSubmittingModalNote(false);
+        }
+    };
+
+    const confirmDeleteModalNote = async (noteId: number) => {
+        if (deletingModalNoteId !== null) return;
+        setDeletingModalNoteId(noteId);
+        const toastId = toast.loading("Deleting internal note...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/notes/${noteId}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (res.ok && (json.status || json.success)) {
+                toast.success("Note deleted successfully", { id: toastId });
+                setNotesModalList(prev => prev.filter(n => n.id !== noteId));
+                setModalNoteToDelete(null);
+            } else {
+                toast.error(json.message || "Failed to delete note", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error deleting note", { id: toastId });
+        } finally {
+            setDeletingModalNoteId(null);
         }
     };
 
@@ -2945,6 +3052,16 @@ function OrdersContent() {
                                                                     </button>
                                                                 )}
 
+                                                                {/* Internal Notes Icon Button */}
+                                                                <button
+                                                                    onClick={() => openNotesModal(order)}
+                                                                    title="Internal Notes"
+                                                                    aria-label="Internal Notes"
+                                                                    className="p-1.5 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                >
+                                                                    <ClipboardList className="w-3.5 h-3.5" />
+                                                                </button>
+
                                                                 {/* Reorder Icon Button */}
                                                                 {hasReorderPermission && !isPartOrder && (
                                                                     <button
@@ -3714,6 +3831,181 @@ function OrdersContent() {
                         </DialogContent>
                     );
                 })()}
+            </Dialog>
+
+            {/* View / Add / Delete Order Internal Notes Modal */}
+            <Dialog open={!!notesModalOrder} onOpenChange={(open) => !open && setNotesModalOrder(null)}>
+                {notesModalOrder && (() => {
+                    const notesPcbColorVal = getMetaValue(notesModalOrder, 'pcb_color', getMetaValue(notesModalOrder, 'solder_mask', 'Green'));
+                    const notesPcbColor = getPcbColorCode(notesPcbColorVal);
+                    return (
+                        <DialogContent
+                            className="max-w-2xl max-h-[85vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            style={{
+                                backgroundColor: getPcbLightBg(notesPcbColor),
+                                borderColor: `${notesPcbColor}60`
+                            }}
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: notesPcbColor }} />
+                            <DialogHeader className="pb-3 border-b border-slate-200/80">
+                                <div className="flex items-center gap-2.5">
+                                    <div
+                                        className="p-2 rounded-xl border shadow-xs"
+                                        style={{ backgroundColor: `${notesPcbColor}20`, color: notesPcbColor, borderColor: `${notesPcbColor}40` }}
+                                    >
+                                        <ClipboardList className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+                                            Internal Notes
+                                            <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-300">
+                                                #{notesModalOrder.order_number}
+                                            </span>
+                                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 border border-amber-500/30">
+                                                {notesModalList.length} {notesModalList.length === 1 ? 'note' : 'notes'}
+                                            </span>
+                                        </DialogTitle>
+                                        <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
+                                            Internal production & staff notes for {notesModalOrder.board_name}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            {/* Add Note Form inside Modal */}
+                            <form onSubmit={handleAddModalNote} className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                                <label className="text-xs font-bold text-slate-700 block">
+                                    Add New Internal Note
+                                </label>
+                                <Textarea
+                                    value={modalNewNote}
+                                    onChange={(e) => setModalNewNote(e.target.value)}
+                                    placeholder="Write an internal note for this order (team only)..."
+                                    rows={2}
+                                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y min-h-[60px]"
+                                />
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="submit"
+                                        disabled={submittingModalNote || !modalNewNote.trim()}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50 h-auto"
+                                    >
+                                        <Plus className={`w-3.5 h-3.5 ${submittingModalNote ? 'animate-spin' : ''}`} />
+                                        {submittingModalNote ? "Adding..." : "Add Note"}
+                                    </Button>
+                                </div>
+                            </form>
+
+                            {/* Notes List */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                                    Existing Notes ({notesModalList.length})
+                                </h4>
+
+                                {loadingOrderNotes ? (
+                                    <div className="p-6 space-y-3 bg-white rounded-xl border border-slate-200">
+                                        <div className="h-5 bg-slate-100 rounded-md animate-pulse w-3/4" />
+                                        <div className="h-5 bg-slate-100 rounded-md animate-pulse w-1/2" />
+                                        <div className="h-5 bg-slate-100 rounded-md animate-pulse w-5/6" />
+                                    </div>
+                                ) : notesModalList.length === 0 ? (
+                                    <div className="p-6 rounded-xl border border-dashed border-slate-300 text-center bg-white/60">
+                                        <ClipboardList className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                                        <p className="text-xs font-semibold text-slate-600">No internal notes added yet.</p>
+                                        <p className="text-[11px] text-slate-500 mt-0.5">Use the box above to add notes for this order.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                                        {notesModalList.map((note) => (
+                                            <div
+                                                key={note.id}
+                                                className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all space-y-1.5 shadow-2xs group"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-amber-500/15 text-amber-700 font-extrabold text-[10px] flex items-center justify-center border border-amber-500/30">
+                                                            {(note.admin_name || note.admin_username || "S").charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-bold text-xs text-slate-800">
+                                                            {note.admin_name || note.admin_username || "Staff / Admin"}
+                                                        </span>
+                                                        <span className="text-[11px] text-slate-500 font-medium">
+                                                            {note.created_at ? new Date(note.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setModalNoteToDelete(note)}
+                                                        title="Delete Note"
+                                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-slate-700 font-medium whitespace-pre-wrap leading-relaxed pl-7">
+                                                    {note.note}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => setNotesModalOrder(null)}
+                                    className="px-4 py-2 font-bold text-xs rounded-xl transition-all cursor-pointer h-auto"
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    );
+                })()}
+            </Dialog>
+
+            {/* Modal Delete Note Confirmation Dialog */}
+            <Dialog open={!!modalNoteToDelete} onOpenChange={(open) => !open && setModalNoteToDelete(null)}>
+                {modalNoteToDelete && (
+                    <DialogContent className="max-w-md border rounded-2xl p-6 shadow-2xl space-y-4 bg-white text-slate-900 border-rose-500/30">
+                        <DialogHeader className="pb-2 border-b border-slate-100">
+                            <DialogTitle className="text-base font-black text-rose-600 flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-rose-600" />
+                                Delete Internal Note?
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">
+                                Are you sure you want to delete this internal note? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-normal italic text-xs max-h-24 overflow-y-auto">
+                            "{modalNoteToDelete.note}"
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setModalNoteToDelete(null)}
+                                disabled={deletingModalNoteId !== null}
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-slate-200 h-auto cursor-pointer"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => confirmDeleteModalNote(modalNoteToDelete.id)}
+                                disabled={deletingModalNoteId !== null}
+                                className="inline-flex items-center gap-1.5 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50 h-auto"
+                            >
+                                <Trash2 className={`w-3.5 h-3.5 ${deletingModalNoteId !== null ? 'animate-spin' : ''}`} />
+                                {deletingModalNoteId !== null ? "Deleting..." : "Delete Note"}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                )}
             </Dialog>
 
             {/* Add / Edit Film Date & Time Modal */}
