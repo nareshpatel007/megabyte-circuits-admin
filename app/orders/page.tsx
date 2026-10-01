@@ -3738,14 +3738,14 @@ function OrdersContent() {
                     const logsPcbColor = getPcbColorCode(logsPcbColorVal);
                     return (
                         <DialogContent
-                            className="max-w-3xl max-h-[85vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            className="max-w-4xl max-h-[90vh] flex flex-col border rounded-2xl p-6 md:p-7 shadow-2xl text-slate-900 overflow-hidden"
                             style={{
                                 backgroundColor: getPcbLightBg(logsPcbColor),
                                 borderColor: `${logsPcbColor}60`
                             }}
                         >
                             <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: logsPcbColor }} />
-                            <DialogHeader className="pb-3 border-b border-slate-200/80">
+                            <DialogHeader className="pb-3 border-b border-slate-200/80 flex-shrink-0">
                                 <div className="flex items-center gap-2.5">
                                     <div
                                         className="p-2 rounded-xl border shadow-xs"
@@ -3759,6 +3759,11 @@ function OrdersContent() {
                                             <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-300">
                                                 #{logsModalOrder.order_number}
                                             </span>
+                                            {logsData && logsData.length > 0 && (
+                                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700">
+                                                    {logsData.length} records
+                                                </span>
+                                            )}
                                         </DialogTitle>
                                         <DialogDescription className="text-xs text-slate-600 font-semibold mt-0.5">
                                             Audit trail & pipeline status history for {logsModalOrder.board_name}
@@ -3767,8 +3772,8 @@ function OrdersContent() {
                                 </div>
                             </DialogHeader>
 
-                            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
-                                <div className="overflow-x-auto">
+                            <div className="flex-1 min-h-0 border border-slate-200 rounded-xl bg-white shadow-xs overflow-hidden flex flex-col my-3">
+                                <div className="flex-1 overflow-y-auto overflow-x-auto max-h-[60vh]">
                                     {loadingLogs ? (
                                         <div className="p-6 space-y-4">
                                             <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
@@ -3776,13 +3781,13 @@ function OrdersContent() {
                                             <div className="h-6 bg-slate-100 rounded-md animate-pulse w-full" />
                                         </div>
                                     ) : (
-                                        <table className="w-full text-left text-xs">
-                                            <thead>
-                                                <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-extrabold uppercase tracking-wider text-[10px]">
-                                                    <th className="py-3 px-4">Action</th>
-                                                    <th className="py-3 px-4 whitespace-nowrap">User / Admin</th>
-                                                    <th className="py-3 px-4">Timestamp</th>
-                                                    <th className="py-3 px-4">Details / Description</th>
+                                        <table className="w-full text-left text-xs relative">
+                                            <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs border-b border-slate-200">
+                                                <tr className="text-slate-700 font-extrabold uppercase tracking-wider text-[10px]">
+                                                    <th className="py-3 px-4 bg-slate-100">Action</th>
+                                                    <th className="py-3 px-4 whitespace-nowrap bg-slate-100">User / Admin</th>
+                                                    <th className="py-3 px-4 whitespace-nowrap bg-slate-100">Timestamp</th>
+                                                    <th className="py-3 px-4 bg-slate-100">Details / Description</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 font-sans">
@@ -3803,10 +3808,10 @@ function OrdersContent() {
                                                             <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
                                                                 {log.admin_name || log.resolved_user_name || log.user_name || (log.admin_id ? `Admin #${log.admin_id}` : (log.user_id ? `User #${log.user_id}` : "System"))}
                                                             </td>
-                                                            <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
+                                                            <td className="py-3 px-4 font-medium text-slate-700 whitespace-nowrap">
                                                                 {formatDate(log.created_at)}
                                                             </td>
-                                                            <td className="py-3 px-4 font-medium text-foreground">
+                                                            <td className="py-3 px-4 font-medium text-slate-700">
                                                                 {log.description || "-"}
                                                             </td>
                                                         </tr>
@@ -3818,7 +3823,7 @@ function OrdersContent() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-2">
+                            <div className="flex-shrink-0 flex justify-end pt-2 border-t border-slate-200/60">
                                 <Button
                                     type="button"
                                     variant="secondary"
@@ -3840,7 +3845,7 @@ function OrdersContent() {
                     const notesPcbColor = getPcbColorCode(notesPcbColorVal);
                     return (
                         <DialogContent
-                            className="max-w-2xl max-h-[85vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900 overflow-hidden"
+                            className="max-w-2xl max-h-[90vh] overflow-y-auto border rounded-2xl p-6 md:p-7 shadow-2xl space-y-5 text-slate-900"
                             style={{
                                 backgroundColor: getPcbLightBg(notesPcbColor),
                                 borderColor: `${notesPcbColor}60`

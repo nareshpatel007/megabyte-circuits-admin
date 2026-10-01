@@ -138,9 +138,10 @@ export default function OrderDetailPage() {
     const router = useRouter();
     const orderId = params?.id;
     const { user } = useAuth();
-    const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
+    const isSuperAdmin = user?.role?.toLowerCase() === "super admin" || (Array.isArray(user?.permissions) && user.permissions.includes("*"));
     const hasPaymentPermission = user?.permissions ? user.permissions.includes("payments.view") : true;
     const hasDeleteOrderPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("orders.delete") || user.permissions.includes("orders.manage")) : false);
+    const hasEditOrderPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("orders.edit") || user.permissions.includes("orders.manage")) : false);
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deletingOrder, setDeletingOrder] = useState(false);
@@ -835,6 +836,7 @@ export default function OrderDetailPage() {
     };
 
     const startEditSpec = (fieldKey: string, initialVal: string) => {
+        if (!hasEditOrderPermission) return;
         setActiveEditingSpec(fieldKey);
         setSpecFormValues(prev => ({ ...prev, [fieldKey]: initialVal }));
     };
@@ -844,6 +846,10 @@ export default function OrderDetailPage() {
     };
 
     const handleSaveSpec = async (specKey: string, val: string, label: string) => {
+        if (!hasEditOrderPermission) {
+            toast.error("You don't have permission to edit orders.");
+            return;
+        }
         const toastId = toast.loading(`Updating ${label}...`);
         try {
             const token = localStorage.getItem("admin_token");
@@ -981,7 +987,7 @@ export default function OrderDetailPage() {
                                 <X className="w-3 h-3" />
                             </button>
                         </div>
-                    ) : (
+                    ) : hasEditOrderPermission ? (
                         <button
                             type="button"
                             onClick={() => startEditSpec(key, currentValue === 'N/A' ? '' : currentValue)}
@@ -989,7 +995,7 @@ export default function OrderDetailPage() {
                         >
                             Edit
                         </button>
-                    )}
+                    ) : null}
                 </div>
                 {isEditing ? (
                     <div className="mt-1 space-y-1.5">
@@ -1028,11 +1034,18 @@ export default function OrderDetailPage() {
                             </div>
                         )}
                     </div>
-                ) : (
+                ) : hasEditOrderPermission ? (
                     <p 
                         className="font-bold text-foreground mt-0.5 truncate cursor-pointer hover:text-emerald-600 transition-colors" 
                         title={`Click to edit ${label}: ${displayValue || currentValue || 'N/A'}`}
                         onClick={() => startEditSpec(key, currentValue === 'N/A' ? '' : currentValue)}
+                    >
+                        {displayValue || currentValue || 'N/A'}
+                    </p>
+                ) : (
+                    <p 
+                        className="font-bold text-foreground mt-0.5 truncate cursor-default select-text" 
+                        title={`${label}: ${displayValue || currentValue || 'N/A'}`}
                     >
                         {displayValue || currentValue || 'N/A'}
                     </p>
@@ -1108,20 +1121,30 @@ export default function OrderDetailPage() {
             <div key={key} className={`p-2 rounded-xl border flex items-center justify-between font-bold ${isYes ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-muted/20 border-border/60 text-muted-foreground'}`}>
                 <span className="text-[11px] truncate pr-1" title={label}>{label}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    <span 
-                        onClick={() => startEditSpec(key, currentVal || 'No')}
-                        className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black cursor-pointer hover:opacity-80 transition-opacity ${isYes ? 'bg-emerald-500 text-white' : 'bg-muted border border-border/60 text-foreground'}`}
-                        title="Click to edit"
-                    >
-                        {currentVal || 'No'}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => startEditSpec(key, currentVal || 'No')}
-                        className="text-emerald-500 text-[10px] font-bold hover:underline cursor-pointer"
-                    >
-                        Edit
-                    </button>
+                    {hasEditOrderPermission ? (
+                        <>
+                            <span 
+                                onClick={() => startEditSpec(key, currentVal || 'No')}
+                                className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black cursor-pointer hover:opacity-80 transition-opacity ${isYes ? 'bg-emerald-500 text-white' : 'bg-muted border border-border/60 text-foreground'}`}
+                                title="Click to edit"
+                            >
+                                {currentVal || 'No'}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => startEditSpec(key, currentVal || 'No')}
+                                className="text-emerald-500 text-[10px] font-bold hover:underline cursor-pointer"
+                            >
+                                Edit
+                            </button>
+                        </>
+                    ) : (
+                        <span 
+                            className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black cursor-default select-text ${isYes ? 'bg-emerald-500 text-white' : 'bg-muted border border-border/60 text-foreground'}`}
+                        >
+                            {currentVal || 'No'}
+                        </span>
+                    )}
                 </div>
             </div>
         );
@@ -1365,18 +1388,20 @@ export default function OrderDetailPage() {
                     <h1 className="text-lg md:text-xl font-black leading-tight" style={{ color: isPartProduct ? "#2563eb" : orderNumColor }}>
                         Order #{order.order_number}
                     </h1>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setEditingOrderNumber(true);
-                            setOrderNumberState(order.order_number || "");
-                            setOrderNumberError("");
-                        }}
-                        className="text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer opacity-85 hover:opacity-100 transition-opacity"
-                        style={{ color: isPartProduct ? "#2563eb" : orderNumColor }}
-                    >
-                        [Edit]
-                    </button>
+                    {hasEditOrderPermission && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEditingOrderNumber(true);
+                                setOrderNumberState(order.order_number || "");
+                                setOrderNumberError("");
+                            }}
+                            className="text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer opacity-85 hover:opacity-100 transition-opacity"
+                            style={{ color: isPartProduct ? "#2563eb" : orderNumColor }}
+                        >
+                            [Edit]
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -1448,25 +1473,27 @@ export default function OrderDetailPage() {
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">P/N Number</p>
-                            {!editingPnNumber ? (
-                                <button
-                                    onClick={() => {
-                                        setPnNumberState(effectivePn || '');
-                                        setEditingPnNumber(true);
-                                    }}
-                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                >
-                                    Edit
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5">
-                                    <button onClick={handleSavePnNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                        <Save className="w-3 h-3" /> Save
+                            {hasEditOrderPermission && (
+                                !editingPnNumber ? (
+                                    <button
+                                        onClick={() => {
+                                            setPnNumberState(effectivePn || '');
+                                            setEditingPnNumber(true);
+                                        }}
+                                        className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
                                     </button>
-                                    <button onClick={() => setEditingPnNumber(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <button onClick={handleSavePnNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingPnNumber(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )
                             )}
                         </div>
                         {!editingPnNumber ? (
@@ -1487,7 +1514,7 @@ export default function OrderDetailPage() {
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Value</p>
-                            {hasPaymentPermission && (
+                            {hasPaymentPermission && hasEditOrderPermission && (
                                 !editingOrderValue ? (
                                     <button
                                         onClick={() => {
@@ -1531,25 +1558,27 @@ export default function OrderDetailPage() {
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bill Number</p>
-                            {!editingTopBillNumber ? (
-                                <button
-                                    onClick={() => {
-                                        setTopBillNumberState(String(order.bill_number || getMetaValue('bill_number', getMetaValue('bill', ''))));
-                                        setEditingTopBillNumber(true);
-                                    }}
-                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                >
-                                    Edit
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5">
-                                    <button onClick={handleSaveTopBillNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                        <Save className="w-3 h-3" /> Save
+                            {hasEditOrderPermission && (
+                                !editingTopBillNumber ? (
+                                    <button
+                                        onClick={() => {
+                                            setTopBillNumberState(String(order.bill_number || getMetaValue('bill_number', getMetaValue('bill', ''))));
+                                            setEditingTopBillNumber(true);
+                                        }}
+                                        className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
                                     </button>
-                                    <button onClick={() => setEditingTopBillNumber(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <button onClick={handleSaveTopBillNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingTopBillNumber(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )
                             )}
                         </div>
                         {!editingTopBillNumber ? (
@@ -1570,7 +1599,7 @@ export default function OrderDetailPage() {
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit Price</p>
-                            {hasPaymentPermission && (
+                            {hasPaymentPermission && hasEditOrderPermission && (
                                 !editingUnitPrice ? (
                                     <button
                                         onClick={() => {
@@ -1620,26 +1649,28 @@ export default function OrderDetailPage() {
                             <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm space-y-1 relative group">
                                 <div className="flex justify-between items-center">
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity Breakdown</p>
-                                    {!editingTopQty ? (
-                                        <button
-                                            onClick={() => {
-                                                setTopOrderQty(orderQtyVal);
-                                                setTopFinalQty(finalQtyVal);
-                                                setEditingTopQty(true);
-                                            }}
-                                            className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                        >
-                                            Edit
-                                        </button>
-                                    ) : (
-                                        <div className="flex items-center gap-1.5">
-                                            <button onClick={handleSaveTopQty} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                                <Save className="w-3 h-3" /> Save
+                                    {hasEditOrderPermission && (
+                                        !editingTopQty ? (
+                                            <button
+                                                onClick={() => {
+                                                    setTopOrderQty(orderQtyVal);
+                                                    setTopFinalQty(finalQtyVal);
+                                                    setEditingTopQty(true);
+                                                }}
+                                                className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                            >
+                                                Edit
                                             </button>
-                                            <button onClick={() => setEditingTopQty(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
+                                        ) : (
+                                            <div className="flex items-center gap-1.5">
+                                                <button onClick={handleSaveTopQty} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                                    <Save className="w-3 h-3" /> Save
+                                                </button>
+                                                <button onClick={() => setEditingTopQty(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        )
                                     )}
                                 </div>
                                 {!editingTopQty ? (
@@ -1687,26 +1718,28 @@ export default function OrderDetailPage() {
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Delivery Date</p>
-                            {!editingDeliveryDate ? (
-                                <button
-                                    onClick={() => {
-                                        const currentDate = order.delivery_date || getMetaValue('delivery_date', '');
-                                        setDeliveryDate(parseDeliveryDateToYYYYMMDD(currentDate));
-                                        setEditingDeliveryDate(true);
-                                    }}
-                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                >
-                                    Edit
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5">
-                                    <button onClick={handleSaveDeliveryDate} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                        <Save className="w-3 h-3" /> Save
+                            {hasEditOrderPermission && (
+                                !editingDeliveryDate ? (
+                                    <button
+                                        onClick={() => {
+                                            const currentDate = order.delivery_date || getMetaValue('delivery_date', '');
+                                            setDeliveryDate(parseDeliveryDateToYYYYMMDD(currentDate));
+                                            setEditingDeliveryDate(true);
+                                        }}
+                                        className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
                                     </button>
-                                    <button onClick={() => setEditingDeliveryDate(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <button onClick={handleSaveDeliveryDate} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingDeliveryDate(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )
                             )}
                         </div>
                         {!editingDeliveryDate ? (
@@ -1726,25 +1759,27 @@ export default function OrderDetailPage() {
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Submitted On</p>
-                            {!editingSubmittedOn ? (
-                                <button
-                                    onClick={() => {
-                                        setSubmittedOnState(parseDeliveryDateToYYYYMMDD(order.created_at));
-                                        setEditingSubmittedOn(true);
-                                    }}
-                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                >
-                                    Edit
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5">
-                                    <button onClick={handleSaveSubmittedOn} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                        <Save className="w-3 h-3" /> Save
+                            {hasEditOrderPermission && (
+                                !editingSubmittedOn ? (
+                                    <button
+                                        onClick={() => {
+                                            setSubmittedOnState(parseDeliveryDateToYYYYMMDD(order.created_at));
+                                            setEditingSubmittedOn(true);
+                                        }}
+                                        className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
                                     </button>
-                                    <button onClick={() => setEditingSubmittedOn(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <button onClick={handleSaveSubmittedOn} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingSubmittedOn(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )
                             )}
                         </div>
                         {!editingSubmittedOn ? (
@@ -1874,15 +1909,17 @@ export default function OrderDetailPage() {
                                                     <span className="text-muted-foreground/60 italic text-xs">N/A</span>
                                                 )}
                                             </span>
-                                            <button
-                                                onClick={() => {
-                                                    setInlineCgState(order.c_g ? String(order.c_g).toUpperCase() : "");
-                                                    setEditingOrderCg(true);
-                                                }}
-                                                className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                            >
-                                                Edit
-                                            </button>
+                                            {hasEditOrderPermission && (
+                                                <button
+                                                    onClick={() => {
+                                                        setInlineCgState(order.c_g ? String(order.c_g).toUpperCase() : "");
+                                                        setEditingOrderCg(true);
+                                                    }}
+                                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                                >
+                                                    Edit
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-1.5">
@@ -2057,31 +2094,33 @@ export default function OrderDetailPage() {
                                 <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                                     5. Customer PCB Remark / Instructions
                                 </h4>
-                                {activeEditingSpec === 'pcb_remark' ? (
-                                    <div className="flex items-center gap-1.5">
+                                {hasEditOrderPermission && (
+                                    activeEditingSpec === 'pcb_remark' ? (
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSaveSpec('pcb_remark', specFormValues['pcb_remark'] ?? getMetaValue('pcb_remark', ''), 'PCB Remark')}
+                                                className="text-emerald-500 text-[11px] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <Save className="w-3 h-3" /> Save
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={cancelEditSpec}
+                                                className="text-muted-foreground hover:text-foreground text-[11px] font-bold cursor-pointer"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ) : (
                                         <button
                                             type="button"
-                                            onClick={() => handleSaveSpec('pcb_remark', specFormValues['pcb_remark'] ?? getMetaValue('pcb_remark', ''), 'PCB Remark')}
-                                            className="text-emerald-500 text-[11px] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                            onClick={() => startEditSpec('pcb_remark', getMetaValue('pcb_remark', ''))}
+                                            className="text-emerald-500 text-[11px] font-bold hover:underline cursor-pointer"
                                         >
-                                            <Save className="w-3 h-3" /> Save
+                                            Edit
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={cancelEditSpec}
-                                            className="text-muted-foreground hover:text-foreground text-[11px] font-bold cursor-pointer"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => startEditSpec('pcb_remark', getMetaValue('pcb_remark', ''))}
-                                        className="text-emerald-500 text-[11px] font-bold hover:underline cursor-pointer"
-                                    >
-                                        Edit
-                                    </button>
+                                    )
                                 )}
                             </div>
                             {activeEditingSpec === 'pcb_remark' ? (
@@ -2378,7 +2417,7 @@ export default function OrderDetailPage() {
                     </form>
 
                     {/* Notes List */}
-                    <div className="space-y-3 pt-1">
+                    <div className="space-y-3 pt-1 max-h-[380px] overflow-y-auto pr-1">
                         {notesList.length === 0 ? (
                             <div className="p-6 rounded-xl border border-dashed border-border/70 text-center bg-muted/10">
                                 <ClipboardList className="w-6 h-6 text-muted-foreground/60 mx-auto mb-2" />
@@ -2427,15 +2466,15 @@ export default function OrderDetailPage() {
                         <History className="w-4 h-4 text-emerald-500" /> Order Logs
                     </h3>
 
-                    <div className="border border-border/60 rounded-xl overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead>
-                                    <tr className="bg-muted/60 border-b border-border/60 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
-                                        <th className="py-3 px-4">Action</th>
-                                        <th className="py-3 px-4 whitespace-nowrap">User / Admin</th>
-                                        <th className="py-3 px-4">Timestamp</th>
-                                        <th className="py-3 px-4">Details / Description</th>
+                    <div className="border border-border/60 rounded-xl overflow-hidden bg-card">
+                        <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+                            <table className="w-full text-left text-xs relative">
+                                <thead className="sticky top-0 z-10 bg-muted border-b border-border/60 text-muted-foreground font-bold uppercase tracking-wider text-[10px] shadow-2xs">
+                                    <tr>
+                                        <th className="py-3 px-4 bg-muted">Action</th>
+                                        <th className="py-3 px-4 whitespace-nowrap bg-muted">User / Admin</th>
+                                        <th className="py-3 px-4 whitespace-nowrap bg-muted">Timestamp</th>
+                                        <th className="py-3 px-4 bg-muted">Details / Description</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/40 font-sans">
