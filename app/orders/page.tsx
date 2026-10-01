@@ -197,6 +197,7 @@ function OrdersContent() {
     const [statusFilter, setStatusFilter] = useState(() => searchParams?.get("status") || "In Production");
     const [startDate, setStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
     const [endDate, setEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
+    const [cgFilter, setCgFilter] = useState(() => searchParams?.get("c_g") || searchParams?.get("cg") || "All");
     // Temporary dates for Popover drafting before clicking Apply
     const [tempStartDate, setTempStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
     const [tempEndDate, setTempEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
@@ -209,6 +210,15 @@ function OrdersContent() {
         setPage(1);
         updateUrlParams({
             status,
+            page: 1
+        });
+    };
+
+    const handleSelectCg = (cg: string) => {
+        setCgFilter(cg);
+        setPage(1);
+        updateUrlParams({
+            c_g: cg === "All" ? null : cg,
             page: 1
         });
     };
@@ -237,6 +247,7 @@ function OrdersContent() {
         const st = searchParams.get("status") || "In Production";
         const sd = searchParams.get("start_date") || searchParams.get("from") || "";
         const ed = searchParams.get("end_date") || searchParams.get("to") || "";
+        const cgParam = searchParams.get("c_g") || searchParams.get("cg") || "All";
 
         const pRaw = parseInt(searchParams.get("page") || "1", 10);
         const p = isNaN(pRaw) || pRaw < 1 ? 1 : pRaw;
@@ -250,6 +261,7 @@ function OrdersContent() {
         setSearch(s);
         setDebouncedSearch(s);
         setStatusFilter(st);
+        setCgFilter(cgParam);
         setStartDate(sd);
         setEndDate(ed);
         setTempStartDate(sd);
@@ -797,6 +809,7 @@ function OrdersContent() {
     const [modalCompletedQty, setModalCompletedQty] = useState<number>(0);
     const [modalFailedQty, setModalFailedQty] = useState<number>(0);
     const [modalQNo, setModalQNo] = useState("");
+    const [modalCg, setModalCg] = useState<string>("");
     const [modalCombo, setModalCombo] = useState("");
     const [modalComboOrders, setModalComboOrders] = useState<ComboOrderItem[]>([]);
     const [modalOldOrderNumber, setModalOldOrderNumber] = useState("");
@@ -1393,6 +1406,9 @@ function OrdersContent() {
             if (statusFilter && statusFilter !== "All") {
                 url += `&status=${encodeURIComponent(statusFilter)}`;
             }
+            if (cgFilter && cgFilter !== "All") {
+                url += `&c_g=${encodeURIComponent(cgFilter)}`;
+            }
 
             const [ordersRes, statusesRes] = await Promise.all([
                 fetch(url, { headers }),
@@ -1443,12 +1459,13 @@ function OrdersContent() {
 
     useEffect(() => {
         fetchData(debouncedSearch);
-    }, [debouncedSearch, startDate, endDate, statusFilter, pageSize, page, sortBy, sortOrder]);
+    }, [debouncedSearch, startDate, endDate, statusFilter, cgFilter, pageSize, page, sortBy, sortOrder]);
 
     const handleResetFilter = () => {
         setSearch("");
         setDebouncedSearch("");
         setStatusFilter("In Production");
+        setCgFilter("All");
         setStartDate("");
         setEndDate("");
         setTempStartDate("");
@@ -1462,6 +1479,8 @@ function OrdersContent() {
             search: null,
             q: null,
             status: null,
+            c_g: null,
+            cg: null,
             start_date: null,
             end_date: null,
             from: null,
@@ -1644,9 +1663,11 @@ function OrdersContent() {
         const isCompleted = ['completed', 'shipped', 'delivered'].includes((order.status || '').toLowerCase());
         const totalQtyVal = parseInt(getMetaValue(order, 'qty', getMetaValue(order, 'quantity', '5'))) || 0;
         const initialCompletedQty = typeof order.completed_qty === 'number' ? order.completed_qty : (isCompleted ? totalQtyVal : 0);
-        const initialLaunchQty = order.launch_qty || 0;
+        const initialPanelQty = order.panel_qty || 0;
+        const initialUpsQty = order.ups_qty || 0;
+        const initialLaunchQty = order.launch_qty || ((initialPanelQty > 0 && initialUpsQty > 0) ? (initialPanelQty * initialUpsQty) : 0);
         const initialFinalQty = typeof order.final_qty === 'number' ? order.final_qty : initialCompletedQty;
-        const initialFailedQty = initialLaunchQty > 0 ? Math.max(0, initialLaunchQty - initialFinalQty) : (typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0));
+        const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', '0')) || 0);
 
         const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
         const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
@@ -1676,6 +1697,7 @@ function OrdersContent() {
         setModalCompletedQty(initialCompletedQty);
         setModalFailedQty(initialFailedQty);
         setModalQNo(order.q_no ? String(order.q_no) : "");
+        setModalCg(order.c_g ? String(order.c_g).toUpperCase() : "");
         setModalCombo(order.combo ? String(order.combo) : "");
 
         let initialComboItems: ComboOrderItem[] = [];
@@ -1818,6 +1840,7 @@ function OrdersContent() {
                 completed_qty: modalCompletedQty,
                 failed_qty: modalFailedQty,
                 q_no: modalQNo,
+                c_g: modalCg || null,
                 combo: comboStr,
                 combo_order_ids: comboOrderNos,
                 old_order_number: oldOrderStr,
@@ -2049,6 +2072,24 @@ function OrdersContent() {
                         </div>
 
                         <div className="flex items-center gap-2.5 shrink-0">
+                            {/* C/G Filter Dropdown */}
+                            <Select
+                                value={cgFilter || "All"}
+                                onValueChange={(val) => {
+                                    handleSelectCg(val);
+                                }}
+                            >
+                                <SelectTrigger className="h-10 sm:h-11 min-w-[110px] px-3 bg-card border-border/80 rounded-xl text-xs sm:text-sm font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer">
+                                    <SelectValue placeholder="C/G: All" />
+                                </SelectTrigger>
+                                <SelectContent className="font-semibold">
+                                    <SelectItem value="All">All C/G</SelectItem>
+                                    <SelectItem value="CASH">CASH</SelectItem>
+                                    <SelectItem value="GST">GST</SelectItem>
+                                    <SelectItem value="BOTH">BOTH</SelectItem>
+                                </SelectContent>
+                            </Select>
+
                             {/* Popover Date Range & Presets Selector */}
                             <Popover open={popoverOpen} onOpenChange={(open) => {
                                 setPopoverOpen(open);
@@ -2467,6 +2508,18 @@ function OrdersContent() {
                                                 Bill Number
                                             </th>
                                             <th
+                                                onClick={() => handleSort('c_g')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by C/G"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>C/G</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'c_g' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'c_g' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
                                                 onClick={() => handleSort('customer_name')}
                                                 className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
                                                 title="Click to sort by Customer Name"
@@ -2694,6 +2747,21 @@ function OrdersContent() {
                                                                 {order.bill_number && String(order.bill_number).trim() !== ""
                                                                     ? order.bill_number
                                                                     : "—"}
+                                                            </span>
+                                                        </td>
+                                                        {/* C/G */}
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                                            <span
+                                                                className={`font-mono text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${order.c_g
+                                                                        ? order.c_g === 'GST'
+                                                                            ? "text-blue-700 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+                                                                            : order.c_g === 'CASH'
+                                                                                ? "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
+                                                                                : "text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/20"
+                                                                        : "text-muted-foreground/60 bg-muted/20 border-border/40"
+                                                                    }`}
+                                                            >
+                                                                {order.c_g || "—"}
                                                             </span>
                                                         </td>
                                                         {/* 3. Customer */}
@@ -3120,8 +3188,8 @@ function OrdersContent() {
                                     </div>
                                 </div>
 
-                                {/* Row 2: Customer, Pipeline Status, Bill Number & Q.No (4 Columns) */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {/* Row 2: Customer, Pipeline Status, Bill Number, Q.No & C/G (5 Columns) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                                     <div>
                                         <label className="text-xs font-bold text-slate-700 block mb-1.5">
                                             Select Customer
@@ -3250,6 +3318,26 @@ function OrdersContent() {
                                             className="w-full px-3.5 py-2.5 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                         />
                                     </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                                            C/G
+                                        </label>
+                                        <Select
+                                            value={modalCg || "none"}
+                                            onValueChange={(val) => setModalCg(val === "none" ? "" : val)}
+                                        >
+                                            <SelectTrigger className="w-full px-3.5 py-2.5 text-xs font-bold bg-white border-slate-300 rounded-xl text-slate-900 shadow-xs h-auto">
+                                                <SelectValue placeholder="Select C/G" />
+                                            </SelectTrigger>
+                                            <SelectContent className="font-semibold">
+                                                <SelectItem value="none">Select C/G</SelectItem>
+                                                <SelectItem value="CASH">CASH</SelectItem>
+                                                <SelectItem value="GST">GST</SelectItem>
+                                                <SelectItem value="BOTH">BOTH</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
                                 {/* Row 3: Combo Orders & Old Orders (2 Columns) */}
@@ -3281,16 +3369,16 @@ function OrdersContent() {
                                     </div>
                                 </div>
 
-                                {/* Row 4: Production Quantities Bar (6 Columns in 1 Row) */}
+                                {/* Row 4: Production Quantities Bar (5 Columns in 1 Row) */}
                                 <div className="p-3 rounded-xl bg-white/75 border border-slate-200/90 shadow-2xs">
                                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
                                         <span>Production Quantities</span>
                                         <span className="text-[10px] font-medium text-slate-400">Launch, panel, ups and completion metrics</span>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                                         <div>
                                             <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                                                Launch Qty
+                                                 Launch Qty
                                             </label>
                                             <Input
                                                 type="number"
@@ -3310,7 +3398,13 @@ function OrdersContent() {
                                                 type="number"
                                                 min={0}
                                                 value={modalPanelQty}
-                                                onChange={(e) => setModalPanelQty(parseInt(e.target.value) || 0)}
+                                                onChange={(e) => {
+                                                    const p = parseInt(e.target.value) || 0;
+                                                    setModalPanelQty(p);
+                                                    if (p > 0 && modalUpsQty > 0) {
+                                                        setModalLaunchQty(p * modalUpsQty);
+                                                    }
+                                                }}
                                                 placeholder="Panel..."
                                                 className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                             />
@@ -3324,22 +3418,14 @@ function OrdersContent() {
                                                 type="number"
                                                 min={0}
                                                 value={modalUpsQty}
-                                                onChange={(e) => setModalUpsQty(parseInt(e.target.value) || 0)}
+                                                onChange={(e) => {
+                                                    const u = parseInt(e.target.value) || 0;
+                                                    setModalUpsQty(u);
+                                                    if (modalPanelQty > 0 && u > 0) {
+                                                        setModalLaunchQty(modalPanelQty * u);
+                                                    }
+                                                }}
                                                 placeholder="Ups..."
-                                                className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                                                Completed (Pcs)
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                min={0}
-                                                value={modalCompletedQty}
-                                                onChange={(e) => setModalCompletedQty(parseInt(e.target.value) || 0)}
-                                                placeholder="Completed..."
                                                 className="w-full px-3 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 font-bold shadow-xs h-auto"
                                             />
                                         </div>

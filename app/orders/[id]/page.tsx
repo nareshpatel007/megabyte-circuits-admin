@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, User, Mail, Phone, FileText, Download, RefreshCw, History, Shield, Calendar, Tag, MessageSquare, Layers, Eye, Save, Plus, ExternalLink, Trash2, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -208,6 +208,32 @@ export default function OrderDetailPage() {
     const [editingDeliveryDate, setEditingDeliveryDate] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState("");
 
+    // Top summary boxes edit states
+    const [editingOrderValue, setEditingOrderValue] = useState(false);
+    const [orderValueState, setOrderValueState] = useState("");
+
+    const [editingTopBillNumber, setEditingTopBillNumber] = useState(false);
+    const [topBillNumberState, setTopBillNumberState] = useState("");
+
+    const [editingUnitPrice, setEditingUnitPrice] = useState(false);
+    const [unitPriceState, setUnitPriceState] = useState("");
+
+    const [editingTopQty, setEditingTopQty] = useState(false);
+    const [topOrderQty, setTopOrderQty] = useState(0);
+    const [topFinalQty, setTopFinalQty] = useState(0);
+
+    const [editingSubmittedOn, setEditingSubmittedOn] = useState(false);
+    const [submittedOnState, setSubmittedOnState] = useState("");
+
+    // Technical Parameters & PCB Specifications edit states
+    const [activeEditingSpec, setActiveEditingSpec] = useState<string | null>(null);
+    const [specFormValues, setSpecFormValues] = useState<Record<string, string>>({});
+
+    // C/G states
+    const [cgState, setCgState] = useState<string>("");
+    const [editingOrderCg, setEditingOrderCg] = useState(false);
+    const [inlineCgState, setInlineCgState] = useState("");
+
     const extractQty = (targetOrder: any, directKey: string, metaKeys: string[], fallbackVal = 0): number => {
         if (!targetOrder) return fallbackVal;
         const directVal = targetOrder[directKey];
@@ -252,9 +278,9 @@ export default function OrderDetailPage() {
                 const orderQtyVal = extractQty(o, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], 0);
                 const compQtyVal = extractQty(o, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], 0);
                 const failQtyVal = extractQty(o, 'failed_qty', ['failed_qty', 'failed'], 0);
-                const launchQtyVal = extractQty(o, 'launch_qty', ['launch_qty', 'launch', 'launched_qty', 'launched'], 0);
                 const panelQtyVal = extractQty(o, 'panel_qty', ['panel_qty', 'panel'], 0);
                 const upsQtyVal = extractQty(o, 'ups_qty', ['ups_qty', 'ups'], 0);
+                const launchQtyVal = extractQty(o, 'launch_qty', ['launch_qty', 'launch', 'launched_qty', 'launched'], (panelQtyVal > 0 && upsQtyVal > 0) ? (panelQtyVal * upsQtyVal) : 0);
                 const finalQtyVal = extractQty(o, 'final_qty', ['final_qty', 'final', 'completed_qty', 'completed'], compQtyVal);
 
                 setOrderQty(orderQtyVal);
@@ -263,6 +289,8 @@ export default function OrderDetailPage() {
                 setLaunchQty(launchQtyVal);
                 setPanelQty(panelQtyVal);
                 setUpsQty(upsQtyVal);
+                setCgState(o.c_g ? String(o.c_g).toUpperCase() : "");
+                setInlineCgState(o.c_g ? String(o.c_g).toUpperCase() : "");
                 const defaultPn = o.pn_number 
                     || o.gerber_file?.original_name 
                     || o.gerber_file?.file_name 
@@ -453,6 +481,7 @@ export default function OrderDetailPage() {
                     completed_qty: completedQty,
                     failed_qty: failedQty,
                     q_no: qNo,
+                    c_g: cgState || null,
                     combo: comboStr,
                     combo_order_ids: comboOrderNos,
                     old_order_number: oldOrderStr,
@@ -476,6 +505,8 @@ export default function OrderDetailPage() {
                 setOrderNumberState(updated?.order_number || orderNumberState.trim());
                 if (updated) {
                     setPnNumberState(updated.pn_number || pnNumberState.trim());
+                    setCgState(updated?.c_g ? String(updated.c_g).toUpperCase() : "");
+                    setInlineCgState(updated?.c_g ? String(updated.c_g).toUpperCase() : "");
                     setOrderQty(extractQty(updated, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], orderQty));
                     setCompletedQty(extractQty(updated, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], completedQty));
                     setFailedQty(extractQty(updated, 'failed_qty', ['failed_qty', 'failed'], failedQty));
@@ -531,6 +562,390 @@ export default function OrderDetailPage() {
         } catch (err) {
             toast.error("Error updating delivery date");
         }
+    };
+
+    const handleSaveOrderValue = async () => {
+        const val = parseFloat(orderValueState);
+        if (isNaN(val) || val < 0) {
+            toast.error("Please enter a valid order value.");
+            return;
+        }
+        const toastId = toast.loading("Updating Order Value...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ order_value: val })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Order Value updated successfully", { id: toastId });
+                setEditingOrderValue(false);
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || "Failed to update order value", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error updating order value", { id: toastId });
+        }
+    };
+
+    const handleSaveTopBillNumber = async () => {
+        const val = topBillNumberState.trim();
+        const toastId = toast.loading("Updating Bill Number...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ bill_number: val })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Bill Number updated successfully", { id: toastId });
+                setEditingTopBillNumber(false);
+                setBillNumber(val);
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || "Failed to update bill number", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error updating bill number", { id: toastId });
+        }
+    };
+
+    const handleSaveInlineCg = async () => {
+        const toastId = toast.loading("Updating C/G...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ c_g: inlineCgState || null })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("C/G updated successfully", { id: toastId });
+                setEditingOrderCg(false);
+                setCgState(inlineCgState);
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || "Failed to update C/G", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error updating C/G", { id: toastId });
+        }
+    };
+
+    const handleSaveUnitPrice = async () => {
+        const val = parseFloat(unitPriceState);
+        if (isNaN(val) || val < 0) {
+            toast.error("Please enter a valid unit price.");
+            return;
+        }
+        const toastId = toast.loading("Updating Unit Price...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ unit_price: val })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Unit Price updated successfully", { id: toastId });
+                setEditingUnitPrice(false);
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || "Failed to update unit price", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error updating unit price", { id: toastId });
+        }
+    };
+
+    const handleSaveTopQty = async () => {
+        const toastId = toast.loading("Updating Quantities...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    order_qty: Number(topOrderQty),
+                    final_qty: Number(topFinalQty)
+                })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Quantities updated successfully", { id: toastId });
+                setEditingTopQty(false);
+                setOrderQty(Number(topOrderQty));
+                setFinalQty(Number(topFinalQty));
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || "Failed to update quantities", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error updating quantities", { id: toastId });
+        }
+    };
+
+    const handleSaveSubmittedOn = async () => {
+        if (!submittedOnState) {
+            toast.error("Please select a valid date.");
+            return;
+        }
+        const toastId = toast.loading("Updating Submitted Date...");
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ created_at: submittedOnState })
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success("Submitted Date updated successfully", { id: toastId });
+                setEditingSubmittedOn(false);
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || "Failed to update submitted date", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error updating submitted date", { id: toastId });
+        }
+    };
+
+    const startEditSpec = (fieldKey: string, initialVal: string) => {
+        setActiveEditingSpec(fieldKey);
+        setSpecFormValues(prev => ({ ...prev, [fieldKey]: initialVal }));
+    };
+
+    const cancelEditSpec = () => {
+        setActiveEditingSpec(null);
+    };
+
+    const handleSaveSpec = async (specKey: string, val: string, label: string) => {
+        const toastId = toast.loading(`Updating ${label}...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            let payload: Record<string, any> = { [specKey]: val };
+            if (specKey === 'layers') {
+                const num = parseInt(val, 10);
+                if (!isNaN(num)) payload.layers = num;
+            } else if (specKey === 'order_qty' || specKey === 'quantity') {
+                const num = parseInt(val, 10);
+                if (!isNaN(num)) {
+                    payload.order_qty = num;
+                    payload.quantity = num;
+                }
+            } else if (specKey === 'pcb_color' || specKey === 'mask') {
+                payload.mask = val;
+                payload.pcb_color = val;
+                payload.solder_mask = val;
+            } else if (specKey === 'pn_number') {
+                payload.pn_number = val;
+            }
+
+            const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok && (data.status || data.success)) {
+                toast.success(`${label} updated successfully`, { id: toastId });
+                setActiveEditingSpec(null);
+                if (data.data) {
+                    setOrder(data.data);
+                    if (data.data.pn_number) setPnNumberState(data.data.pn_number);
+                    if (data.data.order_qty) setOrderQty(data.data.order_qty);
+                } else {
+                    fetchOrderDetail();
+                }
+            } else {
+                toast.error(data.message || `Failed to update ${label}`, { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || `Error updating ${label}`, { id: toastId });
+        }
+    };
+
+    const renderSpecItem = (
+        key: string,
+        label: string,
+        currentValue: string,
+        type: 'text' | 'number' | 'select' = 'text',
+        options?: string[],
+        displayValue?: string
+    ) => {
+        const isEditing = activeEditingSpec === key;
+        const valToEdit = specFormValues[key] !== undefined ? specFormValues[key] : (currentValue === 'N/A' ? '' : currentValue);
+
+        return (
+            <div className={`bg-muted/30 rounded-xl p-2.5 border transition-all ${isEditing ? 'border-emerald-500 ring-1 ring-emerald-500/20 bg-background' : 'border-border/60'} relative group`}>
+                <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase truncate pr-1" title={label}>{label}</p>
+                    {isEditing ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => handleSaveSpec(key, valToEdit, label)}
+                                className="text-emerald-500 text-[11px] font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                            >
+                                <Save className="w-3 h-3" /> Save
+                            </button>
+                            <button
+                                type="button"
+                                onClick={cancelEditSpec}
+                                className="text-muted-foreground hover:text-foreground text-[11px] font-bold cursor-pointer"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => startEditSpec(key, currentValue === 'N/A' ? '' : currentValue)}
+                            className="text-emerald-500 text-[11px] font-bold hover:underline cursor-pointer shrink-0"
+                        >
+                            Edit
+                        </button>
+                    )}
+                </div>
+                {isEditing ? (
+                    type === 'select' && options ? (
+                        <select
+                            value={valToEdit}
+                            onChange={(e) => setSpecFormValues(prev => ({ ...prev, [key]: e.target.value }))}
+                            className="mt-1 w-full text-xs font-bold bg-background border border-emerald-500 rounded p-1 text-foreground"
+                            autoFocus
+                        >
+                            {options.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            type={type}
+                            value={valToEdit}
+                            onChange={(e) => setSpecFormValues(prev => ({ ...prev, [key]: e.target.value }))}
+                            placeholder={`Enter ${label}...`}
+                            className="mt-1 w-full text-xs font-bold bg-background border border-emerald-500 rounded p-1 text-foreground"
+                            autoFocus
+                        />
+                    )
+                ) : (
+                    <p className="font-bold text-foreground mt-0.5 truncate" title={displayValue || currentValue || 'N/A'}>
+                        {displayValue || currentValue || 'N/A'}
+                    </p>
+                )}
+            </div>
+        );
+    };
+
+    const renderBadgeItem = (key: string, label: string, currentVal: string) => {
+        const isEditing = activeEditingSpec === key;
+        const valToEdit = specFormValues[key] !== undefined ? specFormValues[key] : (currentVal || 'No');
+        const isYes = (currentVal || '').toLowerCase() === 'yes';
+
+        if (isEditing) {
+            return (
+                <div key={key} className="p-2 rounded-xl border border-emerald-500/50 bg-background space-y-1">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-foreground truncate pr-1" title={label}>{label}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => handleSaveSpec(key, valToEdit, label)}
+                                className="text-emerald-500 text-[10px] font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                            >
+                                <Save className="w-2.5 h-2.5" /> Save
+                            </button>
+                            <button
+                                type="button"
+                                onClick={cancelEditSpec}
+                                className="text-muted-foreground hover:text-foreground text-[10px] font-bold cursor-pointer"
+                            >
+                                <X className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                    </div>
+                    <select
+                        value={valToEdit}
+                        onChange={(e) => setSpecFormValues(prev => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full text-xs font-bold bg-background border border-emerald-500 rounded p-0.5 text-foreground"
+                        autoFocus
+                    >
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+            );
+        }
+
+        return (
+            <div key={key} className={`p-2 rounded-xl border flex items-center justify-between font-bold ${isYes ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-muted/20 border-border/60 text-muted-foreground'}`}>
+                <span className="text-[11px] truncate pr-1" title={label}>{label}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md uppercase font-black bg-card border border-border/60">{currentVal || 'No'}</span>
+                    <button
+                        type="button"
+                        onClick={() => startEditSpec(key, currentVal || 'No')}
+                        className="text-emerald-500 text-[10px] font-bold hover:underline cursor-pointer"
+                    >
+                        Edit
+                    </button>
+                </div>
+            </div>
+        );
     };
 
     const parseDeliveryDateToYYYYMMDD = (dateStr: string | null | undefined): string => {
@@ -865,9 +1280,14 @@ export default function OrderDetailPage() {
                                     Edit
                                 </button>
                             ) : (
-                                <button onClick={handleSavePnNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                    <Save className="w-3 h-3" /> Save
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                    <button onClick={handleSavePnNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                        <Save className="w-3 h-3" /> Save
+                                    </button>
+                                    <button onClick={() => setEditingPnNumber(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
                             )}
                         </div>
                         {!editingPnNumber ? (
@@ -881,30 +1301,136 @@ export default function OrderDetailPage() {
                                 onChange={(e) => setPnNumberState(e.target.value)}
                                 placeholder="Enter P/N..."
                                 className="mt-1 w-full text-xs font-mono font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                autoFocus
                             />
                         )}
                     </div>
-                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Value</p>
-                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                            {hasPaymentPermission
-                                ? `₹${Number(order.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                                : "XXXX"}
-                        </p>
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
+                        <div className="flex justify-between items-center">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Value</p>
+                            {hasPaymentPermission && (
+                                !editingOrderValue ? (
+                                    <button
+                                        onClick={() => {
+                                            setOrderValueState(String(order.order_value ?? ''));
+                                            setEditingOrderValue(true);
+                                        }}
+                                        className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <button onClick={handleSaveOrderValue} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingOrderValue(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )
+                            )}
+                        </div>
+                        {!editingOrderValue ? (
+                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                                {hasPaymentPermission
+                                    ? `₹${Number(order.order_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                    : "XXXX"}
+                            </p>
+                        ) : (
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={orderValueState}
+                                onChange={(e) => setOrderValueState(e.target.value)}
+                                placeholder="Enter Order Value..."
+                                className="mt-1 w-full text-sm font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                autoFocus
+                            />
+                        )}
                     </div>
-                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bill Number</p>
-                        <p className="text-lg font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">
-                            {order.bill_number || getMetaValue('bill_number', getMetaValue('bill', 'N/A'))}
-                        </p>
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
+                        <div className="flex justify-between items-center">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bill Number</p>
+                            {!editingTopBillNumber ? (
+                                <button
+                                    onClick={() => {
+                                        setTopBillNumberState(String(order.bill_number || getMetaValue('bill_number', getMetaValue('bill', ''))));
+                                        setEditingTopBillNumber(true);
+                                    }}
+                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                >
+                                    Edit
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-1.5">
+                                    <button onClick={handleSaveTopBillNumber} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                        <Save className="w-3 h-3" /> Save
+                                    </button>
+                                    <button onClick={() => setEditingTopBillNumber(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        {!editingTopBillNumber ? (
+                            <p className="text-lg font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">
+                                {order.bill_number || getMetaValue('bill_number', getMetaValue('bill', 'N/A'))}
+                            </p>
+                        ) : (
+                            <input
+                                type="text"
+                                value={topBillNumberState}
+                                onChange={(e) => setTopBillNumberState(e.target.value)}
+                                placeholder="Enter Bill Number..."
+                                className="mt-1 w-full text-xs font-mono font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                autoFocus
+                            />
+                        )}
                     </div>
-                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit Price</p>
-                        <p className="text-xl font-bold text-foreground mt-1">
-                            {hasPaymentPermission
-                                ? `₹${Number(order.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                                : "XXXX"}
-                        </p>
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
+                        <div className="flex justify-between items-center">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit Price</p>
+                            {hasPaymentPermission && (
+                                !editingUnitPrice ? (
+                                    <button
+                                        onClick={() => {
+                                            setUnitPriceState(String(order.unit_price ?? ''));
+                                            setEditingUnitPrice(true);
+                                        }}
+                                        className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <button onClick={handleSaveUnitPrice} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingUnitPrice(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )
+                            )}
+                        </div>
+                        {!editingUnitPrice ? (
+                            <p className="text-xl font-bold text-foreground mt-1">
+                                {hasPaymentPermission
+                                    ? `₹${Number(order.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                    : "XXXX"}
+                            </p>
+                        ) : (
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={unitPriceState}
+                                onChange={(e) => setUnitPriceState(e.target.value)}
+                                placeholder="Enter Unit Price..."
+                                className="mt-1 w-full text-sm font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                autoFocus
+                            />
+                        )}
                     </div>
 
                     {/* Quantity Fulfillment Breakdown Card */}
@@ -912,18 +1438,69 @@ export default function OrderDetailPage() {
                         const orderQtyVal = extractQty(order, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], 0);
                         const finalQtyVal = extractQty(order, 'final_qty', ['final_qty', 'final', 'completed_qty', 'completed'], 0);
                         return (
-                            <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm space-y-1">
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity Breakdown</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400" title="Order Qty">
-                                        Order Qty: {orderQtyVal}
-                                    </span>
-                                    <span className="text-muted-foreground">/</span>
-                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400" title="Final Qty">
-                                        Final Qty: {finalQtyVal}
-                                    </span>
+                            <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm space-y-1 relative group">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity Breakdown</p>
+                                    {!editingTopQty ? (
+                                        <button
+                                            onClick={() => {
+                                                setTopOrderQty(orderQtyVal);
+                                                setTopFinalQty(finalQtyVal);
+                                                setEditingTopQty(true);
+                                            }}
+                                            className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                        >
+                                            Edit
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5">
+                                            <button onClick={handleSaveTopQty} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                                <Save className="w-3 h-3" /> Save
+                                            </button>
+                                            <button onClick={() => setEditingTopQty(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                                <p className="text-[11px] text-muted-foreground font-medium pt-0.5">Total: {orderQtyVal} Pcs</p>
+                                {!editingTopQty ? (
+                                    <>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400" title="Order Qty">
+                                                Order Qty: {orderQtyVal}
+                                            </span>
+                                            <span className="text-muted-foreground">/</span>
+                                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400" title="Final Qty">
+                                                Final Qty: {finalQtyVal}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground font-medium pt-0.5">Total: {orderQtyVal} Pcs</p>
+                                    </>
+                                ) : (
+                                    <div className="space-y-1 pt-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1/2">
+                                                <label className="text-[9px] text-muted-foreground font-bold uppercase block">Order Qty</label>
+                                                <input
+                                                    type="number"
+                                                    value={topOrderQty}
+                                                    onChange={(e) => setTopOrderQty(Number(e.target.value))}
+                                                    className="w-full text-xs font-bold bg-background border border-emerald-500 rounded p-1 text-foreground"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="w-1/2">
+                                                <label className="text-[9px] text-muted-foreground font-bold uppercase block">Final Qty</label>
+                                                <input
+                                                    type="number"
+                                                    value={topFinalQty}
+                                                    onChange={(e) => setTopFinalQty(Number(e.target.value))}
+                                                    className="w-full text-xs font-bold bg-background border border-indigo-500 rounded p-1 text-foreground"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         );
                     })()}
@@ -943,7 +1520,14 @@ export default function OrderDetailPage() {
                                     Edit
                                 </button>
                             ) : (
-                                <button onClick={handleSaveDeliveryDate} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer"><Save className="w-3 h-3" /> Save</button>
+                                <div className="flex items-center gap-1.5">
+                                    <button onClick={handleSaveDeliveryDate} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                        <Save className="w-3 h-3" /> Save
+                                    </button>
+                                    <button onClick={() => setEditingDeliveryDate(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
                             )}
                         </div>
                         {!editingDeliveryDate ? (
@@ -956,12 +1540,45 @@ export default function OrderDetailPage() {
                                 value={deliveryDate}
                                 onChange={(e) => setDeliveryDate(e.target.value)}
                                 className="mt-1 w-full text-xs font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                autoFocus
                             />
                         )}
                     </div>
-                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Submitted On</p>
-                        <p className="text-xs font-bold text-foreground mt-1 font-mono">{new Date(order.created_at).toLocaleDateString()}</p>
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
+                        <div className="flex justify-between items-center">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Submitted On</p>
+                            {!editingSubmittedOn ? (
+                                <button
+                                    onClick={() => {
+                                        setSubmittedOnState(parseDeliveryDateToYYYYMMDD(order.created_at));
+                                        setEditingSubmittedOn(true);
+                                    }}
+                                    className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                >
+                                    Edit
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-1.5">
+                                    <button onClick={handleSaveSubmittedOn} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                        <Save className="w-3 h-3" /> Save
+                                    </button>
+                                    <button onClick={() => setEditingSubmittedOn(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        {!editingSubmittedOn ? (
+                            <p className="text-xs font-bold text-foreground mt-1 font-mono">{new Date(order.created_at).toLocaleDateString()}</p>
+                        ) : (
+                            <input
+                                type="date"
+                                value={submittedOnState}
+                                onChange={(e) => setSubmittedOnState(e.target.value)}
+                                className="mt-1 w-full text-xs font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                autoFocus
+                            />
+                        )}
                     </div>
                 </div>
 
@@ -1060,6 +1677,56 @@ export default function OrderDetailPage() {
                                         {order.bill_number || getMetaValue('bill_number', getMetaValue('bill', 'N/A'))}
                                     </span>
                                 </div>
+                                <div className="flex justify-between items-center py-1">
+                                    <span className="text-muted-foreground font-medium">C/G</span>
+                                    {!editingOrderCg ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-foreground">
+                                                {order.c_g ? (
+                                                    <span className={`px-2 py-0.5 rounded-md text-xs font-black border ${order.c_g === 'GST'
+                                                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                                            : order.c_g === 'CASH'
+                                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                                        }`}>
+                                                        {order.c_g}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground/60 italic text-xs">N/A</span>
+                                                )}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    setInlineCgState(order.c_g ? String(order.c_g).toUpperCase() : "");
+                                                    setEditingOrderCg(true);
+                                                }}
+                                                className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                            >
+                                                Edit
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5">
+                                            <select
+                                                value={inlineCgState}
+                                                onChange={(e) => setInlineCgState(e.target.value)}
+                                                className="text-xs font-bold bg-background border border-emerald-500 rounded-lg p-1 text-foreground"
+                                                autoFocus
+                                            >
+                                                <option value="">Select C/G</option>
+                                                <option value="CASH">CASH</option>
+                                                <option value="GST">GST</option>
+                                                <option value="BOTH">BOTH</option>
+                                            </select>
+                                            <button onClick={handleSaveInlineCg} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                                <Save className="w-3 h-3" /> Save
+                                            </button>
+                                            <button onClick={() => setEditingOrderCg(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="flex justify-between py-1">
                                     <span className="text-muted-foreground font-medium">GST Number</span>
                                     <span className="font-bold text-foreground">{getMetaValue('gst_number', getMetaValue('gstin', 'N/A'))}</span>
@@ -1140,48 +1807,15 @@ export default function OrderDetailPage() {
                                 1. PCB Basic Specifications
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">P/N Number</p>
-                                    <p className="font-mono font-bold text-foreground mt-0.5">{effectivePn || 'N/A'}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Base Material</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('base_material', getMetaValue('material', 'FR-4'))}</p>
-                                </div>
-                                {getMetaValue('substrate_type', '') && getMetaValue('substrate_type') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Substrate Type</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('substrate_type')}</p>
-                                    </div>
-                                )}
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Layer Count</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('layers', order.layers ? `${order.layers} Layers` : '2 Layers')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Dimensions</p>
-                                    <p className="font-bold text-foreground mt-0.5">
-                                        {getMetaValue('dimensions', (getMetaValue('dimensions_width') && getMetaValue('dimensions_length')) ? `${getMetaValue('dimensions_width')} x ${getMetaValue('dimensions_length')} ${getMetaValue('dimension_unit', 'mm')}` : '100x100mm')}
-                                    </p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">PCB Quantity</p>
-                                    <p className="font-bold text-foreground mt-0.5">{order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))} Pcs</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Different Design Count</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('different_design', '1')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Delivery Format</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('delivery_format', 'Single PCB')}</p>
-                                </div>
-                                {getMetaValue('panel_format', '') && getMetaValue('panel_format') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Panel Layout</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('panel_format')}</p>
-                                    </div>
-                                )}
+                                {renderSpecItem('pn_number', 'P/N Number', effectivePn || 'N/A', 'text')}
+                                {renderSpecItem('base_material', 'Base Material', getMetaValue('base_material', getMetaValue('material', 'FR-4')), 'select', ['FR-4', 'Aluminum', 'Rogers', 'FR-4 TG150', 'FR-4 TG170', 'Copper Base', 'PTFE', 'Polyimide', 'Flex/Rigid-Flex'])}
+                                {renderSpecItem('substrate_type', 'Substrate Type', getMetaValue('substrate_type', 'N/A'), 'select', ['Rigid', 'Flexible', 'Rigid-Flex', 'Aluminum', 'Rogers', 'Copper Base', 'N/A'])}
+                                {renderSpecItem('layers', 'Layer Count', getMetaValue('layers', order.layers ? `${order.layers} Layers` : '2 Layers'), 'select', ['1 Layers', '2 Layers', '4 Layers', '6 Layers', '8 Layers', '10 Layers', '12 Layers', '14 Layers', '16 Layers'])}
+                                {renderSpecItem('dimensions', 'Dimensions', getMetaValue('dimensions', (getMetaValue('dimensions_width') && getMetaValue('dimensions_length')) ? `${getMetaValue('dimensions_width')} x ${getMetaValue('dimensions_length')} ${getMetaValue('dimension_unit', 'mm')}` : '100x100mm'), 'text')}
+                                {renderSpecItem('order_qty', 'PCB Quantity', String(order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))), 'number', undefined, `${order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))} Pcs`)}
+                                {renderSpecItem('different_design', 'Different Design Count', getMetaValue('different_design', '1'), 'select', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])}
+                                {renderSpecItem('delivery_format', 'Delivery Format', getMetaValue('delivery_format', 'Single PCB'), 'select', ['Single PCB', 'Panel by Customer', 'Panel by Megabyte'])}
+                                {renderSpecItem('panel_format', 'Panel Layout', getMetaValue('panel_format', 'N/A'), 'text')}
                             </div>
                         </div>
 
@@ -1191,32 +1825,12 @@ export default function OrderDetailPage() {
                                 2. PCB Specifications
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">PCB Thickness</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('thickness', '1.6mm')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Solder Mask / Coverlay Color</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('pcb_color', getMetaValue('coverlay_color', 'Green'))}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Silkscreen Color</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('silkscreen', 'White')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Material Type</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('material_type', 'FR4-TG135')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Surface Finish</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('surface_finish', 'HASL(Leaded)')}</p>
-                                </div>
-                                {getMetaValue('gold_thickness', '') && getMetaValue('gold_thickness') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Gold Thickness</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('gold_thickness')}</p>
-                                    </div>
-                                )}
+                                {renderSpecItem('thickness', 'PCB Thickness', getMetaValue('thickness', '1.6mm'), 'select', ['0.4mm', '0.6mm', '0.8mm', '1.0mm', '1.2mm', '1.6mm', '2.0mm', '2.4mm', '2.6mm', '3.0mm'])}
+                                {renderSpecItem('pcb_color', 'Solder Mask / Coverlay Color', getMetaValue('pcb_color', getMetaValue('coverlay_color', 'Green')), 'select', ['Green', 'Red', 'Yellow', 'Blue', 'White', 'Black', 'Matte Green', 'Matte Black', 'Purple', 'None'])}
+                                {renderSpecItem('silkscreen', 'Silkscreen Color', getMetaValue('silkscreen', 'White'), 'select', ['White', 'Black', 'None'])}
+                                {renderSpecItem('material_type', 'Material Type', getMetaValue('material_type', 'FR4-TG135'), 'select', ['FR4-TG135', 'FR4-TG150', 'FR4-TG170', 'Standard TG', 'High TG', 'Aluminum TG', 'Rogers 4350B'])}
+                                {renderSpecItem('surface_finish', 'Surface Finish', getMetaValue('surface_finish', 'HASL(Leaded)'), 'select', ['HASL(Leaded)', 'Lead Free HASL', 'ENIG', 'OSP', 'Immersion Tin', 'Immersion Silver', 'Hard Gold', 'ENEPIG'])}
+                                {renderSpecItem('gold_thickness', 'Gold Thickness', getMetaValue('gold_thickness', 'N/A'), 'select', ['1 U"', '2 U"', '3 U"', 'N/A'])}
                             </div>
                         </div>
 
@@ -1226,58 +1840,16 @@ export default function OrderDetailPage() {
                                 3. High-Spec Options
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Outer Copper Weight</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('copper_weight', '1 oz')}</p>
-                                </div>
-                                {getMetaValue('via_covering', '') && getMetaValue('via_covering') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Via Covering</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('via_covering')}</p>
-                                    </div>
-                                )}
-                                {getMetaValue('via_plating', '') && getMetaValue('via_plating') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Via Plating Method</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('via_plating')}</p>
-                                    </div>
-                                )}
-                                {getMetaValue('min_hole', '') && getMetaValue('min_hole') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Min Via Hole Size</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('min_hole')}</p>
-                                    </div>
-                                )}
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Confirm Production File</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('confirm_file', 'No')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Mark on PCB</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('mark_on_pcb', 'Remove Mark')}</p>
-                                </div>
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Electrical Test</p>
-                                    <p className="font-bold text-foreground mt-0.5">{getMetaValue('elec_test', 'Flying Probe Fully Test')}</p>
-                                </div>
-                                {getMetaValue('coverlay_thickness', '') && getMetaValue('coverlay_thickness') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Coverlay Thickness</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('coverlay_thickness')}</p>
-                                    </div>
-                                )}
-                                {getMetaValue('stiffener', '') && getMetaValue('stiffener') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Stiffener</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('stiffener')}</p>
-                                    </div>
-                                )}
-                                {getMetaValue('emi_shielding', '') && getMetaValue('emi_shielding') !== 'N/A' && (
-                                    <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">EMI Shielding Film</p>
-                                        <p className="font-bold text-foreground mt-0.5">{getMetaValue('emi_shielding')}</p>
-                                    </div>
-                                )}
+                                {renderSpecItem('copper_weight', 'Outer Copper Weight', getMetaValue('copper_weight', '1 oz'), 'select', ['1 oz', '2 oz', '3 oz', '4 oz'])}
+                                {renderSpecItem('via_covering', 'Via Covering', getMetaValue('via_covering', 'N/A'), 'select', ['Tented', 'Untented (Through Holes)', 'Plugged', 'Epoxy Filled & Capped', 'N/A'])}
+                                {renderSpecItem('via_plating', 'Via Plating Method', getMetaValue('via_plating', 'N/A'), 'select', ['Standard Plating', 'Button Plating', 'Through-Hole Plating', 'N/A'])}
+                                {renderSpecItem('min_hole', 'Min Via Hole Size', getMetaValue('min_hole', 'N/A'), 'select', ['0.2mm', '0.25mm', '0.3mm', '0.35mm', '0.4mm', '0.5mm', 'N/A'])}
+                                {renderSpecItem('confirm_file', 'Confirm Production File', getMetaValue('confirm_file', 'No'), 'select', ['Yes', 'No'])}
+                                {renderSpecItem('mark_on_pcb', 'Mark on PCB', getMetaValue('mark_on_pcb', 'Remove Mark'), 'select', ['Remove Mark', 'Specify Location', 'Any Location', 'No Mark'])}
+                                {renderSpecItem('elec_test', 'Electrical Test', getMetaValue('elec_test', 'Flying Probe Fully Test'), 'select', ['Flying Probe Fully Test', 'Random Test', 'None'])}
+                                {renderSpecItem('coverlay_thickness', 'Coverlay Thickness', getMetaValue('coverlay_thickness', 'N/A'), 'select', ['0.5 mil', '1.0 mil', 'N/A'])}
+                                {renderSpecItem('stiffener', 'Stiffener', getMetaValue('stiffener', 'N/A'), 'select', ['FR4', 'PI/Polyimide', 'Stainless Steel', 'None', 'N/A'])}
+                                {renderSpecItem('emi_shielding', 'EMI Shielding Film', getMetaValue('emi_shielding', 'N/A'), 'select', ['Yes', 'No', 'Single-sided', 'Double-sided', 'N/A'])}
                             </div>
                         </div>
 
@@ -1288,34 +1860,66 @@ export default function OrderDetailPage() {
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                                 {[
-                                    { label: "Gold Fingers", val: getMetaValue('gold_fingers', 'No') },
-                                    { label: "Castellated Holes", val: getMetaValue('castellated', 'No') },
-                                    { label: "Edge Plating", val: getMetaValue('edge_plating', 'No') },
-                                    { label: "Blind Slots", val: getMetaValue('blind_slots', 'No') },
-                                    { label: "UL Marking", val: getMetaValue('ul_marking', 'No') },
-                                    { label: "Humidity Card", val: getMetaValue('humidity', 'No') },
-                                    { label: "Kelvin Test", val: getMetaValue('kelvin_test', 'No') },
-                                    { label: "Paper Between PCBs", val: getMetaValue('paper_between', 'No') }
-                                ].map((badge, idx) => (
-                                    <div key={idx} className={`p-2 rounded-xl border flex items-center justify-between font-bold ${badge.val === 'Yes' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-muted/20 border-border/60 text-muted-foreground'}`}>
-                                        <span className="text-[11px]">{badge.label}</span>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-md uppercase font-black bg-card border border-border/60">{badge.val}</span>
-                                    </div>
-                                ))}
+                                    { label: "Gold Fingers", key: 'gold_fingers', val: getMetaValue('gold_fingers', 'No') },
+                                    { label: "Castellated Holes", key: 'castellated', val: getMetaValue('castellated', 'No') },
+                                    { label: "Edge Plating", key: 'edge_plating', val: getMetaValue('edge_plating', 'No') },
+                                    { label: "Blind Slots", key: 'blind_slots', val: getMetaValue('blind_slots', 'No') },
+                                    { label: "UL Marking", key: 'ul_marking', val: getMetaValue('ul_marking', 'No') },
+                                    { label: "Humidity Card", key: 'humidity', val: getMetaValue('humidity', 'No') },
+                                    { label: "Kelvin Test", key: 'kelvin_test', val: getMetaValue('kelvin_test', 'No') },
+                                    { label: "Paper Between PCBs", key: 'paper_between', val: getMetaValue('paper_between', 'No') }
+                                ].map((badge) => renderBadgeItem(badge.key, badge.label, badge.val))}
                             </div>
                         </div>
 
                         {/* Custom Information & Remarks */}
-                        {getMetaValue('pcb_remark', '') && getMetaValue('pcb_remark') !== 'N/A' && (
-                            <div className="space-y-1.5 pt-2 border-t border-border/40">
+                        <div className="space-y-1.5 pt-2 border-t border-border/40">
+                            <div className="flex items-center justify-between">
                                 <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                                     5. Customer PCB Remark / Instructions
                                 </h4>
-                                <div className="p-3 bg-muted/30 rounded-xl border border-border/60 text-xs font-semibold text-foreground italic leading-relaxed">
-                                    "{getMetaValue('pcb_remark')}"
-                                </div>
+                                {activeEditingSpec === 'pcb_remark' ? (
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSaveSpec('pcb_remark', specFormValues['pcb_remark'] ?? getMetaValue('pcb_remark', ''), 'PCB Remark')}
+                                            className="text-emerald-500 text-[11px] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                        >
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={cancelEditSpec}
+                                            className="text-muted-foreground hover:text-foreground text-[11px] font-bold cursor-pointer"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => startEditSpec('pcb_remark', getMetaValue('pcb_remark', ''))}
+                                        className="text-emerald-500 text-[11px] font-bold hover:underline cursor-pointer"
+                                    >
+                                        Edit
+                                    </button>
+                                )}
                             </div>
-                        )}
+                            {activeEditingSpec === 'pcb_remark' ? (
+                                <textarea
+                                    value={specFormValues['pcb_remark'] ?? getMetaValue('pcb_remark', '')}
+                                    onChange={(e) => setSpecFormValues(prev => ({ ...prev, pcb_remark: e.target.value }))}
+                                    rows={3}
+                                    placeholder="Enter PCB Remark / Instructions..."
+                                    className="w-full text-xs font-semibold bg-background border border-emerald-500 rounded-xl p-2.5 text-foreground focus:outline-none"
+                                    autoFocus
+                                />
+                            ) : (
+                                <div className="p-3 bg-muted/30 rounded-xl border border-border/60 text-xs font-semibold text-foreground italic leading-relaxed">
+                                    {getMetaValue('pcb_remark', '') && getMetaValue('pcb_remark') !== 'N/A' ? `"${getMetaValue('pcb_remark')}"` : <span className="text-muted-foreground not-italic">No custom PCB remarks recorded.</span>}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -1382,6 +1986,20 @@ export default function OrderDetailPage() {
                             </div>
 
                             <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">C/G</label>
+                                <select
+                                    value={cgState}
+                                    onChange={(e) => setCgState(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 text-xs font-bold bg-background border border-border/80 rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                >
+                                    <option value="">Select C/G</option>
+                                    <option value="CASH">CASH</option>
+                                    <option value="GST">GST</option>
+                                    <option value="BOTH">BOTH</option>
+                                </select>
+                            </div>
+
+                            <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1.5">Combo Orders</label>
                                 <ComboSelect
                                     currentOrderId={order?.id}
@@ -1440,30 +2058,6 @@ export default function OrderDetailPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Completed Qty (Pcs)</label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={completedQty}
-                                    onChange={(e) => setCompletedQty(parseInt(e.target.value) || 0)}
-                                    placeholder="Completed..."
-                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Failed Qty (Pcs)</label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={failedQty}
-                                    onChange={(e) => setFailedQty(parseInt(e.target.value) || 0)}
-                                    placeholder="Failed..."
-                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-rose-500 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                            </div>
-
-                            <div>
                                 <label className="text-xs font-bold text-muted-foreground block mb-1.5">Launch Qty</label>
                                 <input
                                     type="number"
@@ -1481,7 +2075,13 @@ export default function OrderDetailPage() {
                                     type="number"
                                     min={0}
                                     value={panelQty}
-                                    onChange={(e) => setPanelQty(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                        const p = parseInt(e.target.value) || 0;
+                                        setPanelQty(p);
+                                        if (p > 0 && upsQty > 0) {
+                                            setLaunchQty(p * upsQty);
+                                        }
+                                    }}
                                     placeholder="Panel..."
                                     className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 />
@@ -1493,9 +2093,27 @@ export default function OrderDetailPage() {
                                     type="number"
                                     min={0}
                                     value={upsQty}
-                                    onChange={(e) => setUpsQty(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                        const u = parseInt(e.target.value) || 0;
+                                        setUpsQty(u);
+                                        if (panelQty > 0 && u > 0) {
+                                            setLaunchQty(panelQty * u);
+                                        }
+                                    }}
                                     placeholder="Ups..."
                                     className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-foreground font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Failed Qty (Pcs)</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={failedQty}
+                                    onChange={(e) => setFailedQty(parseInt(e.target.value) || 0)}
+                                    placeholder="Failed..."
+                                    className="w-full px-3.5 py-2.5 text-xs bg-background border border-border/80 rounded-xl text-rose-500 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 />
                             </div>
 
