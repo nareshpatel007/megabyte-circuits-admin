@@ -773,22 +773,69 @@ export default function OrderDetailPage() {
         const toastId = toast.loading(`Updating ${label}...`);
         try {
             const token = localStorage.getItem("admin_token");
-            let payload: Record<string, any> = { [specKey]: val };
-            if (specKey === 'layers') {
-                const num = parseInt(val, 10);
-                if (!isNaN(num)) payload.layers = num;
-            } else if (specKey === 'order_qty' || specKey === 'quantity') {
-                const num = parseInt(val, 10);
-                if (!isNaN(num)) {
-                    payload.order_qty = num;
-                    payload.quantity = num;
+            const cleanVal = (val ?? '').trim();
+            let payload: Record<string, any> = { 
+                [specKey]: cleanVal,
+                metas: {
+                    [specKey]: cleanVal
                 }
-            } else if (specKey === 'pcb_color' || specKey === 'mask') {
-                payload.mask = val;
-                payload.pcb_color = val;
-                payload.solder_mask = val;
+            };
+
+            if (specKey === 'layers') {
+                const num = parseInt(cleanVal.replace(/[^0-9]/g, ''), 10);
+                payload.layers = !isNaN(num) && num > 0 ? num : cleanVal;
+                payload.metas.layers = cleanVal;
+                payload.metas.layer = cleanVal;
+            } else if (specKey === 'order_qty' || specKey === 'quantity') {
+                const num = parseInt(cleanVal.replace(/[^0-9]/g, ''), 10);
+                payload.order_qty = !isNaN(num) ? num : cleanVal;
+                payload.quantity = !isNaN(num) ? num : cleanVal;
+                payload.metas.order_qty = cleanVal;
+                payload.metas.qty = cleanVal;
+                payload.metas.quantity = cleanVal;
+            } else if (specKey === 'pcb_color' || specKey === 'mask' || specKey === 'solder_mask') {
+                payload.mask = cleanVal;
+                payload.pcb_color = cleanVal;
+                payload.solder_mask = cleanVal;
+                payload.metas.mask = cleanVal;
+                payload.metas.pcb_color = cleanVal;
+                payload.metas.solder_mask = cleanVal;
+            } else if (specKey === 'base_material' || specKey === 'material') {
+                payload.base_material = cleanVal;
+                payload.material = cleanVal;
+                payload.metas.base_material = cleanVal;
+                payload.metas.material = cleanVal;
+            } else if (specKey === 'silkscreen' || specKey === 'silkscreen_color') {
+                payload.silkscreen = cleanVal;
+                payload.silkscreen_color = cleanVal;
+                payload.metas.silkscreen = cleanVal;
+                payload.metas.silkscreen_color = cleanVal;
+            } else if (specKey === 'surface_finish' || specKey === 'finish') {
+                payload.surface_finish = cleanVal;
+                payload.finish = cleanVal;
+                payload.metas.surface_finish = cleanVal;
+                payload.metas.finish = cleanVal;
+            } else if (specKey === 'thickness' || specKey === 'board_thickness') {
+                payload.thickness = cleanVal;
+                payload.board_thickness = cleanVal;
+                payload.metas.thickness = cleanVal;
+                payload.metas.board_thickness = cleanVal;
+            } else if (specKey === 'copper_weight' || specKey === 'copper_thickness') {
+                payload.copper_weight = cleanVal;
+                payload.copper_thickness = cleanVal;
+                payload.metas.copper_weight = cleanVal;
+                payload.metas.copper_thickness = cleanVal;
+            } else if (specKey === 'min_hole' || specKey === 'min_hole_size') {
+                payload.min_hole = cleanVal;
+                payload.min_hole_size = cleanVal;
+                payload.metas.min_hole = cleanVal;
+                payload.metas.min_hole_size = cleanVal;
             } else if (specKey === 'pn_number') {
-                payload.pn_number = val;
+                payload.pn_number = cleanVal;
+                payload.metas.pn_number = cleanVal;
+                payload.metas.p_n = cleanVal;
+                payload.metas.part_number = cleanVal;
+                payload.metas.board_name = cleanVal;
             }
 
             const res = await fetch(`/api/admin/orders/${order?.id || orderId}`, {
@@ -807,9 +854,8 @@ export default function OrderDetailPage() {
                     setOrder(data.data);
                     if (data.data.pn_number) setPnNumberState(data.data.pn_number);
                     if (data.data.order_qty) setOrderQty(data.data.order_qty);
-                } else {
-                    fetchOrderDetail();
                 }
+                fetchOrderDetail();
             } else {
                 toast.error(data.message || `Failed to update ${label}`, { id: toastId });
             }
@@ -822,15 +868,26 @@ export default function OrderDetailPage() {
         key: string,
         label: string,
         currentValue: string,
-        type: 'text' | 'number' | 'select' = 'text',
+        typeOrOptions?: string | string[],
         options?: string[],
         displayValue?: string
     ) => {
+        let opts: string[] | undefined = undefined;
+        let dispVal = displayValue;
+        if (Array.isArray(typeOrOptions)) {
+            opts = typeOrOptions;
+        } else if (Array.isArray(options)) {
+            opts = options;
+        }
+        if (!dispVal && typeof options === 'string') {
+            dispVal = options;
+        }
+
         const isEditing = activeEditingSpec === key;
         const valToEdit = specFormValues[key] !== undefined ? specFormValues[key] : (currentValue === 'N/A' ? '' : currentValue);
 
         return (
-            <div className={`bg-muted/30 rounded-xl p-2.5 border transition-all ${isEditing ? 'border-emerald-500 ring-1 ring-emerald-500/20 bg-background' : 'border-border/60'} relative group`}>
+            <div className={`bg-muted/30 rounded-xl p-2.5 border transition-all ${isEditing ? 'border-emerald-500 ring-1 ring-emerald-500/20 bg-background shadow-xs' : 'border-border/60'} relative group`}>
                 <div className="flex items-center justify-between">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase truncate pr-1" title={label}>{label}</p>
                     {isEditing ? (
@@ -861,29 +918,48 @@ export default function OrderDetailPage() {
                     )}
                 </div>
                 {isEditing ? (
-                    type === 'select' && options ? (
-                        <select
-                            value={valToEdit}
-                            onChange={(e) => setSpecFormValues(prev => ({ ...prev, [key]: e.target.value }))}
-                            className="mt-1 w-full text-xs font-bold bg-background border border-emerald-500 rounded p-1 text-foreground"
-                            autoFocus
-                        >
-                            {options.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                        </select>
-                    ) : (
+                    <div className="mt-1 space-y-1.5">
                         <input
-                            type={type}
+                            type="text"
                             value={valToEdit}
                             onChange={(e) => setSpecFormValues(prev => ({ ...prev, [key]: e.target.value }))}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveSpec(key, valToEdit, label);
+                                } else if (e.key === 'Escape') {
+                                    cancelEditSpec();
+                                }
+                            }}
                             placeholder={`Enter ${label}...`}
-                            className="mt-1 w-full text-xs font-bold bg-background border border-emerald-500 rounded p-1 text-foreground"
+                            className="w-full text-xs font-bold bg-background border border-emerald-500/80 rounded-lg px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                             autoFocus
                         />
-                    )
+                        {opts && opts.length > 0 && (
+                            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto py-0.5">
+                                {opts.map((opt) => (
+                                    <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setSpecFormValues(prev => ({ ...prev, [key]: opt }))}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold border transition-all cursor-pointer ${
+                                            valToEdit === opt
+                                                ? 'bg-emerald-500 text-white border-emerald-600 shadow-2xs font-bold'
+                                                : 'bg-muted/60 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-foreground/80 border-border/70'
+                                        }`}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 ) : (
-                    <p className="font-bold text-foreground mt-0.5 truncate" title={displayValue || currentValue || 'N/A'}>
+                    <p 
+                        className="font-bold text-foreground mt-0.5 truncate cursor-pointer hover:text-emerald-600 transition-colors" 
+                        title={`Click to edit ${label}: ${displayValue || currentValue || 'N/A'}`}
+                        onClick={() => startEditSpec(key, currentValue === 'N/A' ? '' : currentValue)}
+                    >
                         {displayValue || currentValue || 'N/A'}
                     </p>
                 )}
@@ -898,7 +974,7 @@ export default function OrderDetailPage() {
 
         if (isEditing) {
             return (
-                <div key={key} className="p-2 rounded-xl border border-emerald-500/50 bg-background space-y-1">
+                <div key={key} className="p-2.5 rounded-xl border border-emerald-500/80 ring-1 ring-emerald-500/20 bg-background space-y-1.5 shadow-xs">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold text-foreground truncate pr-1" title={label}>{label}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -918,15 +994,38 @@ export default function OrderDetailPage() {
                             </button>
                         </div>
                     </div>
-                    <select
+                    <input
+                        type="text"
                         value={valToEdit}
                         onChange={(e) => setSpecFormValues(prev => ({ ...prev, [key]: e.target.value }))}
-                        className="w-full text-xs font-bold bg-background border border-emerald-500 rounded p-0.5 text-foreground"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveSpec(key, valToEdit, label);
+                            } else if (e.key === 'Escape') {
+                                cancelEditSpec();
+                            }
+                        }}
+                        placeholder="Yes / No..."
+                        className="w-full text-xs font-bold bg-background border border-emerald-500/80 rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                         autoFocus
-                    >
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
+                    />
+                    <div className="flex items-center gap-1 pt-0.5">
+                        {['Yes', 'No', 'N/A'].map((opt) => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => setSpecFormValues(prev => ({ ...prev, [key]: opt }))}
+                                className={`text-[10px] px-2 py-0.5 rounded font-semibold border transition-all cursor-pointer ${
+                                    (valToEdit || '').toLowerCase() === opt.toLowerCase()
+                                        ? 'bg-emerald-500 text-white border-emerald-600 font-bold shadow-2xs'
+                                        : 'bg-muted/60 hover:bg-emerald-500/10 text-foreground/80 border-border/70'
+                                }`}
+                            >
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             );
         }
@@ -935,7 +1034,13 @@ export default function OrderDetailPage() {
             <div key={key} className={`p-2 rounded-xl border flex items-center justify-between font-bold ${isYes ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-muted/20 border-border/60 text-muted-foreground'}`}>
                 <span className="text-[11px] truncate pr-1" title={label}>{label}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] px-2 py-0.5 rounded-md uppercase font-black bg-card border border-border/60">{currentVal || 'No'}</span>
+                    <span 
+                        onClick={() => startEditSpec(key, currentVal || 'No')}
+                        className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black cursor-pointer hover:opacity-80 transition-opacity ${isYes ? 'bg-emerald-500 text-white' : 'bg-muted border border-border/60 text-foreground'}`}
+                        title="Click to edit"
+                    >
+                        {currentVal || 'No'}
+                    </span>
                     <button
                         type="button"
                         onClick={() => startEditSpec(key, currentVal || 'No')}
