@@ -854,7 +854,7 @@ export default function OrderDetailPage() {
     };
 
     const startEditSpec = (fieldKey: string, initialVal: string) => {
-        if (!hasEditOrderPermission) return;
+        if (!hasEditOrderPermission && fieldKey !== 'order_qty' && fieldKey !== 'quantity') return;
         setActiveEditingSpec(fieldKey);
         setSpecFormValues(prev => ({ ...prev, [fieldKey]: initialVal }));
     };
@@ -864,7 +864,7 @@ export default function OrderDetailPage() {
     };
 
     const handleSaveSpec = async (specKey: string, val: string, label: string) => {
-        if (!hasEditOrderPermission) {
+        if (!hasEditOrderPermission && specKey !== 'order_qty' && specKey !== 'quantity') {
             toast.error("You don't have permission to edit orders.");
             return;
         }
@@ -1005,7 +1005,7 @@ export default function OrderDetailPage() {
                                 <X className="w-3 h-3" />
                             </button>
                         </div>
-                    ) : hasEditOrderPermission ? (
+                    ) : (hasEditOrderPermission || key === 'order_qty' || key === 'quantity') ? (
                         <button
                             type="button"
                             onClick={() => startEditSpec(key, currentValue === 'N/A' ? '' : currentValue)}
@@ -1667,28 +1667,26 @@ export default function OrderDetailPage() {
                             <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm space-y-1 relative group">
                                 <div className="flex justify-between items-center">
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity Breakdown</p>
-                                    {hasEditOrderPermission && (
-                                        !editingTopQty ? (
-                                            <button
-                                                onClick={() => {
-                                                    setTopOrderQty(orderQtyVal);
-                                                    setTopFinalQty(finalQtyVal);
-                                                    setEditingTopQty(true);
-                                                }}
-                                                className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
-                                            >
-                                                Edit
+                                    {!editingTopQty ? (
+                                        <button
+                                            onClick={() => {
+                                                setTopOrderQty(orderQtyVal);
+                                                setTopFinalQty(finalQtyVal);
+                                                setEditingTopQty(true);
+                                            }}
+                                            className="text-emerald-500 text-xs font-bold hover:underline cursor-pointer"
+                                        >
+                                            Edit
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5">
+                                            <button onClick={handleSaveTopQty} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                                <Save className="w-3 h-3" /> Save
                                             </button>
-                                        ) : (
-                                            <div className="flex items-center gap-1.5">
-                                                <button onClick={handleSaveTopQty} className="text-emerald-500 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                                    <Save className="w-3 h-3" /> Save
-                                                </button>
-                                                <button onClick={() => setEditingTopQty(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        )
+                                            <button onClick={() => setEditingTopQty(false)} className="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                                 {!editingTopQty ? (
