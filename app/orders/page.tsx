@@ -1921,28 +1921,28 @@ function OrdersContent() {
         </div>
     );
 
-    // Dynamic statistics based on current filtered orders or server-calculated stats
+    // Dynamic statistics based on current filtered orders or server-calculated stats (aggregating all matching records)
     const statsTotalOrders = apiStats?.total_orders ?? totalOrders;
     const statsActiveOrders = apiStats?.active_orders ?? orders.filter((o) => !['completed', 'shipped', 'delivered', 'cancelled', 'canceled'].includes((o.status || '').toLowerCase())).length;
     const statsCompletedOrders = apiStats?.completed_orders ?? orders.filter((o) => ['completed', 'shipped', 'delivered'].includes((o.status || '').toLowerCase())).length;
     const statsTotalOrderValue = apiStats?.total_value ?? orders.reduce((sum, o) => sum + (Number(o.order_value) || 0), 0);
 
-    // Quantity calculations excluding Part orders
+    // Quantity calculations: prefer backend stats calculated across all filtered orders matching status, fallback to page items
     const nonPartFilteredOrders = orders.filter((o) => getMetaValue(o, 'product_type', 'pcb').toLowerCase() !== 'part');
-    const statsTotalQty = nonPartFilteredOrders.reduce((sum, o) => sum + (parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0), 0);
-    const statsLaunchQty = nonPartFilteredOrders.reduce((sum, o) => {
+    const statsTotalQty = apiStats?.total_qty ?? apiStats?.ordered_qty ?? nonPartFilteredOrders.reduce((sum, o) => sum + (parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0), 0);
+    const statsLaunchQty = apiStats?.launch_qty ?? nonPartFilteredOrders.reduce((sum, o) => {
         const totalQ = parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0;
         const launch = typeof o.launch_qty === 'number' ? o.launch_qty : (parseInt(getMetaValue(o, 'launch_qty', String(totalQ))) || totalQ);
         return sum + launch;
     }, 0);
-    const statsCompletedQty = nonPartFilteredOrders.reduce((sum, o) => {
+    const statsCompletedQty = apiStats?.final_qty ?? apiStats?.completed_qty ?? nonPartFilteredOrders.reduce((sum, o) => {
         const orderStatusStr = (o.status || '').toString().toLowerCase();
         const totalQ = parseInt(getMetaValue(o, 'qty', getMetaValue(o, 'quantity', '5'))) || 0;
         const isComp = ['completed', 'shipped', 'delivered'].includes(orderStatusStr);
         const comp = typeof o.completed_qty === 'number' ? o.completed_qty : (isComp ? totalQ : 0);
         return sum + comp;
     }, 0);
-    const statsFailedQty = nonPartFilteredOrders.reduce((sum, o) => {
+    const statsFailedQty = apiStats?.failed_qty ?? nonPartFilteredOrders.reduce((sum, o) => {
         const fail = typeof o.failed_qty === 'number' ? o.failed_qty : (parseInt(getMetaValue(o, 'failed_qty', getMetaValue(o, 'fail_qty', '0')), 10) || 0);
         return sum + fail;
     }, 0);
