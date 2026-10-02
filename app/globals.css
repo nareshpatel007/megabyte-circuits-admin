@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Light mode (default) ─── */
 @theme {
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;

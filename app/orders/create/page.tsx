@@ -2448,22 +2448,22 @@ export default function CreateOrderPage() {
                                         </div>
 
                                         {/* Calendar Selection Banner */}
-                                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
-                                            <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200">
-                                                <CalendarDays className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-xs">
+                                            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                                                <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                                                 {selectedDayItem ? (
-                                                    <span>
-                                                        Selected Delivery: <b className="text-foreground">{selectedDayItem.formattedDate} ({selectedDayItem.weekday})</b> • Lead Time: <b className="text-foreground">{selectedDayItem.workingDayNum} Working Days</b>
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                                        Selected Delivery: <b className="font-black text-slate-950 dark:text-white">{selectedDayItem.formattedDate} ({selectedDayItem.weekday})</b> • Lead Time: <b className="font-black text-slate-950 dark:text-white">{selectedDayItem.workingDayNum} Working Days</b>
                                                     </span>
                                                 ) : (
-                                                    <span>
-                                                        Delivery Date: <b className="text-foreground">{deliveryDate || "Not Selected"}</b>
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                                        Delivery Date: <b className="font-black text-slate-950 dark:text-white">{deliveryDate || "Not Selected"}</b>
                                                     </span>
                                                 )}
                                             </div>
                                             {selectedDayItem && (
-                                                <span className="font-mono font-bold text-emerald-800 dark:text-emerald-200">
-                                                    Matrix Base: ₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                <span className="font-mono font-black text-slate-900 dark:text-slate-100">
+                                                    Matrix Base: <span className="text-emerald-800 dark:text-emerald-300">₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </span>
                                             )}
                                         </div>
@@ -2479,7 +2479,7 @@ export default function CreateOrderPage() {
                                                         Pricing & Manual Method
                                                     </h4>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
                                                     {pricingMethod === "auto" && !hasManualOverride ? "Auto Matrix" : hasManualOverride ? "Manual Override" : pricingMethod === "pcb_rate" ? "PCB Rate" : "SQM Rate"}
                                                 </span>
                                             </div>
@@ -2653,32 +2653,32 @@ export default function CreateOrderPage() {
                                             </div>
 
                                             {/* Financial Summary Card */}
-                                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg space-y-2 text-xs">
-                                                <div className="font-bold text-foreground text-xs border-b border-emerald-500/20 pb-1.5 flex justify-between items-center">
-                                                    <span className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200 font-black">
-                                                        <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                            <div className="bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 p-3 rounded-lg space-y-2 text-xs">
+                                                <div className="font-bold text-foreground text-xs border-b border-emerald-200 dark:border-emerald-800/80 pb-1.5 flex justify-between items-center">
+                                                    <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100 font-black">
+                                                        <Calculator className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                                                         Financial Summary
                                                     </span>
-                                                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                                                    <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-200 bg-emerald-200/80 dark:bg-emerald-900/80 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
                                                         Live Total
                                                     </span>
                                                 </div>
                                                 <div className="space-y-1 pt-0.5">
-                                                    <div className="flex justify-between items-center text-muted-foreground font-medium text-[11px]">
+                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
                                                         <span>Subtotal (Base PCB):</span>
-                                                        <span className="font-mono font-bold text-foreground">
+                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                                                             ₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between items-center text-muted-foreground font-medium text-[11px]">
+                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
                                                         <span>GST ({gstRate}%):</span>
-                                                        <span className="font-mono font-bold text-foreground">
+                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                                                             ₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between items-center pt-1.5 border-t border-emerald-500/30">
-                                                        <span className="font-black text-xs text-foreground">Final Order Total:</span>
-                                                        <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-sm">
+                                                    <div className="flex justify-between items-center pt-1.5 border-t border-emerald-200 dark:border-emerald-800/80">
+                                                        <span className="font-black text-xs text-slate-900 dark:text-slate-100">Final Order Total:</span>
+                                                        <span className="font-mono font-black text-emerald-800 dark:text-emerald-300 text-base">
                                                             ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
