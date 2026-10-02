@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import {
@@ -25,7 +25,9 @@ import {
     ShieldCheck,
     Search,
     ChevronsUpDown,
-    Calculator
+    Calculator,
+    CalendarDays,
+    Sliders
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -570,6 +572,151 @@ export default function CreateOrderPage() {
         return { options, showContact: false, totalAreaInSqM };
     };
 
+    // Computed 20-Day Interactive Delivery Matrix & Calendar Items
+    const deliveryCalendarDays = useMemo(() => {
+        const { options } = getLeadTimePricing();
+        const unitMultiplier = dimensionUnit === "inches" ? 25.4 : 1;
+        const length = (parseFloat(boardWidth) || 0) * unitMultiplier;
+        const width = (parseFloat(boardLength) || 0) * unitMultiplier;
+        const qty = Math.max(parseInt(quantity, 10) || 1, 1);
+        const layers = parseInt(layerCount, 10) || 1;
+
+        const defaultOrderValue = Math.max(Math.round(length * width * 0.05 * qty), 100);
+        const defaultUnitPrice = (defaultOrderValue / qty).toFixed(2);
+        const getOption = (dayNum: number) => options.find((o) => o.day === dayNum && o.visible);
+
+        let workingDayCounter = 0;
+
+        return Array.from({ length: 20 }, (_, i) => {
+            const daysAhead = i + 1;
+            const date = new Date();
+            date.setDate(date.getDate() + daysAhead);
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const dayOfMonth = String(date.getDate()).padStart(2, "0");
+            const isoDateStr = `${year}-${month}-${dayOfMonth}`;
+
+            const isSunday = date.getDay() === 0;
+            const activeHoliday = publicHolidays.find((h) => {
+                const holidayDateStr = typeof h?.date === "string" ? h.date.split("T")[0] : "";
+                return holidayDateStr === isoDateStr;
+            });
+            const isHoliday = !!activeHoliday;
+
+            let matchedOrderValue = defaultOrderValue;
+            let matchedUnitPrice = parseFloat(defaultUnitPrice);
+            let visible = false;
+            let workingDayNum = 0;
+
+            if (!isSunday && !isHoliday) {
+                workingDayCounter++;
+                workingDayNum = workingDayCounter;
+
+                if (layers >= 4 && layers <= 10) {
+                    const opt20 = getOption(20);
+                    if (opt20) {
+                        matchedOrderValue = parseFloat(opt20.orderValue);
+                        matchedUnitPrice = parseFloat(opt20.unitPrice);
+                        visible = true;
+                    }
+                } else {
+                    const interpolate = (d1: number, d2: number, ratio: number = 0.5) => {
+                        const o1 = getOption(d1);
+                        const o2 = getOption(d2);
+                        if (o1 && o2) {
+                            const val1 = parseFloat(o1.orderValue);
+                            const val2 = parseFloat(o2.orderValue);
+                            const u1 = parseFloat(o1.unitPrice);
+                            const u2 = parseFloat(o2.unitPrice);
+                            return {
+                                orderValue: val1 + (val2 - val1) * ratio,
+                                unitPrice: u1 + (u2 - u1) * ratio,
+                                visible: true
+                            };
+                        } else if (o2) {
+                            return { orderValue: parseFloat(o2.orderValue), unitPrice: parseFloat(o2.unitPrice), visible: true };
+                        } else if (o1) {
+                            return { orderValue: parseFloat(o1.orderValue), unitPrice: parseFloat(o1.unitPrice), visible: true };
+                        }
+                        return null;
+                    };
+
+                    const dayNum = workingDayNum;
+                    const directOpt = getOption(dayNum);
+                    if (directOpt) {
+                        matchedOrderValue = parseFloat(directOpt.orderValue);
+                        matchedUnitPrice = parseFloat(directOpt.unitPrice);
+                        visible = true;
+                    } else if (dayNum === 2) {
+                        const res = interpolate(1, 3, 0.5);
+                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                    } else if (dayNum === 4) {
+                        const res = interpolate(3, 5, 0.5);
+                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                    } else if (dayNum === 6) {
+                        const res = interpolate(5, 7, 0.5);
+                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                    } else if (dayNum === 8) {
+                        const res = interpolate(7, 10, 1 / 3);
+                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                    } else if (dayNum === 9) {
+                        const res = interpolate(7, 10, 2 / 3);
+                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                    } else if (dayNum >= 10) {
+                        const ratio = Math.min((dayNum - 10) / 10, 1);
+                        const res = interpolate(10, 20, ratio);
+                        if (res) {
+                            matchedOrderValue = res.orderValue;
+                            matchedUnitPrice = res.unitPrice;
+                            visible = res.visible;
+                        } else {
+                            const o20 = getOption(20);
+                            if (o20) {
+                                matchedOrderValue = parseFloat(o20.orderValue);
+                                matchedUnitPrice = parseFloat(o20.unitPrice);
+                                visible = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            const isUnavailable = isSunday || isHoliday || !visible;
+
+            return {
+                day: daysAhead,
+                dateNum: date.getDate(),
+                monthStr: date.toLocaleDateString("en-IN", { month: "short" }),
+                fullMonthYear: date.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+                weekday: date.toLocaleDateString("en-IN", { weekday: "short" }).toUpperCase(),
+                formattedDate: date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+                isoDateStr,
+                orderValue: isUnavailable ? "0.00" : matchedOrderValue.toFixed(2),
+                unitPrice: isUnavailable ? "0.00" : matchedUnitPrice.toFixed(2),
+                visible,
+                isSunday,
+                isHoliday,
+                holidayName: activeHoliday?.name || null,
+                isUnavailable,
+                workingDayNum
+            };
+        });
+    }, [
+        boardWidth,
+        boardLength,
+        quantity,
+        layerCount,
+        dimensionUnit,
+        publicHolidays,
+        pricingConfig,
+        copperWeight,
+        thickness,
+        surfaceFinish,
+        solderMask,
+        material
+    ]);
+
     // Debounce search effect (400ms)
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -619,50 +766,26 @@ export default function CreateOrderPage() {
         fetchClientsList(undefined, debouncedClientSearch);
     }, [debouncedClientSearch]);
 
-    // Auto-select initial valid delivery date (skipping Sundays and public holidays)
+    // Synchronize deliveryDate, unitPrice, and orderValue with deliveryCalendarDays
     useEffect(() => {
-        const { options } = getLeadTimePricing();
-        const getOption = (dayNum: number) => options.find(o => o.day === dayNum && o.visible);
+        if (!deliveryCalendarDays || deliveryCalendarDays.length === 0) return;
 
-        let workingDayCounter = 0;
-        for (let i = 0; i < 20; i++) {
-            const daysAhead = i + 1;
-            const date = new Date();
-            date.setDate(date.getDate() + daysAhead);
+        const currentItem = deliveryDate ? deliveryCalendarDays.find((d) => d.isoDateStr === deliveryDate && !d.isUnavailable) : null;
 
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const dayOfMonth = String(date.getDate()).padStart(2, "0");
-            const isoDateStr = `${year}-${month}-${dayOfMonth}`;
-
-            const isSunday = date.getDay() === 0;
-            const isHoliday = publicHolidays.some(h => (typeof h?.date === "string" ? h.date.split("T")[0] : "") === isoDateStr);
-
-            if (!isSunday && !isHoliday) {
-                workingDayCounter++;
-                const directOpt = getOption(workingDayCounter);
-                const layersInt = parseInt(layerCount, 10) || 1;
-                const hasValidOpt = (layersInt >= 4 && layersInt <= 10)
-                    ? !!getOption(20)
-                    : (!!directOpt || workingDayCounter >= 1);
-
-                if (hasValidOpt) {
-                    const currentIsSunday = deliveryDate ? new Date(deliveryDate).getDay() === 0 : true;
-                    const currentIsHoliday = deliveryDate ? publicHolidays.some(h => (typeof h?.date === "string" ? h.date.split("T")[0] : "") === deliveryDate) : true;
-                    
-                    if (!deliveryDate || currentIsSunday || currentIsHoliday) {
-                        setSelectedDay(daysAhead);
-                        setDeliveryDate(isoDateStr);
-                        if (directOpt) {
-                            setOrderValue(directOpt.orderValue);
-                            setUnitPrice(directOpt.unitPrice);
-                        }
-                    }
-                    break;
-                }
+        if (currentItem) {
+            setOrderValue(currentItem.orderValue);
+            setUnitPrice(currentItem.unitPrice);
+            setSelectedDay(currentItem.day);
+        } else if (!deliveryDate) {
+            const firstAvailable = deliveryCalendarDays.find((d) => !d.isUnavailable);
+            if (firstAvailable) {
+                setDeliveryDate(firstAvailable.isoDateStr);
+                setSelectedDay(firstAvailable.day);
+                setOrderValue(firstAvailable.orderValue);
+                setUnitPrice(firstAvailable.unitPrice);
             }
         }
-    }, [publicHolidays, layerCount, boardWidth, boardLength, dimensionUnit, quantity, solderMask, copperWeight, thickness, pricingConfig]);
+    }, [deliveryCalendarDays, deliveryDate]);
 
     // Fetch Gerber files for selected client
     const fetchClientGerbers = async (clientId: string) => {
@@ -783,34 +906,7 @@ export default function CreateOrderPage() {
         }
     };
 
-    // Calculate Price & Delivery Date based on Matrix Lead-Time Calculator
-    useEffect(() => {
-        const { options } = getLeadTimePricing();
-        const qtyPcs = parseInt(quantity, 10) || 5;
 
-        // Try to match selectedDay option
-        let matched = options.find((o) => o.day === selectedDay && o.visible);
-        if (!matched) {
-            matched = options.find((o) => o.visible);
-        }
-
-        if (matched) {
-            setOrderValue(matched.orderValue);
-            setUnitPrice(matched.unitPrice);
-
-            // Compute delivery date string
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + matched.day);
-            setDeliveryDate(targetDate.toISOString().split("T")[0]);
-        } else {
-            // Fallback calculation if out of bounds matrix range
-            const len = parseFloat(boardWidth) || 100;
-            const wid = parseFloat(boardLength) || 100;
-            const defaultTotal = Math.max(500, Math.round(((len * wid) / 100 * 0.45 + (parseInt(layerCount) || 2) * 45) * qtyPcs));
-            setOrderValue(defaultTotal.toString());
-            setUnitPrice((defaultTotal / qtyPcs).toFixed(2));
-        }
-    }, [boardLength, boardWidth, quantity, layerCount, material, thickness, surfaceFinish, copperWeight, solderMask, selectedDay, pricingConfig]);
 
     // Gerber File & Analysis State
     const [uploadedGerberFileId, setUploadedGerberFileId] = useState<number | null>(null);
@@ -2146,270 +2242,7 @@ export default function CreateOrderPage() {
                             </div>
                         </div>
 
-                        {/* Integrated 20-Day Delivery Lead Time Calendar Selector */}
-                        <div className="bg-muted/20 border border-border/80 p-4 rounded-xl space-y-3">
-                            {(() => {
-                                const { options } = getLeadTimePricing();
-
-                                const unitMultiplier = dimensionUnit === "inches" ? 25.4 : 1;
-                                const length = (parseFloat(boardWidth) || 0) * unitMultiplier;
-                                const width = (parseFloat(boardLength) || 0) * unitMultiplier;
-                                const qty = Math.max(parseInt(quantity, 10) || 3, 3);
-                                const layers = parseInt(layerCount, 10) || 1;
-
-                                const defaultOrderValue = Math.max(Math.round(length * width * 0.05 * qty), 100);
-                                const defaultUnitPrice = (defaultOrderValue / qty).toFixed(2);
-                                const getOption = (dayNum: number) => options.find(o => o.day === dayNum && o.visible);
-
-                                let workingDayCounter = 0;
-
-                                const next20Days = Array.from({ length: 20 }, (_, i) => {
-                                    const daysAhead = i + 1;
-                                    const date = new Date();
-                                    date.setDate(date.getDate() + daysAhead);
-
-                                    const year = date.getFullYear();
-                                    const month = String(date.getMonth() + 1).padStart(2, "0");
-                                    const dayOfMonth = String(date.getDate()).padStart(2, "0");
-                                    const isoDateStr = `${year}-${month}-${dayOfMonth}`;
-
-                                    const isSunday = date.getDay() === 0;
-                                    const activeHoliday = publicHolidays.find(h => (typeof h?.date === "string" ? h.date.split("T")[0] : "") === isoDateStr);
-                                    const isHoliday = !!activeHoliday;
-
-                                    let matchedOrderValue = defaultOrderValue;
-                                    let matchedUnitPrice = parseFloat(defaultUnitPrice);
-                                    let visible = false;
-                                    let workingDayNum = 0;
-
-                                    if (!isSunday && !isHoliday) {
-                                        workingDayCounter++;
-                                        workingDayNum = workingDayCounter;
-
-                                        if (layers >= 4 && layers <= 10) {
-                                            const opt20 = getOption(20);
-                                            if (opt20) {
-                                                matchedOrderValue = parseFloat(opt20.orderValue);
-                                                matchedUnitPrice = parseFloat(opt20.unitPrice);
-                                                visible = true;
-                                            }
-                                        } else {
-                                            const interpolate = (d1: number, d2: number, ratio: number = 0.5) => {
-                                                const o1 = getOption(d1);
-                                                const o2 = getOption(d2);
-                                                if (o1 && o2) {
-                                                    const val1 = parseFloat(o1.orderValue);
-                                                    const val2 = parseFloat(o2.orderValue);
-                                                    const u1 = parseFloat(o1.unitPrice);
-                                                    const u2 = parseFloat(o2.unitPrice);
-                                                    return {
-                                                        orderValue: val1 + (val2 - val1) * ratio,
-                                                        unitPrice: u1 + (u2 - u1) * ratio,
-                                                        visible: true
-                                                    };
-                                                } else if (o2) {
-                                                    return { orderValue: parseFloat(o2.orderValue), unitPrice: parseFloat(o2.unitPrice), visible: true };
-                                                } else if (o1) {
-                                                    return { orderValue: parseFloat(o1.orderValue), unitPrice: parseFloat(o1.unitPrice), visible: true };
-                                                }
-                                                return null;
-                                            };
-
-                                            const dayNum = workingDayNum;
-                                            const directOpt = getOption(dayNum);
-                                            if (directOpt) {
-                                                matchedOrderValue = parseFloat(directOpt.orderValue);
-                                                matchedUnitPrice = parseFloat(directOpt.unitPrice);
-                                                visible = true;
-                                            } else if (dayNum === 2) {
-                                                const res = interpolate(1, 3, 0.5);
-                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                            } else if (dayNum === 4) {
-                                                const res = interpolate(3, 5, 0.5);
-                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                            } else if (dayNum === 6) {
-                                                const res = interpolate(5, 7, 0.5);
-                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                            } else if (dayNum === 8) {
-                                                const res = interpolate(7, 10, 1 / 3);
-                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                            } else if (dayNum === 9) {
-                                                const res = interpolate(7, 10, 2 / 3);
-                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                            } else if (dayNum >= 10) {
-                                                const ratio = Math.min((dayNum - 10) / 10, 1);
-                                                const res = interpolate(10, 20, ratio);
-                                                if (res) {
-                                                    matchedOrderValue = res.orderValue;
-                                                    matchedUnitPrice = res.unitPrice;
-                                                    visible = res.visible;
-                                                } else {
-                                                    const o20 = getOption(20);
-                                                    if (o20) {
-                                                        matchedOrderValue = parseFloat(o20.orderValue);
-                                                        matchedUnitPrice = parseFloat(o20.unitPrice);
-                                                        visible = true;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    const isUnavailable = isSunday || isHoliday || !visible;
-
-                                    return {
-                                        day: daysAhead,
-                                        dateNum: date.getDate(),
-                                        monthStr: date.toLocaleDateString("en-IN", { month: "short" }),
-                                        fullMonthYear: date.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
-                                        weekday: date.toLocaleDateString("en-IN", { weekday: "short" }).toUpperCase(),
-                                        formattedDate: date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-                                        isoDateStr,
-                                        orderValue: isUnavailable ? "0.00" : matchedOrderValue.toFixed(2),
-                                        unitPrice: isUnavailable ? "0.00" : matchedUnitPrice.toFixed(2),
-                                        visible,
-                                        isSunday,
-                                        isHoliday,
-                                        holidayName: activeHoliday?.name || null,
-                                        isUnavailable,
-                                        workingDayNum
-                                    };
-                                });
-
-                                const uniqueMonths = Array.from(new Set(next20Days.map(item => item.fullMonthYear)));
-                                const calendarHeaderTitle = uniqueMonths.length > 1
-                                    ? `${uniqueMonths[0]} - ${uniqueMonths[uniqueMonths.length - 1]}`
-                                    : uniqueMonths[0] || new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-
-                                // Calculate card display price based on active pricing mode & manual price
-                                const areaPerBoardSqm = (length * width) / 1000000;
-                                const totalAreaSqm = areaPerBoardSqm * qty;
-                                const parsedManual = parseFloat(manualPrice);
-                                const hasManualOverride = !isNaN(parsedManual) && parsedManual >= 0 && manualPrice.trim() !== "";
-
-                                const getCardDisplayPrice = (autoOrderVal: string) => {
-                                    if (hasManualOverride) {
-                                        return `₹${parsedManual.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                    }
-                                    if (pricingMethod === "pcb_rate") {
-                                        const sub = (parseFloat(pcbRate) || 0) * qty;
-                                        return `₹${sub.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                    }
-                                    if (pricingMethod === "price_per_sqm") {
-                                        const sub = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
-                                        return `₹${sub.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                    }
-                                    return `₹${parseFloat(autoOrderVal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                };
-
-                                return (
-                                    <div className="space-y-2.5">
-                                        <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                                            <div>
-                                                <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-500/30" />
-                                                    Select Delivery Date & Lead Time
-                                                </h4>
-                                            </div>
-                                            <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border border-emerald-500/30">
-                                                {calendarHeaderTitle}
-                                            </div>
-                                        </div>
-
-                                        {/* 20-Day Interactive Grid */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-10 gap-2">
-                                            {next20Days.map((item) => {
-                                                const isSelected = (selectedDay === item.day || deliveryDate === item.isoDateStr) && !item.isUnavailable;
-
-                                                if (item.isSunday) {
-                                                    return (
-                                                        <div
-                                                            key={item.day}
-                                                            aria-disabled="true"
-                                                            title={`${item.formattedDate} - Sunday - Unavailable`}
-                                                            className="p-2 rounded-xl border border-slate-300/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/40 opacity-70 text-center select-none flex flex-col justify-between cursor-not-allowed"
-                                                        >
-                                                            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">{item.weekday}</div>
-                                                            <div className="text-base font-black my-0.5 text-slate-600 dark:text-slate-300">{item.dateNum}</div>
-                                                            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{item.monthStr}</div>
-                                                            <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-700 flex justify-center">
-                                                                <span className="text-[9px] font-bold uppercase tracking-tight text-slate-500 bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded-sm">Sunday</span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                if (item.isHoliday) {
-                                                    return (
-                                                        <div
-                                                            key={item.day}
-                                                            aria-disabled="true"
-                                                            title={`${item.formattedDate} - ${item.holidayName || "Public Holiday"} - Unavailable`}
-                                                            className="p-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-center select-none flex flex-col justify-between cursor-not-allowed"
-                                                        >
-                                                            <div className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">{item.weekday}</div>
-                                                            <div className="text-base font-black my-0.5 text-amber-800 dark:text-amber-200">{item.dateNum}</div>
-                                                            <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{item.monthStr}</div>
-                                                            <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-800 flex justify-center" title={item.holidayName || "Holiday"}>
-                                                                <span className="text-[8.5px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1 py-0.5 rounded-sm truncate max-w-full">
-                                                                    {item.holidayName || "Holiday"}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                if (item.isUnavailable) {
-                                                    return (
-                                                        <div
-                                                            key={item.day}
-                                                            aria-disabled="true"
-                                                            title={`${item.formattedDate} - Unavailable for this order area/specifications`}
-                                                            className="p-2 rounded-xl border border-border/40 bg-muted/20 opacity-40 text-center select-none flex flex-col justify-between cursor-not-allowed"
-                                                        >
-                                                            <div className="text-[10px] font-bold uppercase text-muted-foreground">{item.weekday}</div>
-                                                            <div className="text-base font-black my-0.5 text-muted-foreground line-through">{item.dateNum}</div>
-                                                            <div className="text-[10px] font-semibold text-muted-foreground">{item.monthStr}</div>
-                                                            <div className="mt-1 pt-1 border-t border-border/40 text-[10px] font-medium text-muted-foreground">
-                                                                N/A
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <div
-                                                        key={item.day}
-                                                        onClick={() => {
-                                                            setSelectedDay(item.day);
-                                                            setOrderValue(item.orderValue);
-                                                            setUnitPrice(item.unitPrice);
-                                                            setDeliveryDate(item.isoDateStr);
-                                                        }}
-                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between ${
-                                                            isSelected
-                                                                ? "bg-emerald-500 text-white border-emerald-600 shadow-md scale-105"
-                                                                : "bg-card hover:bg-emerald-500/10 border-border/80 text-foreground"
-                                                        }`}
-                                                    >
-                                                        <div className="text-[10px] font-bold uppercase opacity-80">{item.weekday}</div>
-                                                        <div className="text-base font-black my-0.5">{item.dateNum}</div>
-                                                        <div className="text-[10px] font-semibold opacity-90">{item.monthStr}</div>
-                                                        <div className={`mt-1 pt-1 border-t text-[11px] font-extrabold truncate ${
-                                                            isSelected ? "border-white/30 text-white" : "border-border/60 text-emerald-600 dark:text-emerald-400"
-                                                        }`}>
-                                                            {getCardDisplayPrice(item.orderValue)}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-
-                        {/* Pricing Method & Calculation Controls */}
+                        {/* Side-by-Side: 1. Delivery Calendar & 2. Pricing / Manual Method */}
                         {(() => {
                             const unitMult = dimensionUnit === "inches" ? 25.4 : 1;
                             const lengthMm = (parseFloat(boardWidth) || 100) * unitMult;
@@ -2441,153 +2274,398 @@ export default function CreateOrderPage() {
                             const gstAmt = subtotalCalc * (gstRate / 100);
                             const totalAmt = subtotalCalc + gstAmt;
 
+                            const uniqueMonths = Array.from(new Set(deliveryCalendarDays.map((item) => item.fullMonthYear)));
+                            const calendarHeaderTitle = uniqueMonths.length > 1
+                                ? `${uniqueMonths[0]} - ${uniqueMonths[uniqueMonths.length - 1]}`
+                                : uniqueMonths[0] || new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+
+                            const selectedDayItem = deliveryCalendarDays.find((item) => item.isoDateStr === deliveryDate);
+
+                            const getCardDisplayPrice = (autoOrderVal: string) => {
+                                if (hasManualOverride) {
+                                    return `₹${parsedManual.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                }
+                                if (pricingMethod === "pcb_rate") {
+                                    const sub = (parseFloat(pcbRate) || 0) * qtyPcs;
+                                    return `₹${sub.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                }
+                                if (pricingMethod === "price_per_sqm") {
+                                    const sub = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
+                                    return `₹${sub.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                }
+                                return `₹${parseFloat(autoOrderVal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                            };
+
                             return (
-                                <div className="space-y-4 pt-3 border-t border-border/60">
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/20 border border-border/80 p-4 rounded-xl">
-                                        <div>
-                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Pricing Method</label>
-                                            <div className="flex gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPricingMethod("auto")}
-                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                                        pricingMethod === "auto"
-                                                            ? "bg-emerald-500 text-white shadow-xs"
-                                                            : "text-muted-foreground hover:bg-muted"
-                                                    }`}
-                                                >
-                                                    Auto
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPricingMethod("pcb_rate")}
-                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                                        pricingMethod === "pcb_rate"
-                                                            ? "bg-emerald-500 text-white shadow-xs"
-                                                            : "text-muted-foreground hover:bg-muted"
-                                                    }`}
-                                                >
-                                                    PCB Rate
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPricingMethod("price_per_sqm")}
-                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                                        pricingMethod === "price_per_sqm"
-                                                            ? "bg-emerald-500 text-white shadow-xs"
-                                                            : "text-muted-foreground hover:bg-muted"
-                                                    }`}
-                                                >
-                                                    SQM
-                                                </button>
+                                <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+                                    {/* Left Column: Delivery Calendar (7 Cols on xl) */}
+                                    <div className="xl:col-span-7 bg-muted/20 border border-border/80 p-4 sm:p-5 rounded-2xl space-y-3.5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-border/60 gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-500/30 animate-pulse" />
+                                                <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <CalendarDays className="w-4 h-4" />
+                                                    Delivery Date & Lead Time Calendar
+                                                </h4>
+                                            </div>
+                                            <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-500/30 self-start sm:self-auto">
+                                                {calendarHeaderTitle}
                                             </div>
                                         </div>
 
-                                        {pricingMethod === "pcb_rate" && (
-                                            <div>
-                                                <label className="text-xs font-bold text-muted-foreground block mb-1">PCB Rate (₹ / pc)</label>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={pcbRate}
-                                                    onChange={(e) => setPcbRate(e.target.value)}
-                                                    className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-mono font-bold text-foreground"
-                                                    placeholder="Rate per board"
-                                                />
+                                        {/* Status & Legend */}
+                                        <div className="flex flex-wrap items-center justify-between text-[11px] text-muted-foreground gap-2">
+                                            <span className="font-medium">Click any working date to schedule delivery:</span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Selected
+                                                </span>
+                                                <span className="flex items-center gap-1 font-semibold text-muted-foreground">
+                                                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" /> Sunday
+                                                </span>
+                                                <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                                                    <span className="w-2 h-2 rounded-full bg-amber-500" /> Holiday
+                                                </span>
                                             </div>
-                                        )}
+                                        </div>
 
-                                        {pricingMethod === "price_per_sqm" && (
-                                            <div>
-                                                <label className="text-xs font-bold text-muted-foreground block mb-1">Price per SQM (₹ / m²)</label>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={pricePerSqm}
-                                                    onChange={(e) => setPricePerSqm(e.target.value)}
-                                                    className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-mono font-bold text-foreground"
-                                                    placeholder="Rate per SQM"
-                                                />
-                                            </div>
-                                        )}
+                                        {/* 20-Day Interactive Grid: 5 columns = 4 tidy rows */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                            {deliveryCalendarDays.map((item) => {
+                                                const isSelected = deliveryDate === item.isoDateStr && !item.isUnavailable;
 
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <label className="text-xs font-bold text-muted-foreground">Manual Base PCB Price</label>
-                                                {hasManualOverride && (
-                                                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                                                        Override Active
+                                                if (item.isSunday) {
+                                                    return (
+                                                        <div
+                                                            key={item.day}
+                                                            aria-disabled="true"
+                                                            title={`${item.formattedDate} - Sunday - Unavailable`}
+                                                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/30 opacity-60 text-center select-none flex flex-col justify-between cursor-not-allowed min-h-[96px]"
+                                                        >
+                                                            <div className="text-[10px] font-bold uppercase text-slate-400">{item.weekday}</div>
+                                                            <div className="text-lg font-black text-slate-500 line-through my-0.5">{item.dateNum}</div>
+                                                            <div className="text-[9.5px] font-semibold text-slate-400">{item.monthStr}</div>
+                                                            <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-800 flex justify-center">
+                                                                <span className="text-[9px] font-bold uppercase tracking-tight text-slate-500 bg-slate-200 dark:bg-slate-700/80 px-1.5 py-0.5 rounded-sm">Sunday</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (item.isHoliday) {
+                                                    return (
+                                                        <div
+                                                            key={item.day}
+                                                            aria-disabled="true"
+                                                            title={`${item.formattedDate} - ${item.holidayName || "Public Holiday"} - Unavailable`}
+                                                            className="p-2 rounded-xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-500/10 dark:bg-amber-950/20 text-center select-none flex flex-col justify-between cursor-not-allowed min-h-[96px]"
+                                                        >
+                                                            <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">{item.weekday}</div>
+                                                            <div className="text-lg font-black text-amber-700 dark:text-amber-300 my-0.5">{item.dateNum}</div>
+                                                            <div className="text-[9.5px] font-semibold text-amber-600/90 dark:text-amber-400/90">{item.monthStr}</div>
+                                                            <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-800/60 flex justify-center" title={item.holidayName || "Holiday"}>
+                                                                <span className="text-[8.5px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1 py-0.5 rounded-sm truncate max-w-full">
+                                                                    {item.holidayName || "Holiday"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (item.isUnavailable) {
+                                                    return (
+                                                        <div
+                                                            key={item.day}
+                                                            aria-disabled="true"
+                                                            title={`${item.formattedDate} - Unavailable for this order area/specifications`}
+                                                            className="p-2 rounded-xl border border-border/40 bg-muted/20 opacity-40 text-center select-none flex flex-col justify-between cursor-not-allowed min-h-[96px]"
+                                                        >
+                                                            <div className="text-[10px] font-bold uppercase text-muted-foreground">{item.weekday}</div>
+                                                            <div className="text-lg font-black text-muted-foreground line-through my-0.5">{item.dateNum}</div>
+                                                            <div className="text-[9.5px] font-semibold text-muted-foreground">{item.monthStr}</div>
+                                                            <div className="mt-1 pt-1 border-t border-border/40 text-[9px] font-bold text-muted-foreground">
+                                                                N/A
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div
+                                                        key={item.day}
+                                                        onClick={() => {
+                                                            setDeliveryDate(item.isoDateStr);
+                                                            setSelectedDay(item.day);
+                                                            setOrderValue(item.orderValue);
+                                                            setUnitPrice(item.unitPrice);
+                                                        }}
+                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between min-h-[96px] ${
+                                                            isSelected
+                                                                ? "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/40 scale-[1.02] z-10"
+                                                                : "bg-card hover:bg-emerald-500/5 border-border/80 hover:border-emerald-500/40 hover:shadow-xs text-foreground"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between text-[10px] font-bold uppercase">
+                                                            <span className={isSelected ? "text-white/90" : "text-muted-foreground"}>{item.weekday}</span>
+                                                            {isSelected ? (
+                                                                <span className="bg-white/20 p-0.5 rounded-full"><Check className="w-2.5 h-2.5 text-white stroke-[3]" /></span>
+                                                            ) : (
+                                                                <span className="text-[8.5px] font-bold text-muted-foreground/60 bg-muted px-1 py-0.2 rounded">W{item.workingDayNum}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="my-0.5">
+                                                            <div className={`text-lg font-black leading-tight ${isSelected ? "text-white" : "text-foreground"}`}>{item.dateNum}</div>
+                                                            <div className={`text-[9.5px] font-semibold ${isSelected ? "text-white/80" : "text-muted-foreground"}`}>{item.monthStr}</div>
+                                                        </div>
+                                                        <div className={`mt-1 pt-1 border-t text-[11px] font-extrabold truncate ${
+                                                            isSelected ? "border-white/25 text-white" : "border-border/60 text-emerald-600 dark:text-emerald-400 font-mono"
+                                                        }`}>
+                                                            {getCardDisplayPrice(item.orderValue)}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Calendar Selection Banner */}
+                                        <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                                                <CalendarDays className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                {selectedDayItem ? (
+                                                    <span>
+                                                        Selected Delivery: <b className="text-foreground">{selectedDayItem.formattedDate} ({selectedDayItem.weekday})</b> • Lead Time: <b className="text-foreground">{selectedDayItem.workingDayNum} Working Days</b>
+                                                    </span>
+                                                ) : (
+                                                    <span>
+                                                        Delivery Date: <b className="text-foreground">{deliveryDate || "Not Selected"}</b>
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={manualPrice}
-                                                    onChange={(e) => setManualPrice(e.target.value)}
-                                                    className="w-full h-10 pl-7 pr-8 rounded-xl bg-card border-border/80 text-xs font-mono font-bold text-foreground focus:ring-amber-500"
-                                                    placeholder="Overrides auto & method"
-                                                />
-                                                {manualPrice && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setManualPrice("")}
-                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
-                                                        title="Clear manual override"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-xs font-bold text-muted-foreground block mb-1">GST Rate</label>
-                                            <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
-                                                <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-bold text-foreground">
-                                                    <SelectValue placeholder="Select GST" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {gstOptionsList.map((rate) => (
-                                                        <SelectItem key={rate} value={rate.toString()}>
-                                                            {rate}% GST
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            {selectedDayItem && (
+                                                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                                                    Matrix Base: ₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Pricing Summary Card */}
-                                    <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl space-y-2 text-xs">
-                                        <div className="font-bold text-foreground text-xs border-b border-emerald-500/20 pb-1.5 flex justify-between items-center">
-                                            <span className="flex items-center gap-1.5">
-                                                <Calculator className="w-4 h-4 text-emerald-500" />
-                                                Financial Summary & Price Breakdown
-                                            </span>
-                                            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                                {pricingModeLabel}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                                            <div className="flex justify-between items-center p-2.5 bg-card/60 rounded-lg border border-border/60">
-                                                <span className="text-muted-foreground font-semibold">Subtotal (Base PCB):</span>
-                                                <span className="font-mono font-bold text-foreground">₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-2.5 bg-card/60 rounded-lg border border-border/60">
-                                                <span className="text-muted-foreground font-semibold">GST ({gstRate}%):</span>
-                                                <span className="font-mono font-bold text-foreground">₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-                                                <span className="font-black text-foreground">Final Order Total:</span>
-                                                <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                                                    ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {/* Right Column: Pricing & Manual Method Controls (5 Cols on xl) */}
+                                    <div className="xl:col-span-5 space-y-4">
+                                        <div className="bg-muted/20 border border-border/80 p-4 sm:p-5 rounded-2xl space-y-3.5">
+                                            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Sliders className="w-4 h-4 text-emerald-500" />
+                                                    <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
+                                                        Pricing & Manual Method
+                                                    </h4>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                    {pricingMethod === "auto" && !hasManualOverride ? "Auto Matrix" : hasManualOverride ? "Manual Override" : pricingMethod === "pcb_rate" ? "PCB Rate" : "SQM Rate"}
                                                 </span>
+                                            </div>
+
+                                            {/* Pricing Method Selector */}
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Pricing Mode</label>
+                                                <div className="grid grid-cols-3 gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPricingMethod("auto")}
+                                                        className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                            pricingMethod === "auto"
+                                                                ? "bg-emerald-500 text-white shadow-xs"
+                                                                : "text-muted-foreground hover:bg-muted"
+                                                        }`}
+                                                    >
+                                                        Auto (Matrix)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPricingMethod("pcb_rate")}
+                                                        className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                            pricingMethod === "pcb_rate"
+                                                                ? "bg-emerald-500 text-white shadow-xs"
+                                                                : "text-muted-foreground hover:bg-muted"
+                                                        }`}
+                                                    >
+                                                        PCB Rate
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPricingMethod("price_per_sqm")}
+                                                        className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                            pricingMethod === "price_per_sqm"
+                                                                ? "bg-emerald-500 text-white shadow-xs"
+                                                                : "text-muted-foreground hover:bg-muted"
+                                                        }`}
+                                                    >
+                                                        SQM Rate
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Conditional Rate Inputs */}
+                                            {pricingMethod === "pcb_rate" && (
+                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="text-xs font-bold text-muted-foreground">PCB Rate (₹ / pc)</label>
+                                                        <span className="text-[11px] font-mono text-muted-foreground">{qtyPcs} pcs</span>
+                                                    </div>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={pcbRate}
+                                                        onChange={(e) => setPcbRate(e.target.value)}
+                                                        className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-mono font-bold text-foreground"
+                                                        placeholder="Rate per board"
+                                                    />
+                                                    <p className="text-[10.5px] text-muted-foreground">
+                                                        Calculation: ₹{pcbRate || 0} × {qtyPcs} = <b className="text-foreground">₹{((parseFloat(pcbRate) || 0) * qtyPcs).toFixed(2)}</b>
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {pricingMethod === "price_per_sqm" && (
+                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="text-xs font-bold text-muted-foreground">Price per SQM (₹ / m²)</label>
+                                                        <span className="text-[11px] font-mono text-muted-foreground">{totalAreaSqm.toFixed(4)} m²</span>
+                                                    </div>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={pricePerSqm}
+                                                        onChange={(e) => setPricePerSqm(e.target.value)}
+                                                        className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-mono font-bold text-foreground"
+                                                        placeholder="Rate per SQM"
+                                                    />
+                                                    <p className="text-[10.5px] text-muted-foreground">
+                                                        Calculation: {totalAreaSqm.toFixed(4)} m² × ₹{pricePerSqm || 0} = <b className="text-foreground">₹{((parseFloat(pricePerSqm) || 0) * totalAreaSqm).toFixed(2)}</b>
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Manual Base PCB Price Override */}
+                                            <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-xs font-bold text-muted-foreground">Manual Base PCB Price</label>
+                                                    {hasManualOverride ? (
+                                                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                                            Override Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-muted-foreground font-medium">Optional</span>
+                                                    )}
+                                                </div>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={manualPrice}
+                                                        onChange={(e) => setManualPrice(e.target.value)}
+                                                        className="w-full h-9 pl-7 pr-8 rounded-lg bg-background border-border/80 text-xs font-mono font-bold text-foreground focus:ring-amber-500"
+                                                        placeholder="Direct subtotal override"
+                                                    />
+                                                    {manualPrice && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setManualPrice("")}
+                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                                                            title="Clear manual override"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10.5px] text-muted-foreground">
+                                                    Directly sets base subtotal, overriding calendar and formula pricing.
+                                                </p>
+                                            </div>
+
+                                            {/* Manual Expected Delivery Date Override & GST */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="text-xs font-bold text-muted-foreground">Delivery Date</label>
+                                                        {selectedDayItem ? (
+                                                            <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                                Calendar Synced
+                                                            </span>
+                                                        ) : deliveryDate ? (
+                                                            <span className="text-[9.5px] font-bold text-blue-600 dark:text-blue-400">
+                                                                Manual Date
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                    <Input
+                                                        type="date"
+                                                        value={deliveryDate}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setDeliveryDate(val);
+                                                            const match = deliveryCalendarDays.find((d) => d.isoDateStr === val);
+                                                            if (match && !match.isUnavailable) {
+                                                                setSelectedDay(match.day);
+                                                                setOrderValue(match.orderValue);
+                                                                setUnitPrice(match.unitPrice);
+                                                            }
+                                                        }}
+                                                        className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-semibold text-foreground"
+                                                    />
+                                                </div>
+
+                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                    <label className="text-xs font-bold text-muted-foreground block">GST Rate</label>
+                                                    <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
+                                                        <SelectTrigger className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-bold text-foreground">
+                                                            <SelectValue placeholder="Select GST" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {gstOptionsList.map((rate) => (
+                                                                <SelectItem key={rate} value={rate.toString()}>
+                                                                    {rate}% GST
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            {/* Financial Summary Card */}
+                                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl space-y-2.5 text-xs">
+                                                <div className="font-bold text-foreground text-xs border-b border-emerald-500/20 pb-2 flex justify-between items-center">
+                                                    <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-black">
+                                                        <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                        Financial Summary
+                                                    </span>
+                                                    <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                                                        Live Total
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-1.5 pt-1">
+                                                    <div className="flex justify-between items-center text-muted-foreground font-medium">
+                                                        <span>Subtotal (Base PCB):</span>
+                                                        <span className="font-mono font-bold text-foreground">
+                                                            ₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-muted-foreground font-medium">
+                                                        <span>GST ({gstRate}%):</span>
+                                                        <span className="font-mono font-bold text-foreground">
+                                                            ₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center pt-2 border-t border-emerald-500/30">
+                                                        <span className="font-black text-sm text-foreground">Final Order Total:</span>
+                                                        <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-base">
+                                                            ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
