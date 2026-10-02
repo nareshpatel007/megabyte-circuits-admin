@@ -106,8 +106,8 @@ export default function AddStaffPage() {
         },
         body: JSON.stringify({
           name: name.trim(),
-          username: username.trim() || strtok(email.trim(), '@'),
-          email: email.trim().toLowerCase(),
+          username: username.trim() || `staff_${Date.now()}`,
+          email: email.trim() ? email.trim().toLowerCase() : `staff_${Date.now()}@noemail.internal`,
           phone: phone.trim(),
           password: password,
           role_id: roleId ? parseInt(roleId) : null,

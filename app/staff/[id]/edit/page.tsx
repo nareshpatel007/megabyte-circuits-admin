@@ -130,7 +130,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
         body: JSON.stringify({
           name: name.trim(),
           username: username.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim() ? email.trim().toLowerCase() : `staff_${id}_${Date.now()}@noemail.internal`,
           phone: phone.trim(),
           password: password || undefined,
           role_id: roleId ? parseInt(roleId) : null,

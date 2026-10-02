@@ -117,7 +117,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                     first_name: firstName.trim(),
                     last_name: lastName.trim(),
                     name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-                    email: email.trim().toLowerCase(),
+                    email: email.trim() ? email.trim().toLowerCase() : `client_${id}_${Date.now()}@noemail.internal`,
                     phone_number: phone.trim(),
                     company_name: companyName.trim(),
                     gstin: gstin.trim(),

@@ -684,7 +684,7 @@ export default function CreateOrderPage() {
                     name: fullName,
                     first_name: newClientFirstName,
                     last_name: newClientLastName,
-                    email: newClientEmail.trim(),
+                    email: newClientEmail.trim() ? newClientEmail.trim().toLowerCase() : `client_${Date.now()}@noemail.internal`,
                     phone_number: newClientPhone.trim(),
                     company_name: newClientCompany.trim(),
                     password: newClientPassword || "Client@123"
