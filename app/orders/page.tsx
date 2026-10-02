@@ -1827,13 +1827,21 @@ function OrdersContent() {
 
         let initialComboItems: ComboOrderItem[] = [];
         if (Array.isArray(order.combo_orders) && order.combo_orders.length > 0) {
-            initialComboItems = order.combo_orders.map((c) => ({
-                id: c.id,
-                order_number: c.order_number,
-                status: c.status,
-            }));
+            const seen = new Set<string>();
+            initialComboItems = order.combo_orders
+                .filter((c) => {
+                    const key = (c.order_number || String(c.id)).toUpperCase().trim();
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .map((c) => ({
+                    id: c.id,
+                    order_number: c.order_number,
+                    status: c.status,
+                }));
         } else if (order.combo && String(order.combo).trim() !== "") {
-            const parsed = String(order.combo).split(/[\+,\s]+/).filter(Boolean);
+            const parsed = Array.from(new Set(String(order.combo).split(/[\+,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean)));
             initialComboItems = parsed.map((no, idx) => ({
                 id: 990000 + idx,
                 order_number: no,
@@ -1844,13 +1852,21 @@ function OrdersContent() {
         setModalOldOrderNumber(order.old_order_number ? String(order.old_order_number) : "");
         let initialOldItems: OldOrderItem[] = [];
         if (Array.isArray(order.old_orders) && order.old_orders.length > 0) {
-            initialOldItems = order.old_orders.map((c) => ({
-                id: c.id,
-                order_number: c.order_number,
-                status: c.status,
-            }));
+            const seen = new Set<string>();
+            initialOldItems = order.old_orders
+                .filter((c) => {
+                    const key = (c.order_number || String(c.id)).toUpperCase().trim();
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .map((c) => ({
+                    id: c.id,
+                    order_number: c.order_number,
+                    status: c.status,
+                }));
         } else if (order.old_order_number && String(order.old_order_number).trim() !== "") {
-            const parsed = String(order.old_order_number).split(/[\+,\s]+/).filter(Boolean);
+            const parsed = Array.from(new Set(String(order.old_order_number).split(/[\+,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean)));
             initialOldItems = parsed.map((no, idx) => ({
                 id: 880000 + idx,
                 order_number: no,
@@ -1944,10 +1960,10 @@ function OrdersContent() {
         setUpdatingStatus(true);
         try {
             const token = localStorage.getItem("admin_token");
-            const comboOrderNos = modalComboOrders.map((c) => c.order_number);
+            const comboOrderNos = Array.from(new Set(modalComboOrders.map((c) => c.order_number.trim()))).filter(Boolean);
             const comboStr = comboOrderNos.join(", ");
 
-            const oldOrderNos = modalOldOrders.map((c) => c.order_number);
+            const oldOrderNos = Array.from(new Set(modalOldOrders.map((c) => c.order_number.trim()))).filter(Boolean);
             const oldOrderStr = oldOrderNos.join(", ");
 
             const normCurrentDeliveryDate = parseDeliveryDateToYYYYMMDD(modalDeliveryDate);
@@ -2813,9 +2829,10 @@ function OrdersContent() {
                                                             {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
                                                                 <div className="mt-1 flex flex-wrap items-center gap-1">
                                                                     {(() => {
-                                                                        const comboList = Array.isArray(order.combo_orders) && order.combo_orders.length > 0
+                                                                        const rawComboList = Array.isArray(order.combo_orders) && order.combo_orders.length > 0
                                                                             ? order.combo_orders.map(c => c.order_number)
                                                                             : String(order.combo || '').split(/[\+,\s]+/).filter(Boolean);
+                                                                        const comboList = Array.from(new Set(rawComboList.map(s => String(s).trim()).filter(Boolean)));
 
                                                                         if (comboList.length === 0) return null;
 
@@ -2837,9 +2854,10 @@ function OrdersContent() {
                                                             {((order.old_order_number && String(order.old_order_number).trim() !== "") || (Array.isArray(order.old_orders) && order.old_orders.length > 0)) && (
                                                                 <div className="mt-1 flex flex-wrap items-center gap-1">
                                                                     {(() => {
-                                                                        const oldList = Array.isArray(order.old_orders) && order.old_orders.length > 0
+                                                                        const rawOldList = Array.isArray(order.old_orders) && order.old_orders.length > 0
                                                                             ? order.old_orders.map(c => c.order_number)
                                                                             : String(order.old_order_number || '').split(/[\+,\s]+/).filter(Boolean);
+                                                                        const oldList = Array.from(new Set(rawOldList.map(s => String(s).trim()).filter(Boolean)));
 
                                                                         if (oldList.length === 0) return null;
 

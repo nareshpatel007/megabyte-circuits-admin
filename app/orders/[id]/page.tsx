@@ -396,13 +396,21 @@ export default function OrderDetailPage() {
 
                 let initialComboItems: ComboOrderItem[] = [];
                 if (Array.isArray(o.combo_orders) && o.combo_orders.length > 0) {
-                    initialComboItems = o.combo_orders.map((c: any) => ({
-                        id: c.id,
-                        order_number: c.order_number,
-                        status: c.status,
-                    }));
+                    const seen = new Set<string>();
+                    initialComboItems = o.combo_orders
+                        .filter((c: any) => {
+                            const key = (c.order_number || String(c.id)).toUpperCase().trim();
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        })
+                        .map((c: any) => ({
+                            id: c.id,
+                            order_number: c.order_number,
+                            status: c.status,
+                        }));
                 } else if (o.combo && String(o.combo).trim() !== "") {
-                    const parsed = String(o.combo).split(/[\+,\s]+/).filter(Boolean);
+                    const parsed = Array.from(new Set(String(o.combo).split(/[\+,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean)));
                     initialComboItems = parsed.map((no, idx) => ({
                         id: 990000 + idx,
                         order_number: no,
@@ -413,13 +421,21 @@ export default function OrderDetailPage() {
                 setOldOrderNumber(o.old_order_number ? String(o.old_order_number) : "");
                 let initialOldItems: OldOrderItem[] = [];
                 if (Array.isArray(o.old_orders) && o.old_orders.length > 0) {
-                    initialOldItems = o.old_orders.map((c: any) => ({
-                        id: c.id,
-                        order_number: c.order_number,
-                        status: c.status,
-                    }));
+                    const seen = new Set<string>();
+                    initialOldItems = o.old_orders
+                        .filter((c: any) => {
+                            const key = (c.order_number || String(c.id)).toUpperCase().trim();
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        })
+                        .map((c: any) => ({
+                            id: c.id,
+                            order_number: c.order_number,
+                            status: c.status,
+                        }));
                 } else if (o.old_order_number && String(o.old_order_number).trim() !== "") {
-                    const parsed = String(o.old_order_number).split(/[\+,\s]+/).filter(Boolean);
+                    const parsed = Array.from(new Set(String(o.old_order_number).split(/[\+,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean)));
                     initialOldItems = parsed.map((no, idx) => ({
                         id: 880000 + idx,
                         order_number: no,
@@ -553,10 +569,10 @@ export default function OrderDetailPage() {
                 } catch (e) { }
             }
 
-            const comboOrderNos = comboOrdersState.map((c) => c.order_number);
+            const comboOrderNos = Array.from(new Set(comboOrdersState.map((c) => c.order_number.trim()))).filter(Boolean);
             const comboStr = comboOrderNos.join(", ");
 
-            const oldOrderNos = oldOrdersState.map((c) => c.order_number);
+            const oldOrderNos = Array.from(new Set(oldOrdersState.map((c) => c.order_number.trim()))).filter(Boolean);
             const oldOrderStr = oldOrderNos.join(", ");
 
             const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -1448,17 +1464,23 @@ export default function OrderDetailPage() {
             {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200/80 inline-flex items-center gap-1">
                     <Layers className="w-3 h-3 text-indigo-500" />
-                    Combo: {Array.isArray(order.combo_orders) && order.combo_orders.length > 0
-                        ? order.combo_orders.map(c => c.order_number).join(', ')
-                        : order.combo}
+                    Combo: {(() => {
+                        const raw = Array.isArray(order.combo_orders) && order.combo_orders.length > 0
+                            ? order.combo_orders.map(c => c.order_number)
+                            : String(order.combo || '').split(/[\+,\s]+/).filter(Boolean);
+                        return Array.from(new Set(raw.map(s => String(s).trim()).filter(Boolean))).join(', ');
+                    })()}
                 </span>
             )}
             {((order.old_order_number && String(order.old_order_number).trim() !== "") || (Array.isArray(order.old_orders) && order.old_orders.length > 0)) && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200/80 inline-flex items-center gap-1">
                     <History className="w-3 h-3 text-amber-600" />
-                    Old Order Number: {Array.isArray(order.old_orders) && order.old_orders.length > 0
-                        ? order.old_orders.map(c => c.order_number).join(', ')
-                        : order.old_order_number}
+                    Old Order Number: {(() => {
+                        const raw = Array.isArray(order.old_orders) && order.old_orders.length > 0
+                            ? order.old_orders.map(c => c.order_number)
+                            : String(order.old_order_number || '').split(/[\+,\s]+/).filter(Boolean);
+                        return Array.from(new Set(raw.map(s => String(s).trim()).filter(Boolean))).join(', ');
+                    })()}
                 </span>
             )}
         </div>
