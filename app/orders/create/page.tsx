@@ -1058,8 +1058,13 @@ export default function CreateOrderPage() {
                                                 {selectedClientId ? (() => {
                                                     const selected = clients.find(c => c.id.toString() === selectedClientId);
                                                     if (!selected) return "Select Client Account...";
-                                                    const name = selected.name || `${selected.first_name || ''} ${selected.last_name || ''}`.trim();
-                                                    return `${name} (${selected.email})${selected.company_name ? ` - ${selected.company_name}` : ''}`;
+                                                    const personName = (selected.name || `${selected.first_name || ''} ${selected.last_name || ''}`).trim();
+                                                    const companyName = (selected.company_name || '').trim();
+                                                    const title = companyName && personName
+                                                        ? `${companyName} (${personName})`
+                                                        : (companyName || personName || `Client #${selected.id}`);
+                                                    const emailDisplay = (selected.email && !selected.email.includes('@noemail.internal')) ? ` (${selected.email})` : '';
+                                                    return `${title}${emailDisplay}`;
                                                 })() : "Search or select client account..."}
                                             </span>
                                         </div>
@@ -1097,7 +1102,12 @@ export default function CreateOrderPage() {
                                                         }
                                                         return displayList.map((c) => {
                                                             const isSelected = selectedClientId === c.id.toString();
-                                                            const clientName = c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim();
+                                                            const personName = (c.name || `${c.first_name || ''} ${c.last_name || ''}`).trim();
+                                                            const companyName = (c.company_name || '').trim();
+                                                            const clientTitle = companyName && personName
+                                                                ? `${companyName} (${personName})`
+                                                                : (companyName || personName || `Client #${c.id}`);
+                                                            const emailDisplay = (c.email && !c.email.includes('@noemail.internal')) ? c.email : '';
                                                             return (
                                                                 <CommandItem
                                                                     key={c.id}
@@ -1110,10 +1120,10 @@ export default function CreateOrderPage() {
                                                                 >
                                                                     <div className="flex flex-col gap-0.5 truncate pr-2">
                                                                         <span className="font-bold text-foreground truncate">
-                                                                            {clientName} {c.company_name ? `(${c.company_name})` : ''}
+                                                                            {clientTitle}
                                                                         </span>
                                                                         <span className="text-[11px] text-muted-foreground truncate">
-                                                                            {c.email} {c.phone_number ? `· ${c.phone_number}` : ''}
+                                                                            {emailDisplay} {c.phone_number ? `${emailDisplay ? '· ' : ''}${c.phone_number}` : ''}
                                                                         </span>
                                                                     </div>
                                                                     {isSelected && <Check className="h-4 w-4 text-emerald-500 shrink-0 ml-2" />}
