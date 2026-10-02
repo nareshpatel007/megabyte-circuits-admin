@@ -37,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { fetchPublicHolidays, PublicHoliday } from "@/lib/api/deliveryService";
 
 interface ClientUser {
     id: number;
@@ -382,6 +383,7 @@ export default function CreateOrderPage() {
     const [paymentCompleted, setPaymentCompleted] = useState<boolean>(false);
     const [paymentMethod, setPaymentMethod] = useState<string>("Manual Payment");
     const [pricingMethod, setPricingMethod] = useState<"auto" | "pcb_rate" | "price_per_sqm">("auto");
+    const [manualPrice, setManualPrice] = useState<string>("");
     const [pcbRate, setPcbRate] = useState<string>("100");
     const [pricePerSqm, setPricePerSqm] = useState<string>("5000");
     const [gstOptionsList, setGstOptionsList] = useState<number[]>([0, 5, 12, 18, 20]);
@@ -389,6 +391,34 @@ export default function CreateOrderPage() {
     const [paymentReference, setPaymentReference] = useState<string>("");
     const [paymentDate, setPaymentDate] = useState<string>("");
     const [paymentNotes, setPaymentNotes] = useState<string>("");
+
+    // Public Holidays State (Matching Quote source of truth)
+    const [publicHolidays, setPublicHolidays] = useState<PublicHoliday[]>([]);
+
+    useEffect(() => {
+        let active = true;
+        async function loadPublicHolidays() {
+            const today = new Date();
+            const future = new Date();
+            future.setDate(today.getDate() + 60);
+
+            const formatYmd = (d: Date) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                return `${y}-${m}-${day}`;
+            };
+
+            const startStr = formatYmd(today);
+            const endStr = formatYmd(future);
+            const list = await fetchPublicHolidays(startStr, endStr);
+            if (active) {
+                setPublicHolidays(list);
+            }
+        }
+        loadPublicHolidays();
+        return () => { active = false; };
+    }, []);
 
     useEffect(() => {
         const fetchGstSettings = async () => {
@@ -463,8 +493,8 @@ export default function CreateOrderPage() {
         const areaInSqCm = totalAreaInSqM * 10000;
 
         const fixedCosts: Record<string, Record<number, number>> = pricingConfig?.fixedCosts || {
-            '1': { 1: 3100, 3: 2100, 5: 1600, 7: 1500, 10: 1400, 20: 1000 },
-            '2': { 1: 8100, 3: 4100, 5: 2600, 7: 2200, 10: 1900, 20: 1400 },
+            '1': { 1: 3100, 3: 2100, 5: 1600, 7: 1500, 10: 1400, 13: 1280, 15: 1200, 17: 1120, 20: 1000 },
+            '2': { 1: 8100, 3: 4100, 5: 2600, 7: 2200, 10: 1900, 13: 1750, 15: 1650, 17: 1550, 20: 1400 },
             '4': { 20: 6000 },
             '6': { 20: 7000 },
             '8': { 20: 8000 },
@@ -488,10 +518,10 @@ export default function CreateOrderPage() {
             return { options: [], showContact: false, totalAreaInSqM };
         }
 
-        const daysList = [1, 3, 5, 7, 10, 20];
+        const daysList = [1, 3, 5, 7, 10, 13, 15, 17, 20];
         const options = daysList.map((day, idx) => {
-            let costPerSqCm = applicablePrices[idx];
-            if (day === 20) {
+            let costPerSqCm = applicablePrices[idx] !== undefined ? applicablePrices[idx] : (applicablePrices[4] ?? applicablePrices[0]);
+            if (day === 20 && applicablePrices[8] === undefined) {
                 costPerSqCm = (layers >= 4 && layers <= 10)
                     ? applicablePrices[0]
                     : (applicablePrices[4] ?? applicablePrices[0]) * 0.85;
@@ -589,11 +619,50 @@ export default function CreateOrderPage() {
         fetchClientsList(undefined, debouncedClientSearch);
     }, [debouncedClientSearch]);
 
+    // Auto-select initial valid delivery date (skipping Sundays and public holidays)
     useEffect(() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 7);
-        setDeliveryDate(d.toISOString().split("T")[0]);
-    }, []);
+        const { options } = getLeadTimePricing();
+        const getOption = (dayNum: number) => options.find(o => o.day === dayNum && o.visible);
+
+        let workingDayCounter = 0;
+        for (let i = 0; i < 20; i++) {
+            const daysAhead = i + 1;
+            const date = new Date();
+            date.setDate(date.getDate() + daysAhead);
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const dayOfMonth = String(date.getDate()).padStart(2, "0");
+            const isoDateStr = `${year}-${month}-${dayOfMonth}`;
+
+            const isSunday = date.getDay() === 0;
+            const isHoliday = publicHolidays.some(h => (typeof h?.date === "string" ? h.date.split("T")[0] : "") === isoDateStr);
+
+            if (!isSunday && !isHoliday) {
+                workingDayCounter++;
+                const directOpt = getOption(workingDayCounter);
+                const layersInt = parseInt(layerCount, 10) || 1;
+                const hasValidOpt = (layersInt >= 4 && layersInt <= 10)
+                    ? !!getOption(20)
+                    : (!!directOpt || workingDayCounter >= 1);
+
+                if (hasValidOpt) {
+                    const currentIsSunday = deliveryDate ? new Date(deliveryDate).getDay() === 0 : true;
+                    const currentIsHoliday = deliveryDate ? publicHolidays.some(h => (typeof h?.date === "string" ? h.date.split("T")[0] : "") === deliveryDate) : true;
+                    
+                    if (!deliveryDate || currentIsSunday || currentIsHoliday) {
+                        setSelectedDay(daysAhead);
+                        setDeliveryDate(isoDateStr);
+                        if (directOpt) {
+                            setOrderValue(directOpt.orderValue);
+                            setUnitPrice(directOpt.unitPrice);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }, [publicHolidays, layerCount, boardWidth, boardLength, dimensionUnit, quantity, solderMask, copperWeight, thickness, pricingConfig]);
 
     // Fetch Gerber files for selected client
     const fetchClientGerbers = async (clientId: string) => {
@@ -918,7 +987,10 @@ export default function CreateOrderPage() {
             const totalAreaSqm = areaPerBoardSqm * qtyPcs;
 
             let calculatedSubtotal = 0;
-            if (pricingMethod === "pcb_rate") {
+            const hasManualPrice = manualPrice.trim() !== "" && !isNaN(parseFloat(manualPrice)) && parseFloat(manualPrice) >= 0;
+            if (hasManualPrice) {
+                calculatedSubtotal = parseFloat(manualPrice);
+            } else if (pricingMethod === "pcb_rate") {
                 calculatedSubtotal = (parseFloat(pcbRate) || 0) * qtyPcs;
             } else if (pricingMethod === "price_per_sqm") {
                 calculatedSubtotal = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
@@ -930,7 +1002,11 @@ export default function CreateOrderPage() {
             const finalOrderTotal = calculatedSubtotal + calculatedGst;
             const computedUnitPrice = qtyPcs > 0 ? (calculatedSubtotal / qtyPcs) : 0;
 
-            formData.append("pricing_method", pricingMethod);
+            formData.append("pricing_method", hasManualPrice ? "manual" : pricingMethod);
+            if (hasManualPrice) {
+                formData.append("manual_price", manualPrice.trim());
+                formData.append("manual_pcb_price", manualPrice.trim());
+            }
             formData.append("pcb_rate", pcbRate);
             formData.append("price_per_sqm", pricePerSqm);
             formData.append("gst_rate", gstRate.toString());
@@ -2075,88 +2151,118 @@ export default function CreateOrderPage() {
                                 const defaultUnitPrice = (defaultOrderValue / qty).toFixed(2);
                                 const getOption = (dayNum: number) => options.find(o => o.day === dayNum && o.visible);
 
+                                let workingDayCounter = 0;
+
                                 const next20Days = Array.from({ length: 20 }, (_, i) => {
                                     const daysAhead = i + 1;
                                     const date = new Date();
                                     date.setDate(date.getDate() + daysAhead);
 
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                                    const dayOfMonth = String(date.getDate()).padStart(2, "0");
+                                    const isoDateStr = `${year}-${month}-${dayOfMonth}`;
+
+                                    const isSunday = date.getDay() === 0;
+                                    const activeHoliday = publicHolidays.find(h => (typeof h?.date === "string" ? h.date.split("T")[0] : "") === isoDateStr);
+                                    const isHoliday = !!activeHoliday;
+
                                     let matchedOrderValue = defaultOrderValue;
                                     let matchedUnitPrice = parseFloat(defaultUnitPrice);
                                     let visible = false;
+                                    let workingDayNum = 0;
 
-                                    if (layers >= 4 && layers <= 10) {
-                                        const opt20 = getOption(20);
-                                        if (opt20) {
-                                            matchedOrderValue = parseFloat(opt20.orderValue);
-                                            matchedUnitPrice = parseFloat(opt20.unitPrice);
-                                            visible = true;
-                                        }
-                                    } else {
-                                        const interpolate = (d1: number, d2: number, ratio: number = 0.5) => {
-                                            const o1 = getOption(d1);
-                                            const o2 = getOption(d2);
-                                            if (o1 && o2) {
-                                                const val1 = parseFloat(o1.orderValue);
-                                                const val2 = parseFloat(o2.orderValue);
-                                                const u1 = parseFloat(o1.unitPrice);
-                                                const u2 = parseFloat(o2.unitPrice);
-                                                return {
-                                                    orderValue: val1 + (val2 - val1) * ratio,
-                                                    unitPrice: u1 + (u2 - u1) * ratio,
-                                                    visible: true
-                                                };
-                                            } else if (o2) {
-                                                return { orderValue: parseFloat(o2.orderValue), unitPrice: parseFloat(o2.unitPrice), visible: true };
-                                            } else if (o1) {
-                                                return { orderValue: parseFloat(o1.orderValue), unitPrice: parseFloat(o1.unitPrice), visible: true };
+                                    if (!isSunday && !isHoliday) {
+                                        workingDayCounter++;
+                                        workingDayNum = workingDayCounter;
+
+                                        if (layers >= 4 && layers <= 10) {
+                                            const opt20 = getOption(20);
+                                            if (opt20) {
+                                                matchedOrderValue = parseFloat(opt20.orderValue);
+                                                matchedUnitPrice = parseFloat(opt20.unitPrice);
+                                                visible = true;
                                             }
-                                            return null;
-                                        };
+                                        } else {
+                                            const interpolate = (d1: number, d2: number, ratio: number = 0.5) => {
+                                                const o1 = getOption(d1);
+                                                const o2 = getOption(d2);
+                                                if (o1 && o2) {
+                                                    const val1 = parseFloat(o1.orderValue);
+                                                    const val2 = parseFloat(o2.orderValue);
+                                                    const u1 = parseFloat(o1.unitPrice);
+                                                    const u2 = parseFloat(o2.unitPrice);
+                                                    return {
+                                                        orderValue: val1 + (val2 - val1) * ratio,
+                                                        unitPrice: u1 + (u2 - u1) * ratio,
+                                                        visible: true
+                                                    };
+                                                } else if (o2) {
+                                                    return { orderValue: parseFloat(o2.orderValue), unitPrice: parseFloat(o2.unitPrice), visible: true };
+                                                } else if (o1) {
+                                                    return { orderValue: parseFloat(o1.orderValue), unitPrice: parseFloat(o1.unitPrice), visible: true };
+                                                }
+                                                return null;
+                                            };
 
-                                        if (daysAhead === 1) {
-                                            const o = getOption(1);
-                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
-                                        } else if (daysAhead === 2) {
-                                            const res = interpolate(1, 3, 0.5);
-                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                        } else if (daysAhead === 3) {
-                                            const o = getOption(3);
-                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
-                                        } else if (daysAhead === 4) {
-                                            const res = interpolate(3, 5, 0.5);
-                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                        } else if (daysAhead === 5) {
-                                            const o = getOption(5);
-                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
-                                        } else if (daysAhead === 6) {
-                                            const res = interpolate(5, 7, 0.5);
-                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                        } else if (daysAhead === 7) {
-                                            const o = getOption(7);
-                                            if (o) { matchedOrderValue = parseFloat(o.orderValue); matchedUnitPrice = parseFloat(o.unitPrice); visible = true; }
-                                        } else if (daysAhead === 8) {
-                                            const res = interpolate(7, 10, 1 / 3);
-                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                        } else if (daysAhead === 9) {
-                                            const res = interpolate(7, 10, 2 / 3);
-                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                                        } else if (daysAhead >= 10 && daysAhead <= 20) {
-                                            const ratio = (daysAhead - 10) / 10;
-                                            const res = interpolate(10, 20, ratio);
-                                            if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                            const dayNum = workingDayNum;
+                                            const directOpt = getOption(dayNum);
+                                            if (directOpt) {
+                                                matchedOrderValue = parseFloat(directOpt.orderValue);
+                                                matchedUnitPrice = parseFloat(directOpt.unitPrice);
+                                                visible = true;
+                                            } else if (dayNum === 2) {
+                                                const res = interpolate(1, 3, 0.5);
+                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                            } else if (dayNum === 4) {
+                                                const res = interpolate(3, 5, 0.5);
+                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                            } else if (dayNum === 6) {
+                                                const res = interpolate(5, 7, 0.5);
+                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                            } else if (dayNum === 8) {
+                                                const res = interpolate(7, 10, 1 / 3);
+                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                            } else if (dayNum === 9) {
+                                                const res = interpolate(7, 10, 2 / 3);
+                                                if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
+                                            } else if (dayNum >= 10) {
+                                                const ratio = Math.min((dayNum - 10) / 10, 1);
+                                                const res = interpolate(10, 20, ratio);
+                                                if (res) {
+                                                    matchedOrderValue = res.orderValue;
+                                                    matchedUnitPrice = res.unitPrice;
+                                                    visible = res.visible;
+                                                } else {
+                                                    const o20 = getOption(20);
+                                                    if (o20) {
+                                                        matchedOrderValue = parseFloat(o20.orderValue);
+                                                        matchedUnitPrice = parseFloat(o20.unitPrice);
+                                                        visible = true;
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
+
+                                    const isUnavailable = isSunday || isHoliday || !visible;
 
                                     return {
                                         day: daysAhead,
                                         dateNum: date.getDate(),
                                         monthStr: date.toLocaleDateString("en-IN", { month: "short" }),
                                         fullMonthYear: date.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
-                                        weekday: date.toLocaleDateString("en-IN", { weekday: "short" }),
+                                        weekday: date.toLocaleDateString("en-IN", { weekday: "short" }).toUpperCase(),
                                         formattedDate: date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-                                        orderValue: matchedOrderValue.toFixed(2),
-                                        unitPrice: matchedUnitPrice.toFixed(2),
-                                        visible
+                                        isoDateStr,
+                                        orderValue: isUnavailable ? "0.00" : matchedOrderValue.toFixed(2),
+                                        unitPrice: isUnavailable ? "0.00" : matchedUnitPrice.toFixed(2),
+                                        visible,
+                                        isSunday,
+                                        isHoliday,
+                                        holidayName: activeHoliday?.name || null,
+                                        isUnavailable,
+                                        workingDayNum
                                     };
                                 });
 
@@ -2164,6 +2270,27 @@ export default function CreateOrderPage() {
                                 const calendarHeaderTitle = uniqueMonths.length > 1
                                     ? `${uniqueMonths[0]} - ${uniqueMonths[uniqueMonths.length - 1]}`
                                     : uniqueMonths[0] || new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+
+                                // Calculate card display price based on active pricing mode & manual price
+                                const areaPerBoardSqm = (length * width) / 1000000;
+                                const totalAreaSqm = areaPerBoardSqm * qty;
+                                const parsedManual = parseFloat(manualPrice);
+                                const hasManualOverride = !isNaN(parsedManual) && parsedManual >= 0 && manualPrice.trim() !== "";
+
+                                const getCardDisplayPrice = (autoOrderVal: string) => {
+                                    if (hasManualOverride) {
+                                        return `₹${parsedManual.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    }
+                                    if (pricingMethod === "pcb_rate") {
+                                        const sub = (parseFloat(pcbRate) || 0) * qty;
+                                        return `₹${sub.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    }
+                                    if (pricingMethod === "price_per_sqm") {
+                                        const sub = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
+                                        return `₹${sub.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    }
+                                    return `₹${parseFloat(autoOrderVal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                };
 
                                 return (
                                     <div className="space-y-2.5">
@@ -2182,32 +2309,86 @@ export default function CreateOrderPage() {
                                         {/* 20-Day Interactive Grid */}
                                         <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-10 gap-2">
                                             {next20Days.map((item) => {
-                                                const isSelected = selectedDay === item.day;
+                                                const isSelected = (selectedDay === item.day || deliveryDate === item.isoDateStr) && !item.isUnavailable;
+
+                                                if (item.isSunday) {
+                                                    return (
+                                                        <div
+                                                            key={item.day}
+                                                            aria-disabled="true"
+                                                            title={`${item.formattedDate} - Sunday - Unavailable`}
+                                                            className="p-2 rounded-xl border border-slate-300/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/40 opacity-70 text-center select-none flex flex-col justify-between cursor-not-allowed"
+                                                        >
+                                                            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">{item.weekday}</div>
+                                                            <div className="text-base font-black my-0.5 text-slate-600 dark:text-slate-300">{item.dateNum}</div>
+                                                            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{item.monthStr}</div>
+                                                            <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-700 flex justify-center">
+                                                                <span className="text-[9px] font-bold uppercase tracking-tight text-slate-500 bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded-sm">Sunday</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (item.isHoliday) {
+                                                    return (
+                                                        <div
+                                                            key={item.day}
+                                                            aria-disabled="true"
+                                                            title={`${item.formattedDate} - ${item.holidayName || "Public Holiday"} - Unavailable`}
+                                                            className="p-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-center select-none flex flex-col justify-between cursor-not-allowed"
+                                                        >
+                                                            <div className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">{item.weekday}</div>
+                                                            <div className="text-base font-black my-0.5 text-amber-800 dark:text-amber-200">{item.dateNum}</div>
+                                                            <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{item.monthStr}</div>
+                                                            <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-800 flex justify-center" title={item.holidayName || "Holiday"}>
+                                                                <span className="text-[8.5px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1 py-0.5 rounded-sm truncate max-w-full">
+                                                                    {item.holidayName || "Holiday"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (item.isUnavailable) {
+                                                    return (
+                                                        <div
+                                                            key={item.day}
+                                                            aria-disabled="true"
+                                                            title={`${item.formattedDate} - Unavailable for this order area/specifications`}
+                                                            className="p-2 rounded-xl border border-border/40 bg-muted/20 opacity-40 text-center select-none flex flex-col justify-between cursor-not-allowed"
+                                                        >
+                                                            <div className="text-[10px] font-bold uppercase text-muted-foreground">{item.weekday}</div>
+                                                            <div className="text-base font-black my-0.5 text-muted-foreground line-through">{item.dateNum}</div>
+                                                            <div className="text-[10px] font-semibold text-muted-foreground">{item.monthStr}</div>
+                                                            <div className="mt-1 pt-1 border-t border-border/40 text-[10px] font-medium text-muted-foreground">
+                                                                N/A
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
                                                     <div
                                                         key={item.day}
                                                         onClick={() => {
-                                                            if (item.visible) {
-                                                                setSelectedDay(item.day);
-                                                                setOrderValue(item.orderValue);
-                                                                setUnitPrice(item.unitPrice);
-                                                                const d = new Date();
-                                                                d.setDate(d.getDate() + item.day);
-                                                                setDeliveryDate(d.toISOString().split("T")[0]);
-                                                            }
+                                                            setSelectedDay(item.day);
+                                                            setOrderValue(item.orderValue);
+                                                            setUnitPrice(item.unitPrice);
+                                                            setDeliveryDate(item.isoDateStr);
                                                         }}
-                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between ${!item.visible
-                                                            ? "opacity-30 bg-muted/20 border-border/40 cursor-not-allowed"
-                                                            : isSelected
+                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between ${
+                                                            isSelected
                                                                 ? "bg-emerald-500 text-white border-emerald-600 shadow-md scale-105"
                                                                 : "bg-card hover:bg-emerald-500/10 border-border/80 text-foreground"
-                                                            }`}
+                                                        }`}
                                                     >
                                                         <div className="text-[10px] font-bold uppercase opacity-80">{item.weekday}</div>
                                                         <div className="text-base font-black my-0.5">{item.dateNum}</div>
                                                         <div className="text-[10px] font-semibold opacity-90">{item.monthStr}</div>
-                                                        <div className={`mt-1 pt-1 border-t text-[11px] font-extrabold ${isSelected ? "border-white/30 text-white" : "border-border/60 text-emerald-600 dark:text-emerald-400"}`}>
-                                                            ₹{item.orderValue}
+                                                        <div className={`mt-1 pt-1 border-t text-[11px] font-extrabold truncate ${
+                                                            isSelected ? "border-white/30 text-white" : "border-border/60 text-emerald-600 dark:text-emerald-400"
+                                                        }`}>
+                                                            {getCardDisplayPrice(item.orderValue)}
                                                         </div>
                                                     </div>
                                                 );
@@ -2227,13 +2408,24 @@ export default function CreateOrderPage() {
                             const areaPerBoardSqm = (lengthMm * widthMm) / 1000000;
                             const totalAreaSqm = areaPerBoardSqm * qtyPcs;
 
+                            const parsedManual = parseFloat(manualPrice);
+                            const hasManualOverride = !isNaN(parsedManual) && parsedManual >= 0 && manualPrice.trim() !== "";
+
                             let subtotalCalc = 0;
-                            if (pricingMethod === "pcb_rate") {
+                            let pricingModeLabel = "";
+
+                            if (hasManualOverride) {
+                                subtotalCalc = parsedManual;
+                                pricingModeLabel = `Manual Price Override (Base: ₹${parsedManual.toFixed(2)})`;
+                            } else if (pricingMethod === "pcb_rate") {
                                 subtotalCalc = (parseFloat(pcbRate) || 0) * qtyPcs;
+                                pricingModeLabel = `PCB Rate (₹${pcbRate} × ${qtyPcs} pcs)`;
                             } else if (pricingMethod === "price_per_sqm") {
                                 subtotalCalc = (parseFloat(pricePerSqm) || 0) * totalAreaSqm;
+                                pricingModeLabel = `Price per SQM (₹${pricePerSqm} × ${totalAreaSqm.toFixed(4)} m²)`;
                             } else {
                                 subtotalCalc = parseFloat(orderValue) || 0;
+                                pricingModeLabel = "Automatic Lead-Time Matrix";
                             }
 
                             const gstAmt = subtotalCalc * (gstRate / 100);
@@ -2241,7 +2433,7 @@ export default function CreateOrderPage() {
 
                             return (
                                 <div className="space-y-4 pt-3 border-t border-border/60">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/20 border border-border/80 p-4 rounded-xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/20 border border-border/80 p-4 rounded-xl">
                                         <div>
                                             <label className="text-xs font-bold text-muted-foreground block mb-1">Pricing Method</label>
                                             <div className="flex gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
@@ -2312,6 +2504,39 @@ export default function CreateOrderPage() {
                                         )}
 
                                         <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-bold text-muted-foreground">Manual Base PCB Price</label>
+                                                {hasManualOverride && (
+                                                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                                                        Override Active
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={manualPrice}
+                                                    onChange={(e) => setManualPrice(e.target.value)}
+                                                    className="w-full h-10 pl-7 pr-8 rounded-xl bg-card border-border/80 text-xs font-mono font-bold text-foreground focus:ring-amber-500"
+                                                    placeholder="Overrides auto & method"
+                                                />
+                                                {manualPrice && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setManualPrice("")}
+                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                                                        title="Clear manual override"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
                                             <label className="text-xs font-bold text-muted-foreground block mb-1">GST Rate</label>
                                             <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
                                                 <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-bold text-foreground">
@@ -2335,8 +2560,8 @@ export default function CreateOrderPage() {
                                                 <Calculator className="w-4 h-4 text-emerald-500" />
                                                 Financial Summary & Price Breakdown
                                             </span>
-                                            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 capitalize">
-                                                Pricing Mode: {pricingMethod === "pcb_rate" ? "PCB Rate" : pricingMethod === "price_per_sqm" ? "Price per SQM" : "Automatic Lead-Time Matrix"}
+                                            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                {pricingModeLabel}
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
