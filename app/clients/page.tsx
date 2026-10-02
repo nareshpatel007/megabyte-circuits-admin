@@ -411,7 +411,7 @@ function ClientsContent() {
                                                         </div>
                                                         <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
                                                             <Mail className="w-3 h-3" />
-                                                            <span>{user.email || 'N/A'}</span>
+                                                            <span>{user.email && !user.email.includes('@noemail.internal') ? user.email : 'N/A'}</span>
                                                         </div>
                                                     </td>
                                                     <td className="py-3.5 px-5">

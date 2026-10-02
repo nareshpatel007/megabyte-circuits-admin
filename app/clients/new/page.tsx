@@ -66,10 +66,6 @@ export default function AddClientPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim()) {
-      toast.error("Email address is required");
-      return;
-    }
     if (!firstName.trim()) {
       toast.error("First name is required");
       return;
@@ -89,7 +85,7 @@ export default function AddClientPage() {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim() ? email.trim().toLowerCase() : `client_${Date.now()}@noemail.internal`,
           phone_number: phone.trim(),
           company_name: companyName.trim(),
           gstin: gstin.trim(),
@@ -224,16 +220,15 @@ export default function AddClientPage() {
 
                 <div>
                   <label className="block text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Email Address <span className="text-rose-500">*</span>
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
                     <input
                       type="email"
-                      placeholder="e.g. client@megabyte.com"
+                      placeholder="e.g. client@megabyte.com (Optional)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      required
                       className="w-full pl-9 pr-3.5 py-2.5 bg-muted/30 border border-border/80 rounded-xl text-foreground focus:outline-hidden focus:border-emerald-500 text-xs font-medium"
                     />
                   </div>

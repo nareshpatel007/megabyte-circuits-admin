@@ -116,10 +116,6 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
       toast.error("Full name is required");
       return;
     }
-    if (!email.trim()) {
-      toast.error("Email address is required");
-      return;
-    }
 
     setSubmitting(true);
 
@@ -134,7 +130,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
         body: JSON.stringify({
           name: name.trim(),
           username: username.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim() ? email.trim().toLowerCase() : `staff_${id}_${Date.now()}@noemail.internal`,
           phone: phone.trim(),
           password: password || undefined,
           role_id: roleId ? parseInt(roleId) : null,
@@ -223,16 +219,15 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
 
                 <div>
                   <label className="block text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Email Address <span className="text-rose-500">*</span>
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
                     <input
                       type="email"
-                      placeholder="rahul@megabyte.com"
+                      placeholder="rahul@megabyte.com (Optional)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      required
                       className="w-full pl-9 pr-3.5 py-2.5 bg-muted/30 border border-border/80 rounded-xl text-foreground focus:outline-hidden focus:border-emerald-500 text-xs font-medium"
                     />
                   </div>

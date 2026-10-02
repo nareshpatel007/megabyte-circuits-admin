@@ -387,7 +387,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                                    <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-muted-foreground" /> {client.email}</span>
+                                    <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-muted-foreground" /> {client.email && !client.email.includes('@noemail.internal') ? client.email : 'N/A'}</span>
                                     {(client.phone || client.phone_number || client.mobile) && (
                                         <span className="flex items-center gap-1 border-l border-border/80 pl-2">
                                             <Phone className="w-3.5 h-3.5 text-muted-foreground" /> {client.phone || client.phone_number || client.mobile}
@@ -499,7 +499,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                     <div>
                                         <span className="text-muted-foreground block font-medium uppercase tracking-wider text-[10px]">Email Address</span>
                                         <span className="text-foreground font-semibold text-xs mt-0.5 block select-all">
-                                            {client.email}
+                                            {client.email && !client.email.includes('@noemail.internal') ? client.email : 'Not specified'}
                                         </span>
                                     </div>
 

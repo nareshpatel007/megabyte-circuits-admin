@@ -89,10 +89,6 @@ export default function AddStaffPage() {
       toast.error("Full name is required");
       return;
     }
-    if (!email.trim()) {
-      toast.error("Email address is required");
-      return;
-    }
     if (!password) {
       toast.error("Password is required");
       return;
@@ -110,8 +106,8 @@ export default function AddStaffPage() {
         },
         body: JSON.stringify({
           name: name.trim(),
-          username: username.trim() || strtok(email.trim(), '@'),
-          email: email.trim().toLowerCase(),
+          username: username.trim() || `staff_${Date.now()}`,
+          email: email.trim() ? email.trim().toLowerCase() : `staff_${Date.now()}@noemail.internal`,
           phone: phone.trim(),
           password: password,
           role_id: roleId ? parseInt(roleId) : null,
@@ -185,16 +181,15 @@ export default function AddStaffPage() {
 
               <div>
                 <label className="block text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
-                  Email Address <span className="text-rose-500">*</span>
+                  Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
                   <input
                     type="email"
-                    placeholder="rahul@megabyte.com"
+                    placeholder="rahul@megabyte.com (Optional)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                     className="w-full pl-9 pr-3.5 py-2.5 bg-muted/30 border border-border/80 rounded-xl text-foreground focus:outline-hidden focus:border-emerald-500 text-xs font-medium"
                   />
                 </div>
