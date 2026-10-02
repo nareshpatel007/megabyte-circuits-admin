@@ -2297,40 +2297,40 @@ export default function CreateOrderPage() {
                             };
 
                             return (
-                                <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-                                    {/* Left Column: Delivery Calendar (7 Cols on xl) */}
-                                    <div className="xl:col-span-7 bg-muted/20 border border-border/80 p-4 sm:p-5 rounded-2xl space-y-3.5">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-border/60 gap-2">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                                    {/* Left Column: Delivery Calendar (7 Cols on lg) */}
+                                    <div className="lg:col-span-7 bg-muted/20 border border-border/80 p-3.5 sm:p-4 rounded-xl space-y-2.5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-border/60 gap-1.5">
                                             <div className="flex items-center gap-2">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-500/30 animate-pulse" />
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-500/30 animate-pulse" />
                                                 <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <CalendarDays className="w-4 h-4" />
+                                                    <CalendarDays className="w-3.5 h-3.5" />
                                                     Delivery Date & Lead Time Calendar
                                                 </h4>
                                             </div>
-                                            <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-500/30 self-start sm:self-auto">
+                                            <div className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md text-[11px] font-bold border border-emerald-500/30 self-start sm:self-auto">
                                                 {calendarHeaderTitle}
                                             </div>
                                         </div>
 
                                         {/* Status & Legend */}
-                                        <div className="flex flex-wrap items-center justify-between text-[11px] text-muted-foreground gap-2">
-                                            <span className="font-medium">Click any working date to schedule delivery:</span>
-                                            <div className="flex items-center gap-3">
-                                                <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                        <div className="flex flex-wrap items-center justify-between text-[10.5px] text-muted-foreground gap-1.5">
+                                            <span className="font-medium">Select delivery schedule date:</span>
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400">
                                                     <span className="w-2 h-2 rounded-full bg-emerald-500" /> Selected
                                                 </span>
-                                                <span className="flex items-center gap-1 font-semibold text-muted-foreground">
-                                                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" /> Sunday
+                                                <span className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
+                                                    <span className="w-2 h-2 rounded-full bg-slate-400" /> Sunday
                                                 </span>
-                                                <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                                                <span className="flex items-center gap-1 font-bold text-amber-800 dark:text-amber-400">
                                                     <span className="w-2 h-2 rounded-full bg-amber-500" /> Holiday
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* 20-Day Interactive Grid: 5 columns = 4 tidy rows */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                        {/* 20-Day Interactive Grid: Compact 5-column layout */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                                             {deliveryCalendarDays.map((item) => {
                                                 const isSelected = deliveryDate === item.isoDateStr && !item.isUnavailable;
 
@@ -2340,13 +2340,20 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - Sunday - Unavailable`}
-                                                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/30 opacity-60 text-center select-none flex flex-col justify-between cursor-not-allowed min-h-[96px]"
+                                                            className="p-1.5 sm:p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
                                                         >
-                                                            <div className="text-[10px] font-bold uppercase text-slate-400">{item.weekday}</div>
-                                                            <div className="text-lg font-black text-slate-500 line-through my-0.5">{item.dateNum}</div>
-                                                            <div className="text-[9.5px] font-semibold text-slate-400">{item.monthStr}</div>
-                                                            <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-800 flex justify-center">
-                                                                <span className="text-[9px] font-bold uppercase tracking-tight text-slate-500 bg-slate-200 dark:bg-slate-700/80 px-1.5 py-0.5 rounded-sm">Sunday</span>
+                                                            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase leading-none text-slate-700 dark:text-slate-300">
+                                                                <span>{item.weekday}</span>
+                                                                <span className="text-[8.5px] font-black text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-1 py-0.2 rounded">Off</span>
+                                                            </div>
+                                                            <div className="flex items-baseline justify-center gap-1 my-auto">
+                                                                <span className="text-base sm:text-lg font-black leading-none text-slate-800 dark:text-slate-200 line-through decoration-slate-400 decoration-2">{item.dateNum}</span>
+                                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-none">{item.monthStr}</span>
+                                                            </div>
+                                                            <div className="pt-1 border-t border-slate-300/80 dark:border-slate-700 flex justify-center">
+                                                                <span className="text-[8.5px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 bg-slate-200/90 dark:bg-slate-700 px-1.5 py-0.2 rounded-sm leading-tight">
+                                                                    Sunday
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     );
@@ -2358,13 +2365,18 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - ${item.holidayName || "Public Holiday"} - Unavailable`}
-                                                            className="p-2 rounded-xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-500/10 dark:bg-amber-950/20 text-center select-none flex flex-col justify-between cursor-not-allowed min-h-[96px]"
+                                                            className="p-1.5 sm:p-2 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
                                                         >
-                                                            <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">{item.weekday}</div>
-                                                            <div className="text-lg font-black text-amber-700 dark:text-amber-300 my-0.5">{item.dateNum}</div>
-                                                            <div className="text-[9.5px] font-semibold text-amber-600/90 dark:text-amber-400/90">{item.monthStr}</div>
-                                                            <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-800/60 flex justify-center" title={item.holidayName || "Holiday"}>
-                                                                <span className="text-[8.5px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1 py-0.5 rounded-sm truncate max-w-full">
+                                                            <div className="flex items-center justify-between text-[10px] font-black uppercase leading-none text-amber-900 dark:text-amber-200">
+                                                                <span>{item.weekday}</span>
+                                                                <span className="text-[8.5px] font-black text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900 px-1 py-0.2 rounded">Holiday</span>
+                                                            </div>
+                                                            <div className="flex items-baseline justify-center gap-1 my-auto">
+                                                                <span className="text-base sm:text-lg font-black leading-none text-amber-950 dark:text-amber-100">{item.dateNum}</span>
+                                                                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 leading-none">{item.monthStr}</span>
+                                                            </div>
+                                                            <div className="pt-1 border-t border-amber-300 dark:border-amber-800 flex justify-center" title={item.holidayName || "Holiday"}>
+                                                                <span className="text-[8.5px] font-black uppercase tracking-tight text-white bg-amber-700 dark:bg-amber-600 px-1.5 py-0.2 rounded-sm truncate max-w-full leading-tight">
                                                                     {item.holidayName || "Holiday"}
                                                                 </span>
                                                             </div>
@@ -2378,12 +2390,14 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - Unavailable for this order area/specifications`}
-                                                            className="p-2 rounded-xl border border-border/40 bg-muted/20 opacity-40 text-center select-none flex flex-col justify-between cursor-not-allowed min-h-[96px]"
+                                                            className="p-1.5 sm:p-2 rounded-lg border border-border/80 bg-muted/30 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
                                                         >
-                                                            <div className="text-[10px] font-bold uppercase text-muted-foreground">{item.weekday}</div>
-                                                            <div className="text-lg font-black text-muted-foreground line-through my-0.5">{item.dateNum}</div>
-                                                            <div className="text-[9.5px] font-semibold text-muted-foreground">{item.monthStr}</div>
-                                                            <div className="mt-1 pt-1 border-t border-border/40 text-[9px] font-bold text-muted-foreground">
+                                                            <div className="text-[10px] font-bold uppercase leading-none text-muted-foreground">{item.weekday}</div>
+                                                            <div className="flex items-baseline justify-center gap-1 my-auto">
+                                                                <span className="text-base sm:text-lg font-black leading-none text-muted-foreground line-through">{item.dateNum}</span>
+                                                                <span className="text-[10px] font-bold text-muted-foreground leading-none">{item.monthStr}</span>
+                                                            </div>
+                                                            <div className="pt-1 border-t border-border/60 text-[9px] font-black text-muted-foreground">
                                                                 N/A
                                                             </div>
                                                         </div>
@@ -2399,26 +2413,32 @@ export default function CreateOrderPage() {
                                                             setOrderValue(item.orderValue);
                                                             setUnitPrice(item.unitPrice);
                                                         }}
-                                                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer select-none flex flex-col justify-between min-h-[96px] ${
+                                                        className={`p-1.5 sm:p-2 rounded-lg border text-center transition-all cursor-pointer select-none flex flex-col justify-between h-[72px] sm:h-[76px] ${
                                                             isSelected
-                                                                ? "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/40 scale-[1.02] z-10"
-                                                                : "bg-card hover:bg-emerald-500/5 border-border/80 hover:border-emerald-500/40 hover:shadow-xs text-foreground"
+                                                                ? "bg-emerald-600 text-white border-2 border-emerald-700 shadow-sm ring-2 ring-emerald-500/40 z-10"
+                                                                : "bg-card hover:bg-emerald-500/10 border-border/90 hover:border-emerald-500/60 text-foreground"
                                                         }`}
                                                     >
-                                                        <div className="flex items-center justify-between text-[10px] font-bold uppercase">
-                                                            <span className={isSelected ? "text-white/90" : "text-muted-foreground"}>{item.weekday}</span>
+                                                        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase leading-none">
+                                                            <span className={isSelected ? "text-white" : "text-slate-700 dark:text-slate-200"}>{item.weekday}</span>
                                                             {isSelected ? (
-                                                                <span className="bg-white/20 p-0.5 rounded-full"><Check className="w-2.5 h-2.5 text-white stroke-[3]" /></span>
+                                                                <span className="bg-white/25 p-0.5 rounded-full"><Check className="w-2.5 h-2.5 text-white stroke-[3]" /></span>
                                                             ) : (
-                                                                <span className="text-[8.5px] font-bold text-muted-foreground/60 bg-muted px-1 py-0.2 rounded">W{item.workingDayNum}</span>
+                                                                <span className="text-[8.5px] font-black text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-300/40">
+                                                                    W{item.workingDayNum}
+                                                                </span>
                                                             )}
                                                         </div>
-                                                        <div className="my-0.5">
-                                                            <div className={`text-lg font-black leading-tight ${isSelected ? "text-white" : "text-foreground"}`}>{item.dateNum}</div>
-                                                            <div className={`text-[9.5px] font-semibold ${isSelected ? "text-white/80" : "text-muted-foreground"}`}>{item.monthStr}</div>
+                                                        <div className="flex items-baseline justify-center gap-1 my-auto">
+                                                            <span className={`text-base sm:text-lg font-black leading-none ${isSelected ? "text-white" : "text-foreground"}`}>
+                                                                {item.dateNum}
+                                                            </span>
+                                                            <span className={`text-[10px] font-bold leading-none ${isSelected ? "text-emerald-100" : "text-muted-foreground"}`}>
+                                                                {item.monthStr}
+                                                            </span>
                                                         </div>
-                                                        <div className={`mt-1 pt-1 border-t text-[11px] font-extrabold truncate ${
-                                                            isSelected ? "border-white/25 text-white" : "border-border/60 text-emerald-600 dark:text-emerald-400 font-mono"
+                                                        <div className={`pt-1 border-t text-[11px] font-black font-mono leading-none truncate ${
+                                                            isSelected ? "border-white/25 text-white" : "border-border/60 text-emerald-700 dark:text-emerald-400"
                                                         }`}>
                                                             {getCardDisplayPrice(item.orderValue)}
                                                         </div>
@@ -2428,8 +2448,8 @@ export default function CreateOrderPage() {
                                         </div>
 
                                         {/* Calendar Selection Banner */}
-                                        <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs">
-                                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                                            <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200">
                                                 <CalendarDays className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                                 {selectedDayItem ? (
                                                     <span>
@@ -2442,36 +2462,36 @@ export default function CreateOrderPage() {
                                                 )}
                                             </div>
                                             {selectedDayItem && (
-                                                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                                                <span className="font-mono font-bold text-emerald-800 dark:text-emerald-200">
                                                     Matrix Base: ₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Right Column: Pricing & Manual Method Controls (5 Cols on xl) */}
-                                    <div className="xl:col-span-5 space-y-4">
-                                        <div className="bg-muted/20 border border-border/80 p-4 sm:p-5 rounded-2xl space-y-3.5">
-                                            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                                    {/* Right Column: Pricing & Manual Method Controls (5 Cols on lg) */}
+                                    <div className="lg:col-span-5 space-y-3">
+                                        <div className="bg-muted/20 border border-border/80 p-3.5 sm:p-4 rounded-xl space-y-3">
+                                            <div className="flex items-center justify-between border-b border-border/60 pb-2">
                                                 <div className="flex items-center gap-2">
                                                     <Sliders className="w-4 h-4 text-emerald-500" />
                                                     <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
                                                         Pricing & Manual Method
                                                     </h4>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                                                     {pricingMethod === "auto" && !hasManualOverride ? "Auto Matrix" : hasManualOverride ? "Manual Override" : pricingMethod === "pcb_rate" ? "PCB Rate" : "SQM Rate"}
                                                 </span>
                                             </div>
 
                                             {/* Pricing Method Selector */}
                                             <div>
-                                                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Pricing Mode</label>
-                                                <div className="grid grid-cols-3 gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
+                                                <label className="text-xs font-bold text-muted-foreground block mb-1">Pricing Mode</label>
+                                                <div className="grid grid-cols-3 gap-1 bg-muted/40 p-1 rounded-lg border border-border/60">
                                                     <button
                                                         type="button"
                                                         onClick={() => setPricingMethod("auto")}
-                                                        className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                        className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
                                                             pricingMethod === "auto"
                                                                 ? "bg-emerald-500 text-white shadow-xs"
                                                                 : "text-muted-foreground hover:bg-muted"
@@ -2482,7 +2502,7 @@ export default function CreateOrderPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setPricingMethod("pcb_rate")}
-                                                        className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                        className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
                                                             pricingMethod === "pcb_rate"
                                                                 ? "bg-emerald-500 text-white shadow-xs"
                                                                 : "text-muted-foreground hover:bg-muted"
@@ -2493,7 +2513,7 @@ export default function CreateOrderPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setPricingMethod("price_per_sqm")}
-                                                        className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                                        className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
                                                             pricingMethod === "price_per_sqm"
                                                                 ? "bg-emerald-500 text-white shadow-xs"
                                                                 : "text-muted-foreground hover:bg-muted"
@@ -2506,7 +2526,7 @@ export default function CreateOrderPage() {
 
                                             {/* Conditional Rate Inputs */}
                                             {pricingMethod === "pcb_rate" && (
-                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
                                                     <div className="flex items-center justify-between">
                                                         <label className="text-xs font-bold text-muted-foreground">PCB Rate (₹ / pc)</label>
                                                         <span className="text-[11px] font-mono text-muted-foreground">{qtyPcs} pcs</span>
@@ -2517,17 +2537,17 @@ export default function CreateOrderPage() {
                                                         min="0"
                                                         value={pcbRate}
                                                         onChange={(e) => setPcbRate(e.target.value)}
-                                                        className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-mono font-bold text-foreground"
+                                                        className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground"
                                                         placeholder="Rate per board"
                                                     />
-                                                    <p className="text-[10.5px] text-muted-foreground">
-                                                        Calculation: ₹{pcbRate || 0} × {qtyPcs} = <b className="text-foreground">₹{((parseFloat(pcbRate) || 0) * qtyPcs).toFixed(2)}</b>
+                                                    <p className="text-[10px] text-muted-foreground">
+                                                        ₹{pcbRate || 0} × {qtyPcs} = <b className="text-foreground">₹{((parseFloat(pcbRate) || 0) * qtyPcs).toFixed(2)}</b>
                                                     </p>
                                                 </div>
                                             )}
 
                                             {pricingMethod === "price_per_sqm" && (
-                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
                                                     <div className="flex items-center justify-between">
                                                         <label className="text-xs font-bold text-muted-foreground">Price per SQM (₹ / m²)</label>
                                                         <span className="text-[11px] font-mono text-muted-foreground">{totalAreaSqm.toFixed(4)} m²</span>
@@ -2538,66 +2558,63 @@ export default function CreateOrderPage() {
                                                         min="0"
                                                         value={pricePerSqm}
                                                         onChange={(e) => setPricePerSqm(e.target.value)}
-                                                        className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-mono font-bold text-foreground"
+                                                        className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground"
                                                         placeholder="Rate per SQM"
                                                     />
-                                                    <p className="text-[10.5px] text-muted-foreground">
-                                                        Calculation: {totalAreaSqm.toFixed(4)} m² × ₹{pricePerSqm || 0} = <b className="text-foreground">₹{((parseFloat(pricePerSqm) || 0) * totalAreaSqm).toFixed(2)}</b>
+                                                    <p className="text-[10px] text-muted-foreground">
+                                                        {totalAreaSqm.toFixed(4)} m² × ₹{pricePerSqm || 0} = <b className="text-foreground">₹{((parseFloat(pricePerSqm) || 0) * totalAreaSqm).toFixed(2)}</b>
                                                     </p>
                                                 </div>
                                             )}
 
                                             {/* Manual Base PCB Price Override */}
-                                            <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                            <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
                                                 <div className="flex items-center justify-between">
                                                     <label className="text-xs font-bold text-muted-foreground">Manual Base PCB Price</label>
                                                     {hasManualOverride ? (
-                                                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                                        <span className="text-[9.5px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                                                             Override Active
                                                         </span>
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground font-medium">Optional</span>
+                                                        <span className="text-[9.5px] text-muted-foreground font-medium">Optional</span>
                                                     )}
                                                 </div>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
+                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
                                                     <Input
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
                                                         value={manualPrice}
                                                         onChange={(e) => setManualPrice(e.target.value)}
-                                                        className="w-full h-9 pl-7 pr-8 rounded-lg bg-background border-border/80 text-xs font-mono font-bold text-foreground focus:ring-amber-500"
+                                                        className="w-full h-8.5 pl-6 pr-7 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground focus:ring-amber-500"
                                                         placeholder="Direct subtotal override"
                                                     />
                                                     {manualPrice && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setManualPrice("")}
-                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
                                                             title="Clear manual override"
                                                         >
                                                             ✕
                                                         </button>
                                                     )}
                                                 </div>
-                                                <p className="text-[10.5px] text-muted-foreground">
-                                                    Directly sets base subtotal, overriding calendar and formula pricing.
-                                                </p>
                                             </div>
 
                                             {/* Manual Expected Delivery Date Override & GST */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
                                                     <div className="flex items-center justify-between">
                                                         <label className="text-xs font-bold text-muted-foreground">Delivery Date</label>
                                                         {selectedDayItem ? (
-                                                            <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
-                                                                Calendar Synced
+                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400">
+                                                                Synced
                                                             </span>
                                                         ) : deliveryDate ? (
-                                                            <span className="text-[9.5px] font-bold text-blue-600 dark:text-blue-400">
-                                                                Manual Date
+                                                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400">
+                                                                Custom
                                                             </span>
                                                         ) : null}
                                                     </div>
@@ -2614,14 +2631,14 @@ export default function CreateOrderPage() {
                                                                 setUnitPrice(match.unitPrice);
                                                             }
                                                         }}
-                                                        className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-semibold text-foreground"
+                                                        className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-semibold text-foreground"
                                                     />
                                                 </div>
 
-                                                <div className="p-3 rounded-xl bg-card border border-border/80 space-y-1.5">
+                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
                                                     <label className="text-xs font-bold text-muted-foreground block">GST Rate</label>
                                                     <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
-                                                        <SelectTrigger className="w-full h-9 rounded-lg bg-background border-border/80 text-xs font-bold text-foreground">
+                                                        <SelectTrigger className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-bold text-foreground">
                                                             <SelectValue placeholder="Select GST" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -2636,32 +2653,32 @@ export default function CreateOrderPage() {
                                             </div>
 
                                             {/* Financial Summary Card */}
-                                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl space-y-2.5 text-xs">
-                                                <div className="font-bold text-foreground text-xs border-b border-emerald-500/20 pb-2 flex justify-between items-center">
-                                                    <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-black">
-                                                        <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg space-y-2 text-xs">
+                                                <div className="font-bold text-foreground text-xs border-b border-emerald-500/20 pb-1.5 flex justify-between items-center">
+                                                    <span className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200 font-black">
+                                                        <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                                         Financial Summary
                                                     </span>
-                                                    <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                                                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-500/20 px-2 py-0.5 rounded-full">
                                                         Live Total
                                                     </span>
                                                 </div>
-                                                <div className="space-y-1.5 pt-1">
-                                                    <div className="flex justify-between items-center text-muted-foreground font-medium">
+                                                <div className="space-y-1 pt-0.5">
+                                                    <div className="flex justify-between items-center text-muted-foreground font-medium text-[11px]">
                                                         <span>Subtotal (Base PCB):</span>
                                                         <span className="font-mono font-bold text-foreground">
                                                             ₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between items-center text-muted-foreground font-medium">
+                                                    <div className="flex justify-between items-center text-muted-foreground font-medium text-[11px]">
                                                         <span>GST ({gstRate}%):</span>
                                                         <span className="font-mono font-bold text-foreground">
                                                             ₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between items-center pt-2 border-t border-emerald-500/30">
-                                                        <span className="font-black text-sm text-foreground">Final Order Total:</span>
-                                                        <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-base">
+                                                    <div className="flex justify-between items-center pt-1.5 border-t border-emerald-500/30">
+                                                        <span className="font-black text-xs text-foreground">Final Order Total:</span>
+                                                        <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-sm">
                                                             ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
