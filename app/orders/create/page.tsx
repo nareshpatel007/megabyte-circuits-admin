@@ -2273,6 +2273,8 @@ export default function CreateOrderPage() {
 
                             const gstAmt = subtotalCalc * (gstRate / 100);
                             const totalAmt = subtotalCalc + gstAmt;
+                            const unitPriceCalc = qtyPcs > 0 ? (subtotalCalc / qtyPcs) : 0;
+                            const unitPriceWithGst = qtyPcs > 0 ? (totalAmt / qtyPcs) : 0;
 
                             const uniqueMonths = Array.from(new Set(deliveryCalendarDays.map((item) => item.fullMonthYear)));
                             const calendarHeaderTitle = uniqueMonths.length > 1
@@ -2413,6 +2415,7 @@ export default function CreateOrderPage() {
                                                             setOrderValue(item.orderValue);
                                                             setUnitPrice(item.unitPrice);
                                                         }}
+                                                        title={`${item.formattedDate} (${item.weekday}) • ${item.workingDayNum} Working Days • Base: ₹${parseFloat(item.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (₹${(parseFloat(item.orderValue) / qtyPcs).toFixed(2)}/pc)`}
                                                         className={`p-1.5 sm:p-2 rounded-lg border text-center transition-all cursor-pointer select-none flex flex-col justify-between h-[72px] sm:h-[76px] ${
                                                             isSelected
                                                                 ? "bg-emerald-600 text-white border-2 border-emerald-700 shadow-sm ring-2 ring-emerald-500/40 z-10"
@@ -2462,9 +2465,14 @@ export default function CreateOrderPage() {
                                                 )}
                                             </div>
                                             {selectedDayItem && (
-                                                <span className="font-mono font-black text-slate-900 dark:text-slate-100">
-                                                    Matrix Base: <span className="text-emerald-800 dark:text-emerald-300">₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                </span>
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="font-mono text-slate-700 dark:text-slate-300 text-xs">
+                                                        Per Piece: <b className="text-emerald-800 dark:text-emerald-300 font-black">₹{(parseFloat(selectedDayItem.orderValue) / qtyPcs).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
+                                                    </span>
+                                                    <span className="font-mono font-black text-slate-900 dark:text-slate-100">
+                                                        Matrix Base: <span className="text-emerald-800 dark:text-emerald-300">₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    </span>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -2663,11 +2671,20 @@ export default function CreateOrderPage() {
                                                         Live Total
                                                     </span>
                                                 </div>
-                                                <div className="space-y-1 pt-0.5">
+                                                <div className="space-y-1.5 pt-0.5">
                                                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
                                                         <span>Subtotal (Base PCB):</span>
                                                         <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                                                             ₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
+                                                        <span className="flex items-center gap-1">
+                                                            Per Piece Price (Unit Price):
+                                                            <span className="text-[9.5px] font-normal text-muted-foreground">({qtyPcs} {qtyPcs === 1 ? "pc" : "pcs"})</span>
+                                                        </span>
+                                                        <span className="font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                                                            ₹{unitPriceCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9.5px] text-muted-foreground font-normal">/ pc</span>
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
@@ -2677,7 +2694,12 @@ export default function CreateOrderPage() {
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between items-center pt-1.5 border-t border-emerald-200 dark:border-emerald-800/80">
-                                                        <span className="font-black text-xs text-slate-900 dark:text-slate-100">Final Order Total:</span>
+                                                        <div>
+                                                            <span className="font-black text-xs text-slate-900 dark:text-slate-100 block">Final Order Total:</span>
+                                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                                                (₹{unitPriceWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / pc with GST)
+                                                            </span>
+                                                        </div>
                                                         <span className="font-mono font-black text-emerald-800 dark:text-emerald-300 text-base">
                                                             ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
