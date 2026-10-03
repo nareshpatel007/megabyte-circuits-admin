@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp, ClipboardList } from "lucide-react";
@@ -204,6 +204,7 @@ function OrdersContent() {
     const [orders, setOrders] = useState<ApiOrder[]>([]);
     const [statuses, setStatuses] = useState<StatusItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const fetchAbortControllerRef = useRef<AbortController | null>(null);
 
     const [search, setSearch] = useState(() => searchParams?.get("search") || searchParams?.get("q") || "");
     const [statusFilter, setStatusFilter] = useState(() => searchParams?.get("status") || "In Production");
@@ -1515,6 +1516,13 @@ function OrdersContent() {
 
     // Fetch live orders and pipeline statuses
     const fetchData = async (searchQuery: string = debouncedSearch) => {
+        // Cancel in-flight request to prevent race conditions
+        if (fetchAbortControllerRef.current) {
+            fetchAbortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        fetchAbortControllerRef.current = controller;
+
         setLoading(true);
         setIsSearching(true);
         try {
@@ -1536,8 +1544,8 @@ function OrdersContent() {
             }
 
             const [ordersRes, statusesRes] = await Promise.all([
-                fetch(url, { headers }),
-                statuses.length === 0 ? fetch("/api/admin/statuses", { headers }) : Promise.resolve(null)
+                fetch(url, { headers, signal: controller.signal }),
+                statuses.length === 0 ? fetch("/api/admin/statuses", { headers, signal: controller.signal }) : Promise.resolve(null)
             ]);
 
             const ordersData = await ordersRes.json();
@@ -1573,12 +1581,17 @@ function OrdersContent() {
                 setTotalRecords(0);
                 setApiStats(null);
             }
-        } catch (err) {
+        } catch (err: any) {
+            if (err?.name === "AbortError" || controller.signal.aborted) {
+                return;
+            }
             console.error("Failed to load orders data:", err);
             toast.error("Failed to load orders");
         } finally {
-            setLoading(false);
-            setIsSearching(false);
+            if (fetchAbortControllerRef.current === controller) {
+                setLoading(false);
+                setIsSearching(false);
+            }
         }
     };
 
@@ -1769,7 +1782,7 @@ function OrdersContent() {
         if (statusFilter === "All") {
             matchStatus = true;
         } else if (statusFilter === "In Production") {
-            const excludedStatuses = ["pending", "completed", "cancelled", "canceled"];
+            const excludedStatuses = ["pending", "completed", "shipped", "delivered", "cancelled", "canceled"];
             matchStatus = !excludedStatuses.includes(currentStatusStr);
         } else {
             matchStatus = currentStatusStr === statusFilter.toLowerCase().trim();
@@ -1902,18 +1915,29 @@ function OrdersContent() {
             return;
         }
 
+        const matchedStatus = statuses.find(s =>
+            s.name?.toLowerCase().trim() === newStatus.toLowerCase().trim() ||
+            (s as any).label?.toLowerCase().trim() === newStatus.toLowerCase().trim() ||
+            s.slug?.toLowerCase().trim() === newStatus.toLowerCase().trim()
+        );
+
         const toastId = toast.loading(`Updating Order #${order.order_number} status...`);
         try {
             const token = localStorage.getItem("admin_token");
+            const payload: any = {
+                status: newStatus
+            };
+            if (matchedStatus?.id) {
+                payload.status_id = matchedStatus.id;
+            }
+
             const res = await fetch(`/api/admin/orders/${order.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    status: newStatus
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json();
@@ -1970,12 +1994,19 @@ function OrdersContent() {
             const normOrigDeliveryDate = parseDeliveryDateToYYYYMMDD(modalOriginalDeliveryDate);
             const hasDeliveryDateChanged = normCurrentDeliveryDate !== normOrigDeliveryDate;
 
+            const matchedStatus = statuses.find(s =>
+                s.name?.toLowerCase().trim() === modalNewStatus.toLowerCase().trim() ||
+                (s as any).label?.toLowerCase().trim() === modalNewStatus.toLowerCase().trim() ||
+                s.slug?.toLowerCase().trim() === modalNewStatus.toLowerCase().trim()
+            );
+
             const updatePayload: any = {
                 order_number: modalOrderNumber.trim(),
                 pn_number: modalPnNumber.trim(),
                 order_qty: modalOrderQty,
                 quantity: modalOrderQty,
                 status: modalNewStatus,
+                ...(matchedStatus?.id ? { status_id: matchedStatus.id } : {}),
                 user_id: modalUserId ? Number(modalUserId) : null,
                 customer_name: modalCustomerName,
                 completed_qty: modalCompletedQty,

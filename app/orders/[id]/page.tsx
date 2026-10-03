@@ -557,7 +557,11 @@ export default function OrderDetailPage() {
         setUpdating(true);
         const toastId = toast.loading("Updating order details & logging history...");
         try {
-            const matchedStatus = statuses.find(s => s.name.toLowerCase() === newStatus.toLowerCase());
+            const matchedStatus = statuses.find(s =>
+                s.name?.toLowerCase().trim() === newStatus.toLowerCase().trim() ||
+                (s as any).label?.toLowerCase().trim() === newStatus.toLowerCase().trim() ||
+                s.slug?.toLowerCase().trim() === newStatus.toLowerCase().trim()
+            );
             const token = localStorage.getItem("admin_token");
 
             const savedAdminUser = localStorage.getItem("user") || localStorage.getItem("admin_user");
@@ -575,35 +579,40 @@ export default function OrderDetailPage() {
             const oldOrderNos = Array.from(new Set(oldOrdersState.map((c) => c.order_number.trim()))).filter(Boolean);
             const oldOrderStr = oldOrderNos.join(", ");
 
+            const payload: any = {
+                order_number: orderNumberState.trim(),
+                pn_number: pnNumberState.trim(),
+                status: newStatus,
+                order_qty: orderQty,
+                completed_qty: completedQty,
+                failed_qty: failedQty,
+                q_no: qNo,
+                c_g: cgState || null,
+                combo: comboStr,
+                combo_order_ids: comboOrderNos,
+                old_order_number: oldOrderStr,
+                old_order_ids: oldOrderNos,
+                launch_qty: launchQty,
+                panel_qty: panelQty,
+                ups_qty: upsQty,
+                final_qty: finalQty,
+                bill_number: billNumber.trim(),
+                admin_id: loggedInAdminId || user?.id,
+                admin_name: user?.name,
+                remark: remark
+            };
+
+            if (matchedStatus?.id) {
+                payload.status_id = matchedStatus.id;
+            }
+
             const res = await fetch(`/api/admin/orders/${orderId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    order_number: orderNumberState.trim(),
-                    pn_number: pnNumberState.trim(),
-                    status: newStatus,
-                    status_id: matchedStatus ? matchedStatus.id : null,
-                    order_qty: orderQty,
-                    completed_qty: completedQty,
-                    failed_qty: failedQty,
-                    q_no: qNo,
-                    c_g: cgState || null,
-                    combo: comboStr,
-                    combo_order_ids: comboOrderNos,
-                    old_order_number: oldOrderStr,
-                    old_order_ids: oldOrderNos,
-                    launch_qty: launchQty,
-                    panel_qty: panelQty,
-                    ups_qty: upsQty,
-                    final_qty: finalQty,
-                    bill_number: billNumber.trim(),
-                    admin_id: loggedInAdminId || user?.id,
-                    admin_name: user?.name,
-                    remark: remark
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json();
@@ -664,7 +673,11 @@ export default function OrderDetailPage() {
             if (res.ok && (data.status || data.success)) {
                 toast.success("Delivery date updated successfully");
                 setEditingDeliveryDate(false);
-                fetchOrderDetail();
+                if (data.data) {
+                    setOrder(data.data);
+                } else {
+                    fetchOrderDetail();
+                }
             } else {
                 toast.error(data.message || "Failed to update delivery date");
             }
@@ -968,8 +981,9 @@ export default function OrderDetailPage() {
                     setOrder(data.data);
                     if (data.data.pn_number) setPnNumberState(data.data.pn_number);
                     if (data.data.order_qty) setOrderQty(data.data.order_qty);
+                } else {
+                    fetchOrderDetail();
                 }
-                fetchOrderDetail();
             } else {
                 toast.error(data.message || `Failed to update ${label}`, { id: toastId });
             }
