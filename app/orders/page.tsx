@@ -96,6 +96,8 @@ interface ApiOrder {
     order_value: string | number;
     launch_date?: string | null;
     delivery_date: string | null;
+    delivery_method?: string | null;
+    delivery_method_label?: string | null;
     created_at: string;
     film_applied?: boolean | number | string | null;
     metas?: OrderMeta[];
@@ -3122,7 +3124,12 @@ function OrdersContent() {
 
                                                         {/* 7. Delivery Date */}
                                                         <td className={`py-1.5 px-3.5 font-bold font-mono text-xs whitespace-nowrap ${isPastDeliveryDate(order.delivery_date, order.status) ? "text-red-500 font-extrabold" : "text-foreground"}`}>
-                                                            {formatDate(order.delivery_date)}
+                                                            <div>{formatDate(order.delivery_date)}</div>
+                                                            {Boolean(order.delivery_method_label || order.delivery_method) && (
+                                                                <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                                                                    {order.delivery_method_label || (order.delivery_method ? order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1) : "")}
+                                                                </span>
+                                                            )}
                                                         </td>
 
                                                         {/* 8. Actions */}

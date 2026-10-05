@@ -107,6 +107,8 @@ interface ApiOrder {
     order_value: string | number;
     launch_date?: string | null;
     delivery_date: string | null;
+    delivery_method?: string | null;
+    delivery_method_label?: string | null;
     created_at: string;
     shipping_first_name?: string;
     shipping_last_name?: string;
@@ -1658,7 +1660,7 @@ export default function OrderDetailPage() {
                     </div>
                 )}
                 {/* Primary Highlights Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">P/N Number</p>
@@ -1904,6 +1906,14 @@ export default function OrderDetailPage() {
 
                     <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
                         <div className="flex justify-between items-center">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Delivery Method</p>
+                        </div>
+                        <p className="text-base font-extrabold text-foreground mt-1">
+                            {order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}
+                        </p>
+                    </div>
+                    <div className="bg-card border border-border/80 p-5 rounded-2xl shadow-sm relative group">
+                        <div className="flex justify-between items-center">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Delivery Date</p>
                             {hasEditOrderPermission && (
                                 !editingDeliveryDate ? (
@@ -2063,6 +2073,12 @@ export default function OrderDetailPage() {
                                         {order.bill_number || getMetaValue('bill_number', getMetaValue('bill', 'N/A'))}
                                     </span>
                                 </div>
+                                <div className="flex justify-between py-1">
+                                    <span className="text-muted-foreground font-medium">Delivery Method</span>
+                                    <span className="font-extrabold text-foreground">
+                                        {order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}
+                                    </span>
+                                </div>
                                 <div className="flex justify-between items-center py-1">
                                     <span className="text-muted-foreground font-medium">C/G</span>
                                     {!editingOrderCg ? (
@@ -2204,6 +2220,12 @@ export default function OrderDetailPage() {
                                 {renderSpecItem('different_design', 'Different Design Count', getMetaValue('different_design', '1'), 'select', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])}
                                 {renderSpecItem('delivery_format', 'Delivery Format', getMetaValue('delivery_format', 'Single PCB'), 'select', ['Single PCB', 'Panel by Customer', 'Panel by Megabyte'])}
                                 {renderSpecItem('panel_format', 'Panel Layout', getMetaValue('panel_format', 'N/A'), 'text')}
+                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60 relative">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase truncate pr-1" title="Delivery Method">Delivery Method</p>
+                                    <p className="text-xs font-bold text-foreground mt-1 truncate" title={order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}>
+                                        {order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
