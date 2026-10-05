@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp, ClipboardList } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, X, ExternalLink, User, Mail, Phone, FileText, Clock, History, Calendar as CalendarIcon, RefreshCw, Plus, ShoppingBag, CheckCircle2, Package, Film, Printer, Copy, Upload, FileSpreadsheet, AlertTriangle, AlertCircle, CheckCircle, Info, Layers, Rocket, ChevronDown, Check, Paperclip, GripVertical, Trash2, ChevronUp, ClipboardList, RotateCcw } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -104,6 +104,8 @@ interface ApiOrder {
     old_order_number?: string | null;
     old_orders?: Array<{ id: number; order_number: string; status: string }>;
     status_histories?: StatusHistory[];
+    deleted_at?: string | null;
+    is_deleted?: boolean;
 }
 
 const PAGE_SIZE = 10;
@@ -198,6 +200,37 @@ function OrdersContent() {
             toast.error(err?.message || "Error deleting order.", { id: toastId });
         } finally {
             setDeletingOrder(false);
+        }
+    };
+
+    const [recoverModalOrder, setRecoverModalOrder] = useState<ApiOrder | null>(null);
+    const [recoveringOrder, setRecoveringOrder] = useState(false);
+
+    const handleRecoverOrder = async () => {
+        if (!recoverModalOrder) return;
+        setRecoveringOrder(true);
+        const toastId = toast.loading(`Recovering order #${recoverModalOrder.order_number}...`);
+        try {
+            const token = localStorage.getItem("admin_token");
+            const res = await fetch(`/api/admin/orders/${recoverModalOrder.id}/restore`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            const json = await res.json();
+            if (res.ok && (json.success || json.status)) {
+                toast.success(json.message || `Order #${recoverModalOrder.order_number} recovered successfully.`, { id: toastId });
+                setRecoverModalOrder(null);
+                fetchData(debouncedSearch);
+            } else {
+                toast.error(json.message || "Failed to recover order.", { id: toastId });
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Error recovering order.", { id: toastId });
+        } finally {
+            setRecoveringOrder(false);
         }
     };
 
@@ -2413,7 +2446,7 @@ function OrdersContent() {
 
                             {/* Compact Drag and Drop Status Filter */}
                             {(() => {
-                                const MAIN_STATUSES = ["Pending", "Ready to Ship", "In Production"];
+                                const MAIN_STATUSES = ["Pending", "Ready to Ship", "In Production", "Deleted"];
                                 const otherStatuses = (() => {
                                     const list: string[] = ["All"];
                                     statuses.forEach((s) => {
@@ -2421,12 +2454,15 @@ function OrdersContent() {
                                             list.push(s.name);
                                         }
                                     });
-                                    const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval"];
+                                    const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval", "Deleted"];
                                     defaults.forEach((d) => {
                                         if (!MAIN_STATUSES.includes(d) && !list.includes(d)) {
                                             list.push(d);
                                         }
                                     });
+                                    if (!list.includes("Deleted")) {
+                                        list.push("Deleted");
+                                    }
                                     return list;
                                 })();
                                 const isOtherStatusActive = !MAIN_STATUSES.includes(statusFilter);
@@ -2500,6 +2536,22 @@ function OrdersContent() {
                                                 {statusFilter === "In Production" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                             </span>
                                             In Production
+                                        </button>
+
+                                        {/* 4. Deleted */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Deleted")}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Deleted"
+                                                    ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-2xs"
+                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Deleted" ? "bg-rose-500 border-rose-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "Deleted" ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />}
+                                            </span>
+                                            Deleted
                                         </button>
 
                                         {/* Drop Status Container */}
@@ -2819,9 +2871,16 @@ function OrdersContent() {
                                                     <tr key={order.id} className="hover:bg-muted/20 transition-colors">
                                                         {/* 1. Status */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-white text-black border border-zinc-300 shadow-2xs">
-                                                                {order.status}
-                                                            </span>
+                                                            {(order.deleted_at || order.is_deleted) ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shadow-2xs">
+                                                                    <Trash2 className="w-3 h-3 text-rose-500" />
+                                                                    DELETED
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-white text-black border border-zinc-300 shadow-2xs">
+                                                                    {order.status}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         {/* Q No. */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
@@ -2855,6 +2914,11 @@ function OrdersContent() {
                                                                     }}
                                                                 >
                                                                     #{order.order_number}
+                                                                </span>
+                                                            )}
+                                                            {(order.deleted_at || order.is_deleted) && (
+                                                                <span className="ml-1 text-[10px] font-bold text-rose-600 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                                                                    Deleted
                                                                 </span>
                                                             )}
                                                             {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
@@ -3151,16 +3215,28 @@ function OrdersContent() {
                                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                                 </Link>
 
-                                                                {/* Delete Order Icon Button */}
-                                                                {hasDeleteOrderPermission && (
+                                                                {/* Recover or Delete Order Icon Button */}
+                                                                {(order.deleted_at || order.is_deleted) ? (
                                                                     <button
-                                                                        onClick={() => setDeleteModalOrder(order)}
-                                                                        title="Delete Order"
-                                                                        aria-label="Delete Order"
-                                                                        className="p-1.5 bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                        type="button"
+                                                                        onClick={() => setRecoverModalOrder(order)}
+                                                                        title="Recover / Restore Order"
+                                                                        aria-label="Recover Order"
+                                                                        className="p-1.5 bg-emerald-500/10 hover:bg-emerald-600 hover:text-white text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
                                                                     >
-                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                        <RotateCcw className="w-3.5 h-3.5" />
                                                                     </button>
+                                                                ) : (
+                                                                    hasDeleteOrderPermission && (
+                                                                        <button
+                                                                            onClick={() => setDeleteModalOrder(order)}
+                                                                            title="Delete Order"
+                                                                            aria-label="Delete Order"
+                                                                            className="p-1.5 bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                                        >
+                                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    )
                                                                 )}
                                                             </div>
                                                         </td>
@@ -3716,6 +3792,46 @@ function OrdersContent() {
                             >
                                 <Trash2 className={`w-3.5 h-3.5 ${deletingOrder ? 'animate-spin' : ''}`} />
                                 {deletingOrder ? "Deleting..." : "Delete Order"}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                )}
+            </Dialog>
+
+            {/* Recover Order Confirmation Modal */}
+            <Dialog open={!!recoverModalOrder} onOpenChange={(open) => !open && setRecoverModalOrder(null)}>
+                {recoverModalOrder && (
+                    <DialogContent className="max-w-md border rounded-2xl p-6 shadow-2xl space-y-4 bg-card text-card-foreground border-emerald-500/30">
+                        <DialogHeader className="pb-2 border-b border-border/60">
+                            <DialogTitle className="text-lg font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                <RotateCcw className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                Recover Order #{recoverModalOrder.order_number}?
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground mt-1 font-medium leading-relaxed">
+                                Are you sure you want to restore order <span className="font-bold text-foreground">#{recoverModalOrder.order_number}</span>?
+                                <br />
+                                This will restore the order back to active status along with its history and related records.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setRecoverModalOrder(null)}
+                                disabled={recoveringOrder}
+                                className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl border-border h-auto cursor-pointer"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleRecoverOrder}
+                                disabled={recoveringOrder}
+                                className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50 h-auto"
+                            >
+                                <RotateCcw className={`w-3.5 h-3.5 ${recoveringOrder ? 'animate-spin' : ''}`} />
+                                {recoveringOrder ? "Recovering..." : "Recover Order"}
                             </Button>
                         </div>
                     </DialogContent>
