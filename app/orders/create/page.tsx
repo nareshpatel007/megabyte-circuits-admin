@@ -648,33 +648,44 @@ export default function CreateOrderPage() {
                         matchedOrderValue = parseFloat(directOpt.orderValue);
                         matchedUnitPrice = parseFloat(directOpt.unitPrice);
                         visible = true;
-                    } else if (dayNum === 2) {
-                        const res = interpolate(1, 3, 0.5);
-                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                    } else if (dayNum === 4) {
-                        const res = interpolate(3, 5, 0.5);
-                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                    } else if (dayNum === 6) {
-                        const res = interpolate(5, 7, 0.5);
-                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                    } else if (dayNum === 8) {
-                        const res = interpolate(7, 10, 1 / 3);
-                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                    } else if (dayNum === 9) {
-                        const res = interpolate(7, 10, 2 / 3);
-                        if (res) { matchedOrderValue = res.orderValue; matchedUnitPrice = res.unitPrice; visible = res.visible; }
-                    } else if (dayNum >= 10) {
-                        const ratio = Math.min((dayNum - 10) / 10, 1);
-                        const res = interpolate(10, 20, ratio);
-                        if (res) {
-                            matchedOrderValue = res.orderValue;
-                            matchedUnitPrice = res.unitPrice;
-                            visible = res.visible;
-                        } else {
-                            const o20 = getOption(20);
-                            if (o20) {
-                                matchedOrderValue = parseFloat(o20.orderValue);
-                                matchedUnitPrice = parseFloat(o20.unitPrice);
+                    } else {
+                        // Find dynamic surrounding configured anchors
+                        const sortedAnchors = (options || [])
+                            .filter((o: any) => o && !isNaN(Number(o.days)))
+                            .map((o: any) => Number(o.days))
+                            .sort((a: number, b: number) => a - b);
+
+                        let prevAnchor: number | null = null;
+                        let nextAnchor: number | null = null;
+
+                        for (const a of sortedAnchors) {
+                            if (a < dayNum) prevAnchor = a;
+                            else if (a > dayNum && nextAnchor === null) {
+                                nextAnchor = a;
+                                break;
+                            }
+                        }
+
+                        if (prevAnchor !== null && nextAnchor !== null) {
+                            const ratio = (dayNum - prevAnchor) / (nextAnchor - prevAnchor);
+                            const res = interpolate(prevAnchor, nextAnchor, ratio);
+                            if (res) {
+                                matchedOrderValue = res.orderValue;
+                                matchedUnitPrice = res.unitPrice;
+                                visible = res.visible;
+                            }
+                        } else if (nextAnchor !== null) {
+                            const o = getOption(nextAnchor);
+                            if (o) {
+                                matchedOrderValue = parseFloat(o.orderValue);
+                                matchedUnitPrice = parseFloat(o.unitPrice);
+                                visible = true;
+                            }
+                        } else if (prevAnchor !== null) {
+                            const o = getOption(prevAnchor);
+                            if (o) {
+                                matchedOrderValue = parseFloat(o.orderValue);
+                                matchedUnitPrice = parseFloat(o.unitPrice);
                                 visible = true;
                             }
                         }
@@ -2342,7 +2353,7 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - Sunday - Unavailable`}
-                                                            className="p-1.5 sm:p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
+                                                            className="px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
                                                         >
                                                             <div className="flex items-center justify-between text-[10px] font-extrabold uppercase leading-none text-slate-700 dark:text-slate-300">
                                                                 <span>{item.weekday}</span>
@@ -2367,7 +2378,7 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - ${item.holidayName || "Public Holiday"} - Unavailable`}
-                                                            className="p-1.5 sm:p-2 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
+                                                            className="px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
                                                         >
                                                             <div className="flex items-center justify-between text-[10px] font-black uppercase leading-none text-amber-900 dark:text-amber-200">
                                                                 <span>{item.weekday}</span>
@@ -2392,7 +2403,7 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - Unavailable for this order area/specifications`}
-                                                            className="p-1.5 sm:p-2 rounded-lg border border-border/80 bg-muted/30 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
+                                                            className="px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border border-border/80 bg-muted/30 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
                                                         >
                                                             <div className="text-[10px] font-bold uppercase leading-none text-muted-foreground">{item.weekday}</div>
                                                             <div className="flex items-baseline justify-center gap-1 my-auto">
@@ -2416,7 +2427,7 @@ export default function CreateOrderPage() {
                                                             setUnitPrice(item.unitPrice);
                                                         }}
                                                         title={`${item.formattedDate} (${item.weekday}) • ${item.workingDayNum} Working Days • Base: ₹${parseFloat(item.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (₹${(parseFloat(item.orderValue) / qtyPcs).toFixed(2)}/pc)`}
-                                                        className={`p-1.5 sm:p-2 rounded-lg border text-center transition-all cursor-pointer select-none flex flex-col justify-between h-[72px] sm:h-[76px] ${
+                                                        className={`px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border text-center transition-all cursor-pointer select-none flex flex-col justify-between h-[72px] sm:h-[76px] ${
                                                             isSelected
                                                                 ? "bg-emerald-600 text-white border-2 border-emerald-700 shadow-sm ring-2 ring-emerald-500/40 z-10"
                                                                 : "bg-card hover:bg-emerald-500/10 border-border/90 hover:border-emerald-500/60 text-foreground"
@@ -2440,7 +2451,7 @@ export default function CreateOrderPage() {
                                                                 {item.monthStr}
                                                             </span>
                                                         </div>
-                                                        <div className={`pt-1 border-t text-[11px] font-black font-mono leading-none truncate ${
+                                                        <div className={`pt-1 border-t text-[9.5px] sm:text-[10px] font-bold tracking-tight leading-none whitespace-nowrap text-center max-w-full inline-block ${
                                                             isSelected ? "border-white/25 text-white" : "border-border/60 text-emerald-700 dark:text-emerald-400"
                                                         }`}>
                                                             {getCardDisplayPrice(item.orderValue)}
