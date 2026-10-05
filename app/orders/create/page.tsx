@@ -290,6 +290,7 @@ export default function CreateOrderPage() {
             if (!["0.51mm", "0.76mm", "1.52mm"].includes(thickness)) {
                 setThickness("0.51mm");
             }
+            setElecTest("Flying Probe Fully Test");
         } else if (newMat === "PTFE Teflon") {
             setLayerCount("2");
             setMaterialType("ZYF300CA-C(Dk=2.94,Df=0.0016)");
@@ -1994,7 +1995,6 @@ export default function CreateOrderPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Remove Mark">Remove Mark</SelectItem>
-                                        <SelectItem value="2D barcode (Serial Number)">2D barcode (Serial Number)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -2007,7 +2007,7 @@ export default function CreateOrderPage() {
                                 {[
                                     { label: "Gold Fingers", state: goldFingers, setState: setGoldFingers, disabled: false },
                                     { label: "Castellated Holes", state: castellated, setState: setCastellated, disabled: material === "Flex" },
-                                    { label: "Edge Plating", state: edgePlating, setState: setEdgePlating, disabled: true },
+                                    { label: "Edge Plating", state: edgePlating, setState: setEdgePlating, disabled: material === "Flex" },
                                     { label: "Blind Slots", state: blindSlots, setState: setBlindSlots, disabled: material === "Flex" },
                                     { label: "Humidity Card", state: humidity, setState: setHumidity, disabled: false },
                                     { label: "Kelvin Test", state: kelvinTest, setState: setKelvinTest, disabled: false },

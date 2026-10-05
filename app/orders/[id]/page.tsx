@@ -950,8 +950,8 @@ export default function OrderDetailPage() {
                     payload.metas.gold_thickness = 'N/A';
                 }
             } else if (specKey === 'gold_thickness') {
-                const currentSf = getMetaValue('surface_finish', order?.surface_finish || '');
-                const currentMat = getMetaValue('base_material', order?.base_material || '');
+                const currentSf = getMetaValue('surface_finish', (order as any)?.surface_finish || '');
+                const currentMat = getMetaValue('base_material', (order as any)?.base_material || '');
                 const isEnig = currentSf.toLowerCase().includes('enig') || currentMat.toLowerCase() === 'flex';
                 const finalVal = isEnig ? cleanVal : 'N/A';
                 payload.gold_thickness = finalVal;
