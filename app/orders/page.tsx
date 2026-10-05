@@ -1782,8 +1782,8 @@ function OrdersContent() {
         if (statusFilter === "All") {
             matchStatus = true;
         } else if (statusFilter === "In Production") {
-            const excludedStatuses = ["pending", "completed", "shipped", "delivered", "cancelled", "canceled"];
-            matchStatus = !excludedStatuses.includes(currentStatusStr);
+            const excludedStatuses = ["pending", "completed", "shipped", "delivered", "cancelled", "canceled", "on hold", "hold"];
+            matchStatus = currentStatusStr !== "" && !excludedStatuses.includes(currentStatusStr);
         } else {
             matchStatus = currentStatusStr === statusFilter.toLowerCase().trim();
         }
