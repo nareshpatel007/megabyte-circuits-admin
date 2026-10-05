@@ -319,6 +319,9 @@ export default function OrderDetailPage() {
     const [editingOrderCg, setEditingOrderCg] = useState(false);
     const [inlineCgState, setInlineCgState] = useState("");
 
+    // Gerber download state
+    const [downloadingGerber, setDownloadingGerber] = useState(false);
+
     // Internal Notes states
     const [notesList, setNotesList] = useState<OrderNote[]>([]);
     const [newNoteText, setNewNoteText] = useState("");
@@ -1326,6 +1329,58 @@ export default function OrderDetailPage() {
         )
     );
     const gerberFileName = rawGerberName || (gerberUrl ? gerberUrl.split('/').pop() : '');
+
+    // Gerber file download handler (downloads directly from server storage via authenticated API, matching Gerber list page)
+    const handleDownloadGerberFile = async () => {
+        const targetId = order?.gerber_file_id || gerberFileRel?.id || (order as any)?.gerber_id || getMetaValue('gerber_file_id', '') || order?.id;
+        const fileName = gerberFileName || (order?.pn_number ? `${order.pn_number}.zip` : `gerber_${order?.order_number || order?.id || 'file'}.zip`);
+
+        if (!targetId && !gerberUrl) {
+            toast.error("No Gerber file associated with this order");
+            return;
+        }
+
+        const toastId = toast.loading("Preparing download...");
+        setDownloadingGerber(true);
+
+        try {
+            const token = localStorage.getItem("admin_token");
+            let res: Response | null = null;
+
+            // 1. Try downloading via the admin gerber-files download endpoint
+            if (targetId) {
+                res = await fetch(`/api/admin/gerber-files/${targetId}/download`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            }
+
+            // 2. If endpoint not ok and gerberUrl is available, fallback to direct fetch from gerberUrl
+            if ((!res || !res.ok) && gerberUrl && gerberUrl !== 'N/A') {
+                res = await fetch(gerberUrl);
+            }
+
+            if (!res || !res.ok) {
+                const errJson = await res?.json().catch(() => null);
+                throw new Error(errJson?.message || "File is not available on server disk");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success(`Downloaded ${fileName} successfully`, { id: toastId });
+        } catch (err: any) {
+            console.error("Gerber file download error:", err);
+            toast.error(err.message || "Failed to download Gerber file", { id: toastId });
+        } finally {
+            setDownloadingGerber(false);
+        }
+    };
     const boardNameVal = order.board_name || getMetaValue('board_name', '');
     const fallbackPnNumber = order.pn_number 
         || rawGerberName 
@@ -1870,29 +1925,14 @@ export default function OrderDetailPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3 w-full md:w-auto">
-                            {gerberUrl && gerberUrl !== 'N/A' && gerberUrl !== '' && (
-                                <a
-                                    href={gerberUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-card border border-border/80 text-foreground font-bold rounded-xl hover:bg-muted text-xs transition-all w-full md:w-auto"
-                                >
-                                    <Eye className="w-4 h-4 text-emerald-500" /> View Gerber File
-                                </a>
-                            )}
-                            <a
-                                href={gerberUrl && gerberUrl !== 'N/A' ? gerberUrl : `#`}
-                                download={gerberFileName}
-                                onClick={(e) => {
-                                    if (!gerberUrl || gerberUrl === 'N/A') {
-                                        e.preventDefault();
-                                        toast.info(`Gerber File Name: ${gerberFileName}`);
-                                    }
-                                }}
-                                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 text-xs shadow-md transition-all w-full md:w-auto"
+                            <button
+                                type="button"
+                                onClick={handleDownloadGerberFile}
+                                disabled={downloadingGerber}
+                                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-md transition-all w-full md:w-auto cursor-pointer"
                             >
-                                <Download className="w-4 h-4" /> Download Gerber File
-                            </a>
+                                <Download className="w-4 h-4" /> {downloadingGerber ? "Downloading..." : "Download Gerber File"}
+                            </button>
                         </div>
                     </div>
                 )}
