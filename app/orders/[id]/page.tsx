@@ -945,6 +945,17 @@ export default function OrderDetailPage() {
                 payload.finish = cleanVal;
                 payload.metas.surface_finish = cleanVal;
                 payload.metas.finish = cleanVal;
+                if (!cleanVal.toLowerCase().includes('enig')) {
+                    payload.gold_thickness = 'N/A';
+                    payload.metas.gold_thickness = 'N/A';
+                }
+            } else if (specKey === 'gold_thickness') {
+                const currentSf = getMetaValue('surface_finish', order?.surface_finish || '');
+                const currentMat = getMetaValue('base_material', order?.base_material || '');
+                const isEnig = currentSf.toLowerCase().includes('enig') || currentMat.toLowerCase() === 'flex';
+                const finalVal = isEnig ? cleanVal : 'N/A';
+                payload.gold_thickness = finalVal;
+                payload.metas.gold_thickness = finalVal;
             } else if (specKey === 'thickness' || specKey === 'board_thickness') {
                 payload.thickness = cleanVal;
                 payload.board_thickness = cleanVal;
@@ -2138,7 +2149,13 @@ export default function OrderDetailPage() {
                                 {renderSpecItem('silkscreen', 'Silkscreen Color', getMetaValue('silkscreen', 'White'), 'select', ['White', 'Black', 'None'])}
                                 {renderSpecItem('material_type', 'Material Type', getMetaValue('material_type', 'FR4-TG135'), 'select', ['FR4-TG135', 'FR4-TG150', 'FR4-TG170', 'Standard TG', 'High TG', 'Aluminum TG', 'Rogers 4350B'])}
                                 {renderSpecItem('surface_finish', 'Surface Finish', getMetaValue('surface_finish', 'HASL(Leaded)'), 'select', ['HASL(Leaded)', 'Lead Free HASL', 'ENIG', 'OSP', 'Immersion Tin', 'Immersion Silver', 'Hard Gold', 'ENEPIG'])}
-                                {renderSpecItem('gold_thickness', 'Gold Thickness', getMetaValue('gold_thickness', 'N/A'), 'select', ['1 U"', '2 U"', '3 U"', 'N/A'])}
+                                {(() => {
+                                    const sf = getMetaValue('surface_finish', 'HASL(Leaded)');
+                                    const isEnig = sf.toLowerCase().includes('enig') || getMetaValue('base_material', '').toLowerCase() === 'flex';
+                                    const rawGt = getMetaValue('gold_thickness', 'N/A');
+                                    const cleanGt = isEnig ? (rawGt === '1 U*' ? '1 U"' : rawGt) : 'N/A';
+                                    return renderSpecItem('gold_thickness', 'Gold Thickness', cleanGt, 'select', isEnig ? ['1 U"', '2 U"', '3 U"', 'N/A'] : ['N/A']);
+                                })()}
                             </div>
                         </div>
 

@@ -1064,7 +1064,7 @@ export default function CreateOrderPage() {
             formData.append("different_design", differentDesign);
             formData.append("delivery_format", deliveryFormat);
             formData.append("material_type", materialType);
-            formData.append("gold_thickness", goldThickness);
+            formData.append("gold_thickness", (surfaceFinish === "ENIG" || material === "Flex") ? (goldThickness || "1 U\"") : "N/A");
             formData.append("via_covering", viaCovering);
             formData.append("via_plating", viaPlating);
             formData.append("min_hole", minHole);
