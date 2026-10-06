@@ -158,7 +158,8 @@ function OrdersContent() {
 
     const { user } = useAuth();
     const isSuperAdmin = user?.role?.toLowerCase() === "super admin";
-    const hasPaymentPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("payments.view") : true);
+    const hasPaymentPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("payments.view") || user.permissions.includes("payments.manage") || user.permissions.includes("*")) : false);
+    const hasCustomerPermission = isSuperAdmin || (user?.permissions ? (user.permissions.includes("clients.view") || user.permissions.includes("users.manage") || user.permissions.includes("clients.manage") || user.permissions.includes("*")) : false);
     const hasStatisticsPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.statistics") : false);
     const hasCreateOrderPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.create") : false);
     const hasChangeStatusPermission = isSuperAdmin || (user?.permissions ? user.permissions.includes("orders.change_status") : false);
@@ -1842,8 +1843,10 @@ function OrdersContent() {
         const initialFinalQty = typeof order.final_qty === 'number' ? order.final_qty : initialCompletedQty;
         const initialFailedQty = typeof order.failed_qty === 'number' ? order.failed_qty : (parseInt(getMetaValue(order, 'failed_qty', getMetaValue(order, 'fail_qty', '0')), 10) || 0);
 
-        const initialUserId = order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "");
-        const fallbackName = order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "";
+        const initialUserId = hasCustomerPermission ? (order.user_id ? String(order.user_id) : (order.user?.id ? String(order.user.id) : "")) : "";
+        const fallbackName = hasCustomerPermission
+            ? (order.customer_name || (order.user ? (order.user.company_name || order.user.name || `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()) : "") || "")
+            : "XXXX";
         setStatusModalOrder(order);
         setModalOrderNumber(order.order_number ? String(order.order_number) : "");
         const gerberFileName = (order as any).gerber_file?.original_name
@@ -3005,6 +3008,10 @@ function OrdersContent() {
                                                         {/* 3. Customer */}
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             {(() => {
+                                                                if (!hasCustomerPermission) {
+                                                                    return <span className="font-semibold text-xs text-muted-foreground">XXXX</span>;
+                                                                }
+
                                                                 const customerId = order.user_id || order.user?.id;
                                                                 const custDisplayName = order.user?.company_name || order.user?.name || order.customer_name || (order.user_email ? order.user_email : null);
 
@@ -3874,9 +3881,9 @@ function OrdersContent() {
                             </DialogHeader>
 
                             <div className="grid grid-cols-2 gap-3 bg-white/90 p-4 rounded-xl text-xs border border-slate-200 shadow-xs">
-                                <div><span className="text-slate-500 font-semibold">Amount:</span> <span className="font-black text-emerald-700">₹{Number(selectedOrder.order_value).toLocaleString('en-IN')}</span></div>
-                                <div><span className="text-slate-500 font-semibold">Email:</span> <span className="font-bold text-slate-900">{selectedOrder.user_email}</span></div>
-                                <div><span className="text-slate-500 font-semibold">Mobile:</span> <span className="font-bold text-slate-900">{selectedOrder.user_mobile}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Amount:</span> <span className="font-black text-emerald-700">{hasPaymentPermission ? `₹${Number(selectedOrder.order_value).toLocaleString('en-IN')}` : 'XXXX'}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Email:</span> <span className="font-bold text-slate-900">{hasCustomerPermission ? (selectedOrder.user_email || '—') : 'XXXX'}</span></div>
+                                <div><span className="text-slate-500 font-semibold">Mobile:</span> <span className="font-bold text-slate-900">{hasCustomerPermission ? (selectedOrder.user_mobile || '—') : 'XXXX'}</span></div>
                                 <div><span className="text-slate-500 font-semibold">Delivery:</span> <span className={`font-bold ${isPastDeliveryDate(selectedOrder.delivery_date, selectedOrder.status) ? "text-red-600 font-extrabold" : "text-slate-900"}`}>{formatDate(selectedOrder.delivery_date)}</span></div>
                             </div>
 
@@ -5290,11 +5297,13 @@ function OrdersContent() {
                     </DialogHeader>
 
                     {reorderModalOrder && (() => {
-                        const custName = reorderModalOrder.customer_name
-                            || getMetaValue(reorderModalOrder, 'customer_name', getMetaValue(reorderModalOrder, 'name', ''))
-                            || reorderModalOrder.user_email
-                            || reorderModalOrder.user_mobile
-                            || 'N/A';
+                        const custName = hasCustomerPermission
+                            ? (reorderModalOrder.customer_name
+                                || getMetaValue(reorderModalOrder, 'customer_name', getMetaValue(reorderModalOrder, 'name', ''))
+                                || reorderModalOrder.user_email
+                                || reorderModalOrder.user_mobile
+                                || 'N/A')
+                            : 'XXXX';
 
                         let dimLen = parseFloat(getMetaValue(reorderModalOrder, 'dimensions_length', '0'));
                         let dimWid = parseFloat(getMetaValue(reorderModalOrder, 'dimensions_width', '0'));
