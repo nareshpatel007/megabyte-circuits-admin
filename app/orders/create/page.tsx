@@ -206,8 +206,6 @@ export default function CreateOrderPage() {
     const [viaPlating, setViaPlating] = useState<string>("Not Specified");
     const [minHole, setMinHole] = useState<string>("0.3mm/(0.4/0.45mm)");
     const [confirmFile, setConfirmFile] = useState<string>("No");
-    const [markOnPcb, setMarkOnPcb] = useState<string>("Remove Mark");
-    const [elecTest, setElecTest] = useState<string>("Flying Probe Fully Test");
     const [goldFingers, setGoldFingers] = useState<string>("No");
     const [castellated, setCastellated] = useState<string>("No");
     const [edgePlating, setEdgePlating] = useState<string>("No");
@@ -291,7 +289,6 @@ export default function CreateOrderPage() {
             if (!["0.51mm", "0.76mm", "1.52mm"].includes(thickness)) {
                 setThickness("0.51mm");
             }
-            setElecTest("Flying Probe Fully Test");
         } else if (newMat === "PTFE Teflon") {
             setLayerCount("2");
             setMaterialType("ZYF300CA-C(Dk=2.94,Df=0.0016)");
@@ -1018,8 +1015,6 @@ export default function CreateOrderPage() {
                 if (panelColumn) formData.append("panel_column", panelColumn);
                 if (panelRow) formData.append("panel_row", panelRow);
             }
-            formData.append("elec_test", elecTest || "N/A");
-            formData.append("mark_on_pcb", markOnPcb || "N/A");
             formData.append("confirm_file", confirmFile || "No");
 
             // Material-Specific Parameters: Only store options relevant to selected material
@@ -1979,32 +1974,6 @@ export default function CreateOrderPage() {
                                     </Select>
                                 </div>
                             )}
-
-                            {/* Electrical Test */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Electrical Test</label>
-                                <Select value={elecTest} onValueChange={setElecTest}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Flying Probe Fully Test">Flying Probe Fully Test</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Mark on PCB */}
-                            <div>
-                                <label className="text-xs font-bold text-muted-foreground block mb-1">Mark on PCB</label>
-                                <Select value={markOnPcb} onValueChange={setMarkOnPcb}>
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-muted/30 dark:bg-muted/20 border-border/80 text-xs font-semibold text-foreground">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Remove Mark">Remove Mark</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
                         </div>
 
                         {/* Additional Boolean Badges Grid */}

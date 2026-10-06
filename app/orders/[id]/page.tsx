@@ -2309,8 +2309,6 @@ export default function OrderDetailPage() {
                                             {isFlex && (
                                                 renderSpecItem('eda_software', 'EDA Software', getMetaValue('eda_software', 'EasyEDA Pro'), 'select', ['EasyEDA Pro', 'Other', 'N/A'])
                                             )}
-                                            {renderSpecItem('elec_test', 'Electrical Test', getMetaValue('elec_test', 'Flying Probe Fully Test'), 'select', ['Flying Probe Fully Test', 'Random Test', 'None', 'N/A'])}
-                                            {renderSpecItem('mark_on_pcb', 'Mark on PCB', getMetaValue('mark_on_pcb', 'Remove Mark'), 'select', ['Remove Mark', 'Specify Location', 'Any Location', 'No Mark', 'N/A'])}
                                             {renderSpecItem('confirm_file', 'Confirm Production File', getMetaValue('confirm_file', 'No'), 'select', ['Yes', 'No', 'N/A'])}
                                         </div>
                                     </div>
