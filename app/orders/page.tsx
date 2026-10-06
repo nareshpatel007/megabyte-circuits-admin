@@ -2497,8 +2497,8 @@ function OrdersContent() {
                                             type="button"
                                             onClick={() => handleSelectStatus("Pending")}
                                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
-                                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
-                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
                                             <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
@@ -2513,8 +2513,8 @@ function OrdersContent() {
                                             type="button"
                                             onClick={() => handleSelectStatus("Ready to Ship")}
                                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Ready to Ship"
-                                                    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-2xs"
-                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
                                             <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Ready to Ship" ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/40 bg-background"
@@ -2529,8 +2529,8 @@ function OrdersContent() {
                                             type="button"
                                             onClick={() => handleSelectStatus("In Production")}
                                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "In Production"
-                                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-2xs"
-                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
                                             <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "In Production" ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 bg-background"
@@ -2545,8 +2545,8 @@ function OrdersContent() {
                                             type="button"
                                             onClick={() => handleSelectStatus("Deleted")}
                                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Deleted"
-                                                    ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-2xs"
-                                                    : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
                                             <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Deleted" ? "bg-rose-500 border-rose-500 text-white" : "border-muted-foreground/40 bg-background"
@@ -2578,10 +2578,10 @@ function OrdersContent() {
                                                 }
                                             }}
                                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isStatusDragOver
-                                                    ? "border-emerald-500 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border-dashed scale-[1.02]"
-                                                    : isOtherStatusActive
-                                                        ? "border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold border-solid shadow-2xs"
-                                                        : "border-dashed border-border/80 bg-muted/30 text-muted-foreground"
+                                                ? "border-emerald-500 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border-dashed scale-[1.02]"
+                                                : isOtherStatusActive
+                                                    ? "border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold border-solid shadow-2xs"
+                                                    : "border-dashed border-border/80 bg-muted/30 text-muted-foreground"
                                                 }`}
                                         >
                                             {isOtherStatusActive ? (
@@ -2614,8 +2614,8 @@ function OrdersContent() {
                                                 <Button
                                                     variant="outline"
                                                     className={`h-8 sm:h-9 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shrink-0 ${isOtherStatusActive
-                                                            ? "border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                                                            : "border-border/80 bg-background/60 hover:bg-accent text-foreground"
+                                                        ? "border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                                        : "border-border/80 bg-background/60 hover:bg-accent text-foreground"
                                                         }`}
                                                 >
                                                     [ Other Statuses ]
@@ -2652,8 +2652,8 @@ function OrdersContent() {
                                                                     setOtherStatusesOpen(false);
                                                                 }}
                                                                 className={`group flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-grab active:cursor-grabbing transition-all border ${isSelected
-                                                                        ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs"
-                                                                        : "bg-background hover:bg-muted/70 text-foreground border-transparent hover:border-border/50"
+                                                                    ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs"
+                                                                    : "bg-background hover:bg-muted/70 text-foreground border-transparent hover:border-border/50"
                                                                     }`}
                                                             >
                                                                 <div className="flex items-center gap-2 min-w-0">
@@ -2978,8 +2978,8 @@ function OrdersContent() {
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <span
                                                                 className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${order.bill_number && String(order.bill_number).trim() !== ""
-                                                                        ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                                                                        : "text-muted-foreground bg-muted/30 border-border/60"
+                                                                    ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                                                    : "text-muted-foreground bg-muted/30 border-border/60"
                                                                     }`}
                                                             >
                                                                 {order.bill_number && String(order.bill_number).trim() !== ""
@@ -2991,12 +2991,12 @@ function OrdersContent() {
                                                         <td className="py-1.5 px-3.5 whitespace-nowrap">
                                                             <span
                                                                 className={`font-mono text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${order.c_g
-                                                                        ? order.c_g === 'GST'
-                                                                            ? "text-blue-700 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
-                                                                            : order.c_g === 'CASH'
-                                                                                ? "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
-                                                                                : "text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/20"
-                                                                        : "text-muted-foreground/60 bg-muted/20 border-border/40"
+                                                                    ? order.c_g === 'GST'
+                                                                        ? "text-blue-700 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+                                                                        : order.c_g === 'CASH'
+                                                                            ? "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
+                                                                            : "text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/20"
+                                                                    : "text-muted-foreground/60 bg-muted/20 border-border/40"
                                                                     }`}
                                                             >
                                                                 {order.c_g || "—"}
@@ -3643,7 +3643,7 @@ function OrdersContent() {
                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                                         <div>
                                             <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                                                 Launch Qty
+                                                Launch Qty
                                             </label>
                                             <Input
                                                 type="number"
@@ -3723,20 +3723,6 @@ function OrdersContent() {
                                             />
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Row 5: Audit Note / Remark (Compact) */}
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">
-                                        Add Audit Note / Remark (Optional)
-                                    </label>
-                                    <Textarea
-                                        rows={2}
-                                        value={modalRemark}
-                                        onChange={(e) => setModalRemark(e.target.value)}
-                                        placeholder="Enter reason or details for this status change..."
-                                        className="w-full px-3.5 py-2 text-xs bg-white border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 resize-none font-medium shadow-xs"
-                                    />
                                 </div>
 
                                 {/* Row 6: Modal Actions */}
