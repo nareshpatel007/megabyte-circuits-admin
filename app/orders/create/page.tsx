@@ -27,7 +27,8 @@ import {
     ChevronsUpDown,
     Calculator,
     CalendarDays,
-    Sliders
+    Sliders,
+    Truck
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -353,7 +354,8 @@ export default function CreateOrderPage() {
 
     // Delivery Calendar Matrix Selection State
     const [selectedDay, setSelectedDay] = useState<number>(3);
-    const [pricingConfig, setPricingConfig] = useState<{ fixedCosts: any; priceTiers: any } | null>(null);
+    const [pricingConfig, setPricingConfig] = useState<{ fixedCosts?: any; priceTiers?: any; shippingOptions?: any[]; gstPercentage?: number } | null>(null);
+    const [deliveryMethod, setDeliveryMethod] = useState<string | null>(null);
 
     // Gerber File & Analysis State
     const [gerberFile, setGerberFile] = useState<File | null>(null);
@@ -1082,8 +1084,34 @@ export default function CreateOrderPage() {
                 calculatedSubtotal = parseFloat(orderValue) || 0;
             }
 
-            const calculatedGst = calculatedSubtotal * (gstRate / 100);
-            const finalOrderTotal = calculatedSubtotal + calculatedGst;
+            // Weight & Shipping Calculation matching cart
+            const thicknessMm = parseFloat((thickness || "1.6").toString().replace(/[^0-9.]/g, "")) || 1.6;
+            const weightPerSqM = material === "Flex" ? 0.3 : 3.8 * (thicknessMm / 1.6);
+            const calculatedEstWeightKg = Math.max(0.1, parseFloat((totalAreaSqm * weightPerSqM).toFixed(2)));
+            const chargedWeightKg = Math.max(1.0, calculatedEstWeightKg);
+
+            const defaultShippingOptions = [
+                { key: "standard", location: "Standard", method: "Standard", rate: 0 },
+                { key: "plus", location: "Plus", method: "Plus", rate: 150 },
+                { key: "fasttrack", location: "Fasttrack", method: "Fasttrack", rate: 450 },
+            ];
+            const shippingOptions = pricingConfig?.shippingOptions && Array.isArray(pricingConfig.shippingOptions) && pricingConfig.shippingOptions.length > 0
+                ? pricingConfig.shippingOptions
+                : defaultShippingOptions;
+
+            let deliveryCharge = 0;
+            let resolvedDeliveryMethod: string | null = null;
+            if (deliveryMethod && deliveryMethod !== "none") {
+                const activeShipping = shippingOptions.find((o: any) => o.key === deliveryMethod || o.method?.toLowerCase() === deliveryMethod?.toLowerCase());
+                if (activeShipping) {
+                    deliveryCharge = Math.round(Number(activeShipping.rate || 0) * chargedWeightKg);
+                    resolvedDeliveryMethod = activeShipping.key || activeShipping.method?.toLowerCase();
+                }
+            }
+
+            const taxableTotal = calculatedSubtotal + deliveryCharge;
+            const calculatedGst = Math.round(((taxableTotal * gstRate) / 100) * 100) / 100;
+            const finalOrderTotal = Math.round((taxableTotal + calculatedGst) * 100) / 100;
             const computedUnitPrice = qtyPcs > 0 ? (calculatedSubtotal / qtyPcs) : 0;
 
             formData.append("pricing_method", hasManualPrice ? "manual" : pricingMethod);
@@ -1095,6 +1123,9 @@ export default function CreateOrderPage() {
             formData.append("price_per_sqm", pricePerSqm);
             formData.append("gst_rate", gstRate.toString());
             formData.append("subtotal", calculatedSubtotal.toFixed(2));
+            formData.append("delivery_method", resolvedDeliveryMethod || "");
+            formData.append("delivery_charge", deliveryCharge.toFixed(2));
+            formData.append("taxable_amount", taxableTotal.toFixed(2));
             formData.append("gst_amount", calculatedGst.toFixed(2));
             formData.append("unit_price", computedUnitPrice.toFixed(2));
             formData.append("order_value", finalOrderTotal.toFixed(2));
@@ -2258,8 +2289,29 @@ export default function CreateOrderPage() {
                                 pricingModeLabel = "Automatic Lead-Time Matrix";
                             }
 
-                            const gstAmt = subtotalCalc * (gstRate / 100);
-                            const totalAmt = subtotalCalc + gstAmt;
+                            // Weight & Shipping Calculation matching cart (Image 2)
+                            const thicknessMm = parseFloat((thickness || "1.6").toString().replace(/[^0-9.]/g, "")) || 1.6;
+                            const weightPerSqM = material === "Flex" ? 0.3 : 3.8 * (thicknessMm / 1.6);
+                            const calculatedEstWeightKg = Math.max(0.1, parseFloat((totalAreaSqm * weightPerSqM).toFixed(2)));
+                            const chargedWeightKg = Math.max(1.0, calculatedEstWeightKg);
+
+                            const defaultShippingOptions = [
+                                { key: "standard", location: "Standard", method: "Standard", rate: 0 },
+                                { key: "plus", location: "Plus", method: "Plus", rate: 150 },
+                                { key: "fasttrack", location: "Fasttrack", method: "Fasttrack", rate: 450 },
+                            ];
+                            const shippingOptions = pricingConfig?.shippingOptions && Array.isArray(pricingConfig.shippingOptions) && pricingConfig.shippingOptions.length > 0
+                                ? pricingConfig.shippingOptions
+                                : defaultShippingOptions;
+
+                            const activeShipping = (deliveryMethod && deliveryMethod !== "none")
+                                ? (shippingOptions.find((o: any) => o.key === deliveryMethod || o.method?.toLowerCase() === deliveryMethod?.toLowerCase()) || null)
+                                : null;
+
+                            const deliveryCharge = activeShipping ? Math.round(Number(activeShipping.rate || 0) * chargedWeightKg) : 0;
+                            const taxableCalc = subtotalCalc + deliveryCharge;
+                            const gstAmt = Math.round(((taxableCalc * gstRate) / 100) * 100) / 100;
+                            const totalAmt = Math.round((taxableCalc + gstAmt) * 100) / 100;
                             const unitPriceCalc = qtyPcs > 0 ? (subtotalCalc / qtyPcs) : 0;
                             const unitPriceWithGst = qtyPcs > 0 ? (totalAmt / qtyPcs) : 0;
 
@@ -2647,6 +2699,117 @@ export default function CreateOrderPage() {
                                                 </div>
                                             </div>
 
+                                            {/* Shipping & Delivery Method Card (Matching Cart Calculation & Styling - Image 2) */}
+                                            <div className="bg-[#8DD3A5]/10 dark:bg-emerald-950/25 border border-[#41A96A]/35 dark:border-emerald-700/50 rounded-xl p-3.5 shadow-2xs space-y-3">
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-slate-600 dark:text-slate-300 font-semibold">Total Area:</span>
+                                                    <span className="font-extrabold text-[#0F7438] dark:text-[#8DD3A5]">
+                                                        {totalAreaSqm.toFixed(2)} m²
+                                                        <span className="text-[10px] font-normal text-slate-500"> ({calculatedEstWeightKg} kg est.{calculatedEstWeightKg < 1 ? ' → 1 kg min' : ''})</span>
+                                                    </span>
+                                                </div>
+
+                                                {/* Shipping Option Selection */}
+                                                <div className="pt-2 border-t border-[#41A96A]/20 space-y-2">
+                                                    <div className="flex justify-between items-center text-xs font-bold text-[#0F7438] dark:text-[#8DD3A5]">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Truck className="w-3.5 h-3.5 text-[#0F7438] dark:text-[#8DD3A5]" />
+                                                            Shipping Method
+                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-medium text-slate-500">
+                                                                {deliveryMethod && deliveryMethod !== "none" ? "Selected" : "No delivery method"}
+                                                            </span>
+                                                            {deliveryMethod && deliveryMethod !== "none" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setDeliveryMethod(null)}
+                                                                    className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline font-bold cursor-pointer"
+                                                                    title="Remove delivery method"
+                                                                >
+                                                                    (Clear)
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="bg-[#8DD3A5]/15 dark:bg-slate-800/80 p-2.5 rounded-2xl border border-[#41A96A]/25 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {/* Option to create without delivery method */}
+                                                        <label
+                                                            onClick={() => setDeliveryMethod(null)}
+                                                            className={`flex items-start gap-2 p-2 rounded-xl transition-all cursor-pointer select-none ${
+                                                                !deliveryMethod || deliveryMethod === "none"
+                                                                    ? "bg-white/95 dark:bg-slate-700/90 shadow-2xs border-2 border-[#238E4E]"
+                                                                    : "bg-white/40 dark:bg-slate-800/40 border border-transparent hover:bg-white/60"
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name="shippingOption"
+                                                                checked={!deliveryMethod || deliveryMethod === "none"}
+                                                                onChange={() => setDeliveryMethod(null)}
+                                                                className="w-4 h-4 mt-0.5 text-[#238E4E] focus:ring-[#238E4E] accent-[#238E4E] cursor-pointer shrink-0"
+                                                            />
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className={`text-xs font-bold leading-tight ${
+                                                                    !deliveryMethod || deliveryMethod === "none" ? "text-[#0F7438] dark:text-[#8DD3A5]" : "text-slate-800 dark:text-slate-200"
+                                                                }`}>
+                                                                    None (No Delivery)
+                                                                </span>
+                                                                <span className="text-[10px] font-semibold mt-0.5 text-slate-500 dark:text-slate-400">
+                                                                    ₹0 <span className="font-normal text-slate-400 text-[9px]">(Without delivery method)</span>
+                                                                </span>
+                                                            </div>
+                                                        </label>
+
+                                                        {/* Dynamic Options from Database Table */}
+                                                        {shippingOptions.map((opt: any) => {
+                                                            const charge = Math.round(Number(opt.rate || 0) * chargedWeightKg);
+                                                            const isSelected = deliveryMethod === opt.key || deliveryMethod === opt.method?.toLowerCase();
+                                                            const title = (!opt.method || opt.location === opt.method) ? (opt.location || opt.method) : `${opt.location} - ${opt.method}`;
+
+                                                            return (
+                                                                <label
+                                                                    key={opt.key}
+                                                                    onClick={() => {
+                                                                        if (isSelected) {
+                                                                            setDeliveryMethod(null);
+                                                                        } else {
+                                                                            setDeliveryMethod(opt.key);
+                                                                        }
+                                                                    }}
+                                                                    className={`flex items-start gap-2 p-2 rounded-xl transition-all cursor-pointer select-none ${
+                                                                        isSelected
+                                                                            ? "bg-white/95 dark:bg-slate-700/90 shadow-2xs border-2 border-[#238E4E]"
+                                                                            : "bg-white/40 dark:bg-slate-800/40 border border-transparent hover:bg-white/60"
+                                                                    }`}
+                                                                >
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="shippingOption"
+                                                                        checked={isSelected}
+                                                                        onChange={() => setDeliveryMethod(opt.key)}
+                                                                        className="w-4 h-4 mt-0.5 text-[#238E4E] focus:ring-[#238E4E] accent-[#238E4E] cursor-pointer shrink-0"
+                                                                    />
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className={`text-xs font-bold leading-tight ${
+                                                                            isSelected ? "text-[#0F7438] dark:text-[#8DD3A5]" : "text-slate-800 dark:text-slate-200"
+                                                                        }`}>
+                                                                            {title}
+                                                                        </span>
+                                                                        <span className={`text-[10px] font-semibold mt-0.5 ${
+                                                                            isSelected ? "text-[#0F7438]" : "text-slate-600 dark:text-slate-300"
+                                                                        }`}>
+                                                                            +₹{charge} <span className="font-normal text-slate-400 text-[9px]">(₹{opt.rate}/kg)</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             {/* Financial Summary Card */}
                                             <div className="bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 p-3 rounded-lg space-y-2 text-xs">
                                                 <div className="font-bold text-foreground text-xs border-b border-emerald-200 dark:border-emerald-800/80 pb-1.5 flex justify-between items-center">
@@ -2668,10 +2831,27 @@ export default function CreateOrderPage() {
                                                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
                                                         <span className="flex items-center gap-1">
                                                             Per Piece Price (Unit Price):
-                                                            <span className="text-[9.5px] font-normal text-muted-foreground">({qtyPcs} {qtyPcs === 1 ? "pc" : "pcs"})</span>
+                                                             <span className="text-[9.5px] font-normal text-muted-foreground">({qtyPcs} {qtyPcs === 1 ? "pc" : "pcs"})</span>
                                                         </span>
                                                         <span className="font-mono font-bold text-emerald-800 dark:text-emerald-300">
                                                             ₹{unitPriceCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9.5px] text-muted-foreground font-normal">/ pc</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
+                                                        <span className="flex items-center gap-1.5">
+                                                            Delivery Charges:
+                                                            {activeShipping ? (
+                                                                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.2 rounded border border-emerald-300/40">
+                                                                    {activeShipping.location || activeShipping.method}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded border border-slate-300/40">
+                                                                    None
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                                            ₹{deliveryCharge.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
@@ -2684,7 +2864,7 @@ export default function CreateOrderPage() {
                                                         <div>
                                                             <span className="font-black text-xs text-slate-900 dark:text-slate-100 block">Final Order Total:</span>
                                                             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                                                                (₹{unitPriceWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / pc with GST)
+                                                                (₹{unitPriceWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / pc with GST & Delivery)
                                                             </span>
                                                         </div>
                                                         <span className="font-mono font-black text-emerald-800 dark:text-emerald-300 text-base">
