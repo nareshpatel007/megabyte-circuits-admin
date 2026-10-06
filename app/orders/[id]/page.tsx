@@ -1299,7 +1299,10 @@ export default function OrderDetailPage() {
     const getMetaValue = (key: string, fallback = "N/A") => {
         if (!order || !order.metas) return fallback;
         const found = order.metas.find(m => m.meta_key.toLowerCase() === key.toLowerCase());
-        return found ? found.meta_value : fallback;
+        if (found && found.meta_value !== null && found.meta_value !== undefined && String(found.meta_value).trim() !== "") {
+            return found.meta_value;
+        }
+        return fallback;
     };
 
     const isPastDeliveryDate = (dateString?: string | null, status?: string | null) => {
@@ -2206,108 +2209,140 @@ export default function OrderDetailPage() {
                             </span>
                         </div>
 
-                        {/* PCB Basic Specifications Group */}
-                        <div className="space-y-2">
-                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                1. PCB Basic Specifications
-                            </h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                                {renderSpecItem('pn_number', 'P/N Number', effectivePn || 'N/A', 'text')}
-                                {renderSpecItem('base_material', 'Base Material', getMetaValue('base_material', getMetaValue('material', 'FR-4')), 'select', ['FR-4', 'Aluminum', 'Rogers', 'FR-4 TG150', 'FR-4 TG170', 'Copper Base', 'PTFE', 'Polyimide', 'Flex/Rigid-Flex'])}
-                                {renderSpecItem('substrate_type', 'Substrate Type', getMetaValue('substrate_type', 'N/A'), 'select', ['Rigid', 'Flexible', 'Rigid-Flex', 'Aluminum', 'Rogers', 'Copper Base', 'N/A'])}
-                                {renderSpecItem('layers', 'Layer Count', getMetaValue('layers', order.layers ? `${order.layers} Layers` : '2 Layers'), 'select', ['1 Layers', '2 Layers', '4 Layers', '6 Layers', '8 Layers', '10 Layers', '12 Layers', '14 Layers', '16 Layers'])}
-                                {renderSpecItem('dimensions', 'Dimensions', getMetaValue('dimensions', (getMetaValue('dimensions_width') && getMetaValue('dimensions_length')) ? `${getMetaValue('dimensions_width')} x ${getMetaValue('dimensions_length')} ${getMetaValue('dimension_unit', 'mm')}` : '100x100mm'), 'text')}
-                                {renderSpecItem('order_qty', 'PCB Quantity', String(order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))), 'number', undefined, `${order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))} Pcs`)}
-                                {renderSpecItem('different_design', 'Different Design Count', getMetaValue('different_design', '1'), 'select', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])}
-                                {renderSpecItem('delivery_format', 'Delivery Format', getMetaValue('delivery_format', 'Single PCB'), 'select', ['Single PCB', 'Panel by Customer', 'Panel by Megabyte'])}
-                                {renderSpecItem('panel_format', 'Panel Layout', getMetaValue('panel_format', 'N/A'), 'text')}
-                                <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60 relative">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase truncate pr-1" title="Delivery Method">Delivery Method</p>
-                                    <p className="text-xs font-bold text-foreground mt-1 truncate" title={order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}>
-                                        {order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        {/* PCB Specifications Groups (Filtered by Material: FR-4 / Rigid vs Flex) */}
+                        {(() => {
+                            const baseMat = (getMetaValue('base_material', getMetaValue('material', 'FR-4')) || '').toLowerCase();
+                            const isFlex = baseMat === 'flex' || baseMat === 'flexible' || baseMat.includes('flex');
+                            const sf = (getMetaValue('surface_finish', '') || '').toLowerCase();
+                            const isEnigOrFlex = sf.includes('enig') || isFlex;
 
-                        {/* PCB Specifications Group */}
-                        <div className="space-y-2 pt-2 border-t border-border/40">
-                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                2. PCB Specifications
-                            </h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                                {renderSpecItem('thickness', 'PCB Thickness', getMetaValue('thickness', '1.6mm'), 'select', ['0.4mm', '0.6mm', '0.8mm', '1.0mm', '1.2mm', '1.6mm', '2.0mm', '2.4mm', '2.6mm', '3.0mm'])}
-                                {(() => {
-                                    const baseMat = (getMetaValue('base_material', getMetaValue('material', '')) || '').toLowerCase();
-                                    const isFlex = baseMat === 'flex' || baseMat === 'flexible' || baseMat.includes('flex');
-                                    let resolvedColor = 'N/A';
-                                    if (isFlex) {
-                                        const cColor = getMetaValue('coverlay_color', '');
-                                        const pColor = getMetaValue('pcb_color', getMetaValue('solder_mask', ''));
-                                        const val = (cColor && cColor !== 'N/A') ? cColor : (pColor && pColor !== 'N/A' ? pColor : '');
-                                        resolvedColor = val || 'N/A';
-                                    } else {
-                                        const pColor = getMetaValue('pcb_color', getMetaValue('solder_mask', getMetaValue('mask_color', '')));
-                                        resolvedColor = (pColor && pColor !== 'N/A') ? pColor : 'N/A';
-                                    }
-                                    return renderSpecItem(
-                                        'pcb_color',
-                                        'Solder Mask / Coverlay Color',
-                                        resolvedColor,
-                                        'select',
-                                        ['Green', 'Red', 'Yellow', 'Blue', 'White', 'Black', 'Matte Green', 'Matte Black', 'Purple', 'None', 'N/A']
-                                    );
-                                })()}
-                                {renderSpecItem('silkscreen', 'Silkscreen Color', getMetaValue('silkscreen', 'White'), 'select', ['White', 'Black', 'None'])}
-                                {renderSpecItem('material_type', 'Material Type', getMetaValue('material_type', 'FR4-TG135'), 'select', ['FR4-TG135', 'FR4-TG150', 'FR4-TG170', 'Standard TG', 'High TG', 'Aluminum TG', 'Rogers 4350B'])}
-                                {renderSpecItem('surface_finish', 'Surface Finish', getMetaValue('surface_finish', 'HASL(Leaded)'), 'select', ['HASL(Leaded)', 'Lead Free HASL', 'ENIG', 'OSP', 'Immersion Tin', 'Immersion Silver', 'Hard Gold', 'ENEPIG'])}
-                                {(() => {
-                                    const sf = getMetaValue('surface_finish', 'HASL(Leaded)');
-                                    const isEnig = sf.toLowerCase().includes('enig') || getMetaValue('base_material', '').toLowerCase() === 'flex';
-                                    const rawGt = getMetaValue('gold_thickness', 'N/A');
-                                    const cleanGt = isEnig ? (rawGt === '1 U*' ? '1 U"' : rawGt) : 'N/A';
-                                    return renderSpecItem('gold_thickness', 'Gold Thickness', cleanGt, 'select', isEnig ? ['1 U"', '2 U"', '3 U"', 'N/A'] : ['N/A']);
-                                })()}
-                            </div>
-                        </div>
+                            return (
+                                <>
+                                    {/* 1. PCB Basic Specifications */}
+                                    <div className="space-y-2">
+                                        <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                            1. PCB Basic Specifications
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                            {renderSpecItem('pn_number', 'P/N Number', effectivePn || 'N/A', 'text')}
+                                            {renderSpecItem('base_material', 'Base Material', getMetaValue('base_material', getMetaValue('material', 'FR-4')), 'select', ['FR-4', 'Aluminum', 'Rogers', 'FR-4 TG150', 'FR-4 TG170', 'Copper Base', 'PTFE', 'Polyimide', 'Flex/Rigid-Flex'])}
+                                            {isFlex && renderSpecItem('substrate_type', 'Substrate Type', getMetaValue('substrate_type', 'N/A'), 'select', ['25µm dielectric thickness', '50µm dielectric thickness', 'Transparent', 'N/A'])}
+                                            {renderSpecItem('layers', 'Layer Count', getMetaValue('layers', order.layers ? `${order.layers} Layers` : '2 Layers'), 'select', ['1 Layers', '2 Layers', '4 Layers', '6 Layers', '8 Layers', '10 Layers', '12 Layers', '14 Layers', '16 Layers'])}
+                                            {renderSpecItem('dimensions', 'Dimensions', getMetaValue('dimensions', (getMetaValue('dimensions_width') && getMetaValue('dimensions_length')) ? `${getMetaValue('dimensions_width')} x ${getMetaValue('dimensions_length')} ${getMetaValue('dimension_unit', 'mm')}` : '100x100mm'), 'text')}
+                                            {renderSpecItem('order_qty', 'PCB Quantity', String(order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))), 'number', undefined, `${order.order_qty || getMetaValue('quantity', getMetaValue('qty', '5'))} Pcs`)}
+                                            {renderSpecItem('product_type', 'Product Type', getMetaValue('product_type', 'Industrial/Consumer electronics'), 'select', ['Industrial/Consumer electronics', 'Aerospace/Military', 'Medical', 'Automotive', 'N/A'])}
+                                            {renderSpecItem('different_design', 'Different Design Count', getMetaValue('different_design', '1'), 'select', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])}
+                                            {renderSpecItem('delivery_format', 'Delivery Format', getMetaValue('delivery_format', 'Single PCB'), 'select', ['Single PCB', 'Panel by Customer', 'Panel by Megabyte'])}
+                                            {getMetaValue('delivery_format', 'Single PCB') !== 'Single PCB' && (
+                                                renderSpecItem('panel_format', 'Panel Layout', getMetaValue('panel_format', (getMetaValue('panel_column') && getMetaValue('panel_row')) ? `${getMetaValue('panel_column')} x ${getMetaValue('panel_row')}` : 'N/A'), 'text')
+                                            )}
+                                            <div className="bg-muted/30 rounded-xl p-2.5 border border-border/60 relative">
+                                                <p className="text-[10px] text-muted-foreground font-bold uppercase truncate pr-1" title="Delivery Method">Delivery Method</p>
+                                                <p className="text-xs font-bold text-foreground mt-1 truncate" title={order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}>
+                                                    {order.delivery_method_label || (order.delivery_method ? (order.delivery_method.charAt(0).toUpperCase() + order.delivery_method.slice(1)) : (getMetaValue('shipping_option', '—')))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        {/* High-Spec Options Group */}
-                        <div className="space-y-2 pt-2 border-t border-border/40">
-                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                3. High-Spec Options
-                            </h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                                {renderSpecItem('copper_weight', 'Outer Copper Weight', getMetaValue('copper_weight', '1 oz'), 'select', ['1 oz', '2 oz', '3 oz', '4 oz'])}
-                                {renderSpecItem('via_covering', 'Via Covering', getMetaValue('via_covering', 'N/A'), 'select', ['Tented', 'Untented (Through Holes)', 'Plugged', 'Epoxy Filled & Capped', 'N/A'])}
-                                {renderSpecItem('via_plating', 'Via Plating Method', getMetaValue('via_plating', 'N/A'), 'select', ['Standard Plating', 'Button Plating', 'Through-Hole Plating', 'N/A'])}
-                                {renderSpecItem('min_hole', 'Min Via Hole Size', getMetaValue('min_hole', 'N/A'), 'select', ['0.2mm', '0.25mm', '0.3mm', '0.35mm', '0.4mm', '0.5mm', 'N/A'])}
-                                {renderSpecItem('confirm_file', 'Confirm Production File', getMetaValue('confirm_file', 'No'), 'select', ['Yes', 'No'])}
-                                {renderSpecItem('mark_on_pcb', 'Mark on PCB', getMetaValue('mark_on_pcb', 'Remove Mark'), 'select', ['Remove Mark', 'Specify Location', 'Any Location', 'No Mark'])}
-                                {renderSpecItem('elec_test', 'Electrical Test', getMetaValue('elec_test', 'Flying Probe Fully Test'), 'select', ['Flying Probe Fully Test', 'Random Test', 'None'])}
-                                {renderSpecItem('coverlay_thickness', 'Coverlay Thickness', getMetaValue('coverlay_thickness', 'N/A'), 'select', ['0.5 mil', '1.0 mil', 'N/A'])}
-                                {renderSpecItem('stiffener', 'Stiffener', getMetaValue('stiffener', 'N/A'), 'select', ['FR4', 'PI/Polyimide', 'Stainless Steel', 'None', 'N/A'])}
-                                {renderSpecItem('emi_shielding', 'EMI Shielding Film', getMetaValue('emi_shielding', 'N/A'), 'select', ['Yes', 'No', 'Single-sided', 'Double-sided', 'N/A'])}
-                            </div>
-                        </div>
+                                    {/* 2. PCB Specifications Group */}
+                                    <div className="space-y-2 pt-2 border-t border-border/40">
+                                        <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                            2. PCB Specifications
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                            {renderSpecItem('thickness', 'Board Thickness', getMetaValue('thickness', '1.6mm'), 'select', isFlex ? ['0.07mm', '0.11mm', '0.12mm', '0.14mm', '0.19mm', '0.2mm', '0.24mm', '0.25mm', '0.3mm', '0.35mm', 'N/A'] : ['0.4mm', '0.6mm', '0.8mm', '1.0mm', '1.2mm', '1.6mm', '2.0mm', '2.4mm', '2.6mm', '3.0mm', 'N/A'])}
 
-                        {/* Advanced Options Group */}
-                        <div className="space-y-2 pt-2 border-t border-border/40">
-                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                4. Advanced Options & Badges
-                            </h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                                {[
-                                    { label: "Gold Fingers", key: 'gold_fingers', val: getMetaValue('gold_fingers', 'No') },
-                                    { label: "Castellated Holes", key: 'castellated', val: getMetaValue('castellated', 'No') },
-                                    { label: "Edge Plating", key: 'edge_plating', val: getMetaValue('edge_plating', 'No') },
-                                    { label: "Blind Slots", key: 'blind_slots', val: getMetaValue('blind_slots', 'No') },
-                                    { label: "UL Marking", key: 'ul_marking', val: getMetaValue('ul_marking', 'No') },
-                                    { label: "Humidity Card", key: 'humidity', val: getMetaValue('humidity', 'No') },
-                                    { label: "Kelvin Test", key: 'kelvin_test', val: getMetaValue('kelvin_test', 'No') },
-                                    { label: "Paper Between PCBs", key: 'paper_between', val: getMetaValue('paper_between', 'No') }
-                                ].map((badge) => renderBadgeItem(badge.key, badge.label, badge.val))}
-                            </div>
-                        </div>
+                                            {isFlex ? (
+                                                renderSpecItem('coverlay_color', 'Coverlay Color', getMetaValue('coverlay_color', getMetaValue('pcb_color', 'N/A')), 'select', ['Yellow', 'Black', 'White', 'Transparent', 'N/A'])
+                                            ) : (
+                                                renderSpecItem('pcb_color', 'Solder Mask Color', getMetaValue('pcb_color', getMetaValue('solder_mask', getMetaValue('mask_color', 'N/A'))), 'select', ['Green', 'Red', 'Yellow', 'Blue', 'White', 'Black', 'Matte Green', 'Matte Black', 'Purple', 'None', 'N/A'])
+                                            )}
+
+                                            {renderSpecItem('silkscreen', 'Silkscreen Color', getMetaValue('silkscreen', 'White'), 'select', ['White', 'Black', 'None', 'N/A'])}
+
+                                            {isFlex && (
+                                                renderSpecItem('copper_type', 'Copper Type', getMetaValue('copper_type', 'Electro-deposited'), 'select', ['Electro-deposited', 'Rolled Annealed', 'N/A'])
+                                            )}
+
+                                            {renderSpecItem('material_type', 'Material Type', getMetaValue('material_type', isFlex ? 'Polyimide (PI)' : 'FR4-TG135'), 'select', isFlex ? ['Polyimide (PI)', 'N/A'] : ['FR4-TG135', 'FR4-TG150', 'FR4-TG170', 'Standard TG', 'High TG', 'Aluminum TG', 'Rogers 4350B', 'RO4350B(Dk=3.48,Df=0.0037)', 'ZYF300CA-P(Dk=3.0,Df=0.0018)', 'N/A'])}
+
+                                            {renderSpecItem('surface_finish', 'Surface Finish', getMetaValue('surface_finish', isFlex ? 'ENIG' : 'HASL(Leaded)'), 'select', isFlex ? ['ENIG', 'N/A'] : ['HASL(Leaded)', 'Lead Free HASL', 'ENIG', 'OSP', 'Roller Tin', 'Immersion Tin', 'Immersion Silver', 'Hard Gold', 'ENEPIG', 'N/A'])}
+
+                                            {isEnigOrFlex && (() => {
+                                                const rawGt = getMetaValue('gold_thickness', '1 U"');
+                                                const cleanGt = rawGt === '1 U*' ? '1 U"' : (rawGt || '1 U"');
+                                                return renderSpecItem('gold_thickness', 'Gold Thickness', cleanGt, 'select', ['1 U"', '2 U"', '3 U"', 'N/A']);
+                                            })()}
+
+                                            {renderSpecItem('copper_weight', 'Outer Copper Weight', getMetaValue('copper_weight', isFlex ? '0.5 oz' : '1 oz'), 'select', isFlex ? ['0.5 oz', '1 oz', 'N/A'] : ['1 oz', '2 oz', '3 oz', '4 oz', 'N/A'])}
+
+                                            {isFlex && (
+                                                renderSpecItem('coverlay_thickness', 'Coverlay Thickness', getMetaValue('coverlay_thickness', 'N/A'), 'select', ['PI:12.5um/AD:15um', 'PI:25um/AD:25um', '0.5 mil', '1.0 mil', 'N/A'])
+                                            )}
+
+                                            {!isFlex && (
+                                                renderSpecItem('via_covering', 'Via Covering', getMetaValue('via_covering', 'N/A'), 'select', ['Tented', 'Untented', 'Plugged', 'Epoxy Filled & Capped', 'Not Specified', 'N/A'])
+                                            )}
+
+                                            {!isFlex && (
+                                                renderSpecItem('via_plating', 'Via Plating Method', getMetaValue('via_plating', 'N/A'), 'select', ['Not Specified', 'Conductive Adhesive', 'Horizontal Electroless Copper Plating', 'N/A'])
+                                            )}
+
+                                            {!isFlex && (
+                                                renderSpecItem('min_hole', 'Min Via Hole Size', getMetaValue('min_hole', 'N/A'), 'select', ['0.3mm/(0.4/0.45mm)', '0.25mm/(0.35/0.4mm)', '0.2mm/(0.3/0.35mm)', '0.15mm/(0.25/0.3mm)', '0.2mm', '0.25mm', '0.3mm', '0.35mm', '0.4mm', '0.5mm', 'N/A'])
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* 3. High-Spec Options Group */}
+                                    <div className="space-y-2 pt-2 border-t border-border/40">
+                                        <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                            3. High-Spec Options
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                            {isFlex && (
+                                                renderSpecItem('stiffener', 'Stiffener', getMetaValue('stiffener', 'Without'), 'select', ['Without', 'Polyimide', 'FR4', 'Stainless Steel', '3M Tape', 'N/A'])
+                                            )}
+                                            {isFlex && (
+                                                renderSpecItem('emi_shielding', 'EMI Shielding Film', getMetaValue('emi_shielding', 'Without'), 'select', ['Without', 'Both sides ( Black, 18um )', 'Single side ( Black, 18um )', 'Single-sided', 'Double-sided', 'Yes', 'No', 'N/A'])
+                                            )}
+                                            {isFlex && (
+                                                renderSpecItem('cutting_method', 'Cutting Method', getMetaValue('cutting_method', 'Laser Cutting'), 'select', ['Laser Cutting', 'Punching', 'N/A'])
+                                            )}
+                                            {isFlex && (
+                                                renderSpecItem('silkscreen_on_stiffener', 'Silkscreen on Stiffener', getMetaValue('silkscreen_on_stiffener', 'No'), 'select', ['No', 'Yes', 'N/A'])
+                                            )}
+                                            {isFlex && (
+                                                renderSpecItem('eda_software', 'EDA Software', getMetaValue('eda_software', 'EasyEDA Pro'), 'select', ['EasyEDA Pro', 'Other', 'N/A'])
+                                            )}
+                                            {renderSpecItem('elec_test', 'Electrical Test', getMetaValue('elec_test', 'Flying Probe Fully Test'), 'select', ['Flying Probe Fully Test', 'Random Test', 'None', 'N/A'])}
+                                            {renderSpecItem('mark_on_pcb', 'Mark on PCB', getMetaValue('mark_on_pcb', 'Remove Mark'), 'select', ['Remove Mark', 'Specify Location', 'Any Location', 'No Mark', 'N/A'])}
+                                            {renderSpecItem('confirm_file', 'Confirm Production File', getMetaValue('confirm_file', 'No'), 'select', ['Yes', 'No', 'N/A'])}
+                                        </div>
+                                    </div>
+
+                                    {/* 4. Advanced Options & Badges */}
+                                    <div className="space-y-2 pt-2 border-t border-border/40">
+                                        <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                            4. Advanced Options & Badges
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                            {[
+                                                { label: "Gold Fingers", key: 'gold_fingers', val: getMetaValue('gold_fingers', 'No'), show: true },
+                                                { label: "Castellated Holes", key: 'castellated', val: getMetaValue('castellated', 'No'), show: !isFlex },
+                                                { label: "Edge Plating", key: 'edge_plating', val: getMetaValue('edge_plating', 'No'), show: !isFlex },
+                                                { label: "Blind Slots", key: 'blind_slots', val: getMetaValue('blind_slots', 'No'), show: !isFlex },
+                                                { label: "UL Marking", key: 'ul_marking', val: getMetaValue('ul_marking', 'No'), show: true },
+                                                { label: "Humidity Card", key: 'humidity', val: getMetaValue('humidity', 'No'), show: true },
+                                                { label: "Kelvin Test", key: 'kelvin_test', val: getMetaValue('kelvin_test', 'No'), show: true },
+                                                { label: "Paper Between PCBs", key: 'paper_between', val: getMetaValue('paper_between', 'No'), show: true }
+                                            ].filter(b => b.show).map((badge) => renderBadgeItem(badge.key, badge.label, badge.val))}
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
 
                         {/* Custom Information & Remarks */}
                         <div className="space-y-1.5 pt-2 border-t border-border/40">

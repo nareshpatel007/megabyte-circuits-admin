@@ -998,53 +998,67 @@ export default function CreateOrderPage() {
             formData.append("company_name", companyName);
 
             // PCB Parameters
-            formData.append("layers", layerCount);
-            formData.append("dimensions_length", boardLength);
-            formData.append("dimensions_width", boardWidth);
-            formData.append("dimension_unit", dimensionUnit);
-            formData.append("quantity", quantity);
-            formData.append("material", material);
-            formData.append("thickness", thickness);
-            formData.append("surface_finish", surfaceFinish);
-            formData.append("solder_mask", material === "Flex" ? "" : (solderMask || "N/A"));
-            formData.append("pcb_color", material === "Flex" ? (coverlayColor || "N/A") : (solderMask || "N/A"));
-            formData.append("silkscreen", silkscreen);
-            formData.append("copper_weight", copperWeight);
+            formData.append("layers", layerCount || "N/A");
+            formData.append("dimensions_length", boardLength || "N/A");
+            formData.append("dimensions_width", boardWidth || "N/A");
+            formData.append("dimension_unit", dimensionUnit || "mm");
+            formData.append("quantity", quantity || "N/A");
+            formData.append("material", material || "N/A");
+            formData.append("thickness", thickness || "N/A");
+            formData.append("surface_finish", surfaceFinish || "N/A");
+            formData.append("silkscreen", silkscreen || "N/A");
+            formData.append("copper_weight", copperWeight || "N/A");
+            formData.append("material_type", materialType || "N/A");
+            formData.append("product_type", productType || "N/A");
+            formData.append("different_design", differentDesign || "N/A");
+            formData.append("delivery_format", deliveryFormat || "N/A");
+            if (deliveryFormat !== "Single PCB") {
+                if (panelColumn) formData.append("panel_column", panelColumn);
+                if (panelRow) formData.append("panel_row", panelRow);
+            }
+            formData.append("elec_test", elecTest || "N/A");
+            formData.append("mark_on_pcb", markOnPcb || "N/A");
+            formData.append("confirm_file", confirmFile || "No");
 
-            // Extended Quote Specs Metas
-            formData.append("substrate_type", substrateType);
-            formData.append("coverlay_color", material === "Flex" ? (coverlayColor || "N/A") : "");
-            formData.append("coverlay_thickness", coverlayThickness);
-            formData.append("copper_type", copperType);
-            formData.append("stiffener", stiffener);
-            formData.append("emi_shielding", emiShielding);
-            formData.append("cutting_method", cuttingMethod);
-            formData.append("silkscreen_on_stiffener", silkscreenOnStiffener);
-            formData.append("eda_software", edaSoftware);
-            if (panelColumn) formData.append("panel_column", panelColumn);
-            if (panelRow) formData.append("panel_row", panelRow);
-            formData.append("product_type", productType);
-            formData.append("different_design", differentDesign);
-            formData.append("delivery_format", deliveryFormat);
-            formData.append("material_type", materialType);
-            formData.append("gold_thickness", (surfaceFinish === "ENIG" || material === "Flex") ? (goldThickness || "1 U\"") : "N/A");
-            formData.append("via_covering", viaCovering);
-            formData.append("via_plating", viaPlating);
-            formData.append("min_hole", minHole);
-            formData.append("confirm_file", confirmFile);
-            formData.append("mark_on_pcb", markOnPcb);
-            formData.append("elec_test", elecTest);
-            formData.append("gold_fingers", goldFingers);
-            formData.append("castellated", castellated);
-            formData.append("edge_plating", edgePlating);
-            formData.append("blind_slots", blindSlots);
-            formData.append("ul_marking", ulMarking);
-            formData.append("humidity", humidity);
-            formData.append("kelvin_test", kelvinTest);
-            formData.append("paper_between", paperBetween);
-            formData.append("appearance_quality", appearanceQuality);
-            formData.append("silkscreen_tech", silkscreenTech);
-            formData.append("inspection_report", inspectionReport);
+            // Material-Specific Parameters: Only store options relevant to selected material
+            if (material === "Flex") {
+                formData.append("substrate_type", substrateType || "N/A");
+                formData.append("coverlay_color", coverlayColor || "N/A");
+                formData.append("pcb_color", coverlayColor || "N/A");
+                formData.append("copper_type", copperType || "N/A");
+                formData.append("gold_thickness", goldThickness || "1 U\"");
+                formData.append("coverlay_thickness", coverlayThickness || "N/A");
+                formData.append("stiffener", stiffener || "N/A");
+                formData.append("emi_shielding", emiShielding || "N/A");
+                formData.append("cutting_method", cuttingMethod || "N/A");
+                formData.append("silkscreen_on_stiffener", silkscreenOnStiffener || "N/A");
+                formData.append("eda_software", edaSoftware || "N/A");
+            } else {
+                // Non-Flex (FR-4, Rogers, PTFE Teflon, etc.)
+                formData.append("solder_mask", solderMask || "N/A");
+                formData.append("pcb_color", solderMask || "N/A");
+                formData.append("via_covering", viaCovering || "N/A");
+                formData.append("via_plating", viaPlating || "N/A");
+                formData.append("min_hole", minHole || "N/A");
+                if (surfaceFinish === "ENIG") {
+                    formData.append("gold_thickness", goldThickness || "1 U\"");
+                }
+            }
+
+            // High-Spec & Quality Options
+            formData.append("gold_fingers", goldFingers || "No");
+            if (material !== "Flex") {
+                formData.append("castellated", castellated || "No");
+                formData.append("edge_plating", edgePlating || "No");
+                formData.append("blind_slots", blindSlots || "No");
+            }
+            formData.append("ul_marking", ulMarking || "No");
+            formData.append("humidity", humidity || "No");
+            formData.append("kelvin_test", kelvinTest || "No");
+            formData.append("paper_between", paperBetween || "No");
+            formData.append("appearance_quality", appearanceQuality || "N/A");
+            formData.append("silkscreen_tech", silkscreenTech || "N/A");
+            formData.append("inspection_report", inspectionReport || "N/A");
             if (pcbRemark) formData.append("pcb_remark", pcbRemark);
             formData.append("lead_time_days", selectedDay.toString());
 
