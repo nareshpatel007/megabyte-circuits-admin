@@ -965,6 +965,7 @@ export default function OrderDetailPage() {
                 payload.metas.mask = cleanVal;
                 payload.metas.pcb_color = cleanVal;
                 payload.metas.solder_mask = cleanVal;
+                payload.metas.coverlay_color = cleanVal;
             } else if (specKey === 'base_material' || specKey === 'material') {
                 payload.base_material = cleanVal;
                 payload.material = cleanVal;
@@ -2236,7 +2237,27 @@ export default function OrderDetailPage() {
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                                 {renderSpecItem('thickness', 'PCB Thickness', getMetaValue('thickness', '1.6mm'), 'select', ['0.4mm', '0.6mm', '0.8mm', '1.0mm', '1.2mm', '1.6mm', '2.0mm', '2.4mm', '2.6mm', '3.0mm'])}
-                                {renderSpecItem('pcb_color', 'Solder Mask / Coverlay Color', getMetaValue('pcb_color', getMetaValue('coverlay_color', 'Green')), 'select', ['Green', 'Red', 'Yellow', 'Blue', 'White', 'Black', 'Matte Green', 'Matte Black', 'Purple', 'None'])}
+                                {(() => {
+                                    const baseMat = (getMetaValue('base_material', getMetaValue('material', '')) || '').toLowerCase();
+                                    const isFlex = baseMat === 'flex' || baseMat === 'flexible' || baseMat.includes('flex');
+                                    let resolvedColor = 'N/A';
+                                    if (isFlex) {
+                                        const cColor = getMetaValue('coverlay_color', '');
+                                        const pColor = getMetaValue('pcb_color', getMetaValue('solder_mask', ''));
+                                        const val = (cColor && cColor !== 'N/A') ? cColor : (pColor && pColor !== 'N/A' ? pColor : '');
+                                        resolvedColor = val || 'N/A';
+                                    } else {
+                                        const pColor = getMetaValue('pcb_color', getMetaValue('solder_mask', getMetaValue('mask_color', '')));
+                                        resolvedColor = (pColor && pColor !== 'N/A') ? pColor : 'N/A';
+                                    }
+                                    return renderSpecItem(
+                                        'pcb_color',
+                                        'Solder Mask / Coverlay Color',
+                                        resolvedColor,
+                                        'select',
+                                        ['Green', 'Red', 'Yellow', 'Blue', 'White', 'Black', 'Matte Green', 'Matte Black', 'Purple', 'None', 'N/A']
+                                    );
+                                })()}
                                 {renderSpecItem('silkscreen', 'Silkscreen Color', getMetaValue('silkscreen', 'White'), 'select', ['White', 'Black', 'None'])}
                                 {renderSpecItem('material_type', 'Material Type', getMetaValue('material_type', 'FR4-TG135'), 'select', ['FR4-TG135', 'FR4-TG150', 'FR4-TG170', 'Standard TG', 'High TG', 'Aluminum TG', 'Rogers 4350B'])}
                                 {renderSpecItem('surface_finish', 'Surface Finish', getMetaValue('surface_finish', 'HASL(Leaded)'), 'select', ['HASL(Leaded)', 'Lead Free HASL', 'ENIG', 'OSP', 'Immersion Tin', 'Immersion Silver', 'Hard Gold', 'ENEPIG'])}

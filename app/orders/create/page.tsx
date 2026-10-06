@@ -584,7 +584,9 @@ export default function CreateOrderPage() {
 
         const defaultOrderValue = Math.max(Math.round(length * width * 0.05 * qty), 100);
         const defaultUnitPrice = (defaultOrderValue / qty).toFixed(2);
-        const getOption = (dayNum: number) => options.find((o) => o.day === dayNum && o.visible);
+        const validAnchors = (options || [])
+            .filter((o: any) => o && !isNaN(Number(o.day)) && parseFloat(o.orderValue) > 0)
+            .sort((a: any, b: any) => Number(a.day) - Number(b.day));
 
         let workingDayCounter = 0;
 
@@ -613,88 +615,47 @@ export default function CreateOrderPage() {
             if (!isSunday && !isHoliday) {
                 workingDayCounter++;
                 workingDayNum = workingDayCounter;
+                visible = true;
 
-                if (layers >= 4 && layers <= 10) {
-                    const opt20 = getOption(20);
-                    if (opt20) {
-                        matchedOrderValue = parseFloat(opt20.orderValue);
-                        matchedUnitPrice = parseFloat(opt20.unitPrice);
-                        visible = true;
+                const directOpt = validAnchors.find((o: any) => Number(o.day) === workingDayNum);
+                if (directOpt) {
+                    matchedOrderValue = parseFloat(directOpt.orderValue);
+                    matchedUnitPrice = parseFloat(directOpt.unitPrice);
+                } else if (validAnchors.length > 0) {
+                    let prevAnchor: (typeof validAnchors)[0] | null = null;
+                    let nextAnchor: (typeof validAnchors)[0] | null = null;
+
+                    for (const a of validAnchors) {
+                        const d = Number(a.day);
+                        if (d < workingDayNum) {
+                            prevAnchor = a;
+                        } else if (d > workingDayNum && !nextAnchor) {
+                            nextAnchor = a;
+                            break;
+                        }
                     }
-                } else {
-                    const interpolate = (d1: number, d2: number, ratio: number = 0.5) => {
-                        const o1 = getOption(d1);
-                        const o2 = getOption(d2);
-                        if (o1 && o2) {
-                            const val1 = parseFloat(o1.orderValue);
-                            const val2 = parseFloat(o2.orderValue);
-                            const u1 = parseFloat(o1.unitPrice);
-                            const u2 = parseFloat(o2.unitPrice);
-                            return {
-                                orderValue: val1 + (val2 - val1) * ratio,
-                                unitPrice: u1 + (u2 - u1) * ratio,
-                                visible: true
-                            };
-                        } else if (o2) {
-                            return { orderValue: parseFloat(o2.orderValue), unitPrice: parseFloat(o2.unitPrice), visible: true };
-                        } else if (o1) {
-                            return { orderValue: parseFloat(o1.orderValue), unitPrice: parseFloat(o1.unitPrice), visible: true };
-                        }
-                        return null;
-                    };
 
-                    const dayNum = workingDayNum;
-                    const directOpt = getOption(dayNum);
-                    if (directOpt) {
-                        matchedOrderValue = parseFloat(directOpt.orderValue);
-                        matchedUnitPrice = parseFloat(directOpt.unitPrice);
-                        visible = true;
-                    } else {
-                        // Find dynamic surrounding configured anchors
-                        const sortedAnchors = (options || [])
-                            .filter((o: any) => o && !isNaN(Number(o.days)))
-                            .map((o: any) => Number(o.days))
-                            .sort((a: number, b: number) => a - b);
-
-                        let prevAnchor: number | null = null;
-                        let nextAnchor: number | null = null;
-
-                        for (const a of sortedAnchors) {
-                            if (a < dayNum) prevAnchor = a;
-                            else if (a > dayNum && nextAnchor === null) {
-                                nextAnchor = a;
-                                break;
-                            }
-                        }
-
-                        if (prevAnchor !== null && nextAnchor !== null) {
-                            const ratio = (dayNum - prevAnchor) / (nextAnchor - prevAnchor);
-                            const res = interpolate(prevAnchor, nextAnchor, ratio);
-                            if (res) {
-                                matchedOrderValue = res.orderValue;
-                                matchedUnitPrice = res.unitPrice;
-                                visible = res.visible;
-                            }
-                        } else if (nextAnchor !== null) {
-                            const o = getOption(nextAnchor);
-                            if (o) {
-                                matchedOrderValue = parseFloat(o.orderValue);
-                                matchedUnitPrice = parseFloat(o.unitPrice);
-                                visible = true;
-                            }
-                        } else if (prevAnchor !== null) {
-                            const o = getOption(prevAnchor);
-                            if (o) {
-                                matchedOrderValue = parseFloat(o.orderValue);
-                                matchedUnitPrice = parseFloat(o.unitPrice);
-                                visible = true;
-                            }
-                        }
+                    if (prevAnchor && nextAnchor) {
+                        const prevDay = Number(prevAnchor.day);
+                        const nextDay = Number(nextAnchor.day);
+                        const ratio = (workingDayNum - prevDay) / (nextDay - prevDay);
+                        const val1 = parseFloat(prevAnchor.orderValue);
+                        const val2 = parseFloat(nextAnchor.orderValue);
+                        const u1 = parseFloat(prevAnchor.unitPrice);
+                        const u2 = parseFloat(nextAnchor.unitPrice);
+                        matchedOrderValue = val1 + (val2 - val1) * ratio;
+                        matchedUnitPrice = u1 + (u2 - u1) * ratio;
+                    } else if (prevAnchor) {
+                        matchedOrderValue = parseFloat(prevAnchor.orderValue);
+                        matchedUnitPrice = parseFloat(prevAnchor.unitPrice);
+                    } else if (nextAnchor) {
+                        matchedOrderValue = parseFloat(nextAnchor.orderValue);
+                        matchedUnitPrice = parseFloat(nextAnchor.unitPrice);
                     }
                 }
             }
 
-            const isUnavailable = isSunday || isHoliday || !visible;
+            const isUnavailable = isSunday || isHoliday;
 
             return {
                 day: daysAhead,
@@ -1045,13 +1006,14 @@ export default function CreateOrderPage() {
             formData.append("material", material);
             formData.append("thickness", thickness);
             formData.append("surface_finish", surfaceFinish);
-            formData.append("solder_mask", solderMask);
+            formData.append("solder_mask", material === "Flex" ? "" : (solderMask || "N/A"));
+            formData.append("pcb_color", material === "Flex" ? (coverlayColor || "N/A") : (solderMask || "N/A"));
             formData.append("silkscreen", silkscreen);
             formData.append("copper_weight", copperWeight);
 
             // Extended Quote Specs Metas
             formData.append("substrate_type", substrateType);
-            formData.append("coverlay_color", coverlayColor);
+            formData.append("coverlay_color", material === "Flex" ? (coverlayColor || "N/A") : "");
             formData.append("coverlay_thickness", coverlayThickness);
             formData.append("copper_type", copperType);
             formData.append("stiffener", stiffener);
