@@ -405,7 +405,7 @@ export default function OrderDetailPage() {
                 setOrderNumberError("");
                 setPnNumberState(o.pn_number ? String(o.pn_number) : "");
                 setNewStatus(o.status || "");
-                
+
                 const orderQtyVal = extractQty(o, 'order_qty', ['order_qty', 'qty', 'quantity', 'pcs'], 0);
                 const compQtyVal = extractQty(o, 'completed_qty', ['completed_qty', 'completed', 'final_qty', 'final'], 0);
                 const failQtyVal = extractQty(o, 'failed_qty', ['failed_qty', 'failed'], 0);
@@ -422,11 +422,11 @@ export default function OrderDetailPage() {
                 setUpsQty(upsQtyVal);
                 setCgState(o.c_g ? String(o.c_g).toUpperCase() : "");
                 setInlineCgState(o.c_g ? String(o.c_g).toUpperCase() : "");
-                const defaultPn = o.pn_number 
-                    || o.gerber_file?.original_name 
-                    || o.gerber_file?.file_name 
+                const defaultPn = o.pn_number
+                    || o.gerber_file?.original_name
+                    || o.gerber_file?.file_name
                     || (Array.isArray(o.metas) ? o.metas.find((m: any) => ['gerber_file_name', 'gerber_name', 'board_name', 'p_n', 'part_number'].includes(m.meta_key?.toLowerCase()))?.meta_value : null)
-                    || o.board_name 
+                    || o.board_name
                     || "";
 
                 setPnNumberState(o.pn_number ? String(o.pn_number) : (defaultPn ? String(defaultPn) : ""));
@@ -939,7 +939,7 @@ export default function OrderDetailPage() {
         try {
             const token = localStorage.getItem("admin_token");
             const cleanVal = (val ?? '').trim();
-            let payload: Record<string, any> = { 
+            let payload: Record<string, any> = {
                 [specKey]: cleanVal,
                 metas: {
                     [specKey]: cleanVal
@@ -1120,11 +1120,10 @@ export default function OrderDetailPage() {
                                         key={opt}
                                         type="button"
                                         onClick={() => setSpecFormValues(prev => ({ ...prev, [key]: opt }))}
-                                        className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold border transition-all cursor-pointer ${
-                                            valToEdit === opt
-                                                ? 'bg-emerald-500 text-white border-emerald-600 shadow-2xs font-bold'
-                                                : 'bg-muted/60 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-foreground/80 border-border/70'
-                                        }`}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold border transition-all cursor-pointer ${valToEdit === opt
+                                            ? 'bg-emerald-500 text-white border-emerald-600 shadow-2xs font-bold'
+                                            : 'bg-muted/60 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-foreground/80 border-border/70'
+                                            }`}
                                     >
                                         {opt}
                                     </button>
@@ -1133,16 +1132,16 @@ export default function OrderDetailPage() {
                         )}
                     </div>
                 ) : hasEditOrderPermission ? (
-                    <p 
-                        className="font-bold text-foreground mt-0.5 truncate cursor-pointer hover:text-emerald-600 transition-colors" 
+                    <p
+                        className="font-bold text-foreground mt-0.5 truncate cursor-pointer hover:text-emerald-600 transition-colors"
                         title={`Click to edit ${label}: ${displayValue || currentValue || 'N/A'}`}
                         onClick={() => startEditSpec(key, currentValue === 'N/A' ? '' : currentValue)}
                     >
                         {displayValue || currentValue || 'N/A'}
                     </p>
                 ) : (
-                    <p 
-                        className="font-bold text-foreground mt-0.5 truncate cursor-default select-text" 
+                    <p
+                        className="font-bold text-foreground mt-0.5 truncate cursor-default select-text"
                         title={`${label}: ${displayValue || currentValue || 'N/A'}`}
                     >
                         {displayValue || currentValue || 'N/A'}
@@ -1201,11 +1200,10 @@ export default function OrderDetailPage() {
                                 key={opt}
                                 type="button"
                                 onClick={() => setSpecFormValues(prev => ({ ...prev, [key]: opt }))}
-                                className={`text-[10px] px-2 py-0.5 rounded font-semibold border transition-all cursor-pointer ${
-                                    (valToEdit || '').toLowerCase() === opt.toLowerCase()
-                                        ? 'bg-emerald-500 text-white border-emerald-600 font-bold shadow-2xs'
-                                        : 'bg-muted/60 hover:bg-emerald-500/10 text-foreground/80 border-border/70'
-                                }`}
+                                className={`text-[10px] px-2 py-0.5 rounded font-semibold border transition-all cursor-pointer ${(valToEdit || '').toLowerCase() === opt.toLowerCase()
+                                    ? 'bg-emerald-500 text-white border-emerald-600 font-bold shadow-2xs'
+                                    : 'bg-muted/60 hover:bg-emerald-500/10 text-foreground/80 border-border/70'
+                                    }`}
                             >
                                 {opt}
                             </button>
@@ -1221,7 +1219,7 @@ export default function OrderDetailPage() {
                 <div className="flex items-center gap-1.5 shrink-0">
                     {hasEditOrderPermission ? (
                         <>
-                            <span 
+                            <span
                                 onClick={() => startEditSpec(key, currentVal || 'No')}
                                 className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black cursor-pointer hover:opacity-80 transition-opacity ${isYes ? 'bg-emerald-500 text-white' : 'bg-muted border border-border/60 text-foreground'}`}
                                 title="Click to edit"
@@ -1237,7 +1235,7 @@ export default function OrderDetailPage() {
                             </button>
                         </>
                     ) : (
-                        <span 
+                        <span
                             className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black cursor-default select-text ${isYes ? 'bg-emerald-500 text-white' : 'bg-muted border border-border/60 text-foreground'}`}
                         >
                             {currentVal || 'No'}
@@ -1432,10 +1430,10 @@ export default function OrderDetailPage() {
         }
     };
     const boardNameVal = order.board_name || getMetaValue('board_name', '');
-    const fallbackPnNumber = order.pn_number 
-        || rawGerberName 
-        || (gerberUrl ? gerberUrl.split('/').pop() : '') 
-        || boardNameVal 
+    const fallbackPnNumber = order.pn_number
+        || rawGerberName
+        || (gerberUrl ? gerberUrl.split('/').pop() : '')
+        || boardNameVal
         || getMetaValue('p_n', getMetaValue('part_number', ''));
     const effectivePn = order.pn_number || fallbackPnNumber;
     const layerCount = getMetaValue('layers', getMetaValue('layer', '2'));
@@ -1580,11 +1578,6 @@ export default function OrderDetailPage() {
             {isPartProduct && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wider">
                     Part Order
-                </span>
-            )}
-            {isJlcpcbOrder && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
-                    JLCPCB Order
                 </span>
             )}
             {((order.combo && String(order.combo).trim() !== "") || (Array.isArray(order.combo_orders) && order.combo_orders.length > 0)) && (
@@ -2090,10 +2083,10 @@ export default function OrderDetailPage() {
                                             <span className="font-bold text-foreground">
                                                 {order.c_g ? (
                                                     <span className={`px-2 py-0.5 rounded-md text-xs font-black border ${order.c_g === 'GST'
-                                                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                                                            : order.c_g === 'CASH'
-                                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                                        : order.c_g === 'CASH'
+                                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                                            : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
                                                         }`}>
                                                         {order.c_g}
                                                     </span>
