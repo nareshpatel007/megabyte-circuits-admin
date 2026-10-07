@@ -2217,19 +2217,21 @@ export default function CreateOrderPage() {
                         )}
                     </div>
 
-                    {/* Section 4: Financials & Payment Record (Including Integrated Delivery Calendar) */}
-                    <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs space-y-5">
-                        <div className="flex items-center gap-2.5 border-b border-border/60 pb-3">
-                            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
-                                <CreditCard className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-foreground">4. Financials & Payment Record</h3>
-                                <p className="text-xs text-muted-foreground font-medium">Select delivery lead time, review calculated pricing, set expected delivery date, and record manual payment</p>
+                    {/* Section 4: Financials & Payment Record (Integrated Delivery Calendar & Logistics) */}
+                    <div className="bg-card border border-border/80 rounded-xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                        <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500">
+                                    <CreditCard className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-foreground">4. Financials & Payment Record</h3>
+                                    <p className="text-[11px] text-muted-foreground font-medium">Select delivery lead time & shipping, review calculated pricing, and record payment</p>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Side-by-Side: 1. Delivery Calendar & 2. Pricing / Manual Method */}
+                        {/* Side-by-Side: 1. Delivery Calendar & Shipping Logistics | 2. Pricing Engine & Summary */}
                         {(() => {
                             const unitMult = dimensionUnit === "inches" ? 25.4 : 1;
                             const lengthMm = (parseFloat(boardWidth) || 100) * unitMult;
@@ -2258,7 +2260,7 @@ export default function CreateOrderPage() {
                                 pricingModeLabel = "Automatic Lead-Time Matrix";
                             }
 
-                            // Weight & Shipping Calculation matching cart (Image 2)
+                            // Weight & Shipping Calculation matching cart
                             const thicknessMm = parseFloat((thickness || "1.6").toString().replace(/[^0-9.]/g, "")) || 1.6;
                             const weightPerSqM = material === "Flex" ? 0.3 : 3.8 * (thicknessMm / 1.6);
                             const calculatedEstWeightKg = Math.max(0.1, parseFloat((totalAreaSqm * weightPerSqM).toFixed(2)));
@@ -2307,34 +2309,30 @@ export default function CreateOrderPage() {
                             };
 
                             return (
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                                    {/* Left Column: Delivery Calendar (7 Cols on lg) */}
-                                    <div className="lg:col-span-7 bg-muted/20 border border-border/80 p-3.5 sm:p-4 rounded-xl space-y-2.5">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-border/60 gap-1.5">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+                                    {/* Left Column: Delivery Calendar & Shipping Logistics (7 Cols on lg) */}
+                                    <div className="lg:col-span-7 bg-muted/15 border border-border/70 p-3 sm:p-3.5 rounded-xl space-y-2.5">
+                                        {/* Header & Status Legend in a Single Clean Row */}
+                                        <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-border/60">
                                             <div className="flex items-center gap-2">
                                                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-500/30 animate-pulse" />
                                                 <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                                                     <CalendarDays className="w-3.5 h-3.5" />
-                                                    Delivery Date & Lead Time Calendar
+                                                    Lead Time & Delivery Calendar
                                                 </h4>
+                                                <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[10.5px] font-bold border border-emerald-500/30">
+                                                    {calendarHeaderTitle}
+                                                </span>
                                             </div>
-                                            <div className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md text-[11px] font-bold border border-emerald-500/30 self-start sm:self-auto">
-                                                {calendarHeaderTitle}
-                                            </div>
-                                        </div>
-
-                                        {/* Status & Legend */}
-                                        <div className="flex flex-wrap items-center justify-between text-[10.5px] text-muted-foreground gap-1.5">
-                                            <span className="font-medium">Select delivery schedule date:</span>
-                                            <div className="flex items-center gap-2.5">
+                                            <div className="flex items-center gap-2 text-[10px]">
                                                 <span className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Selected
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Selected
                                                 </span>
-                                                <span className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
-                                                    <span className="w-2 h-2 rounded-full bg-slate-400" /> Sunday
+                                                <span className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Sunday
                                                 </span>
-                                                <span className="flex items-center gap-1 font-bold text-amber-800 dark:text-amber-400">
-                                                    <span className="w-2 h-2 rounded-full bg-amber-500" /> Holiday
+                                                <span className="flex items-center gap-1 font-bold text-amber-700 dark:text-amber-400">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Holiday
                                                 </span>
                                             </div>
                                         </div>
@@ -2350,18 +2348,18 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - Sunday - Unavailable`}
-                                                            className="px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
+                                                            className="px-1 py-1 sm:px-1.5 sm:py-1 rounded-lg border border-slate-300/80 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-800/80 text-center select-none flex flex-col justify-between cursor-not-allowed h-[58px] sm:h-[62px]"
                                                         >
-                                                            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase leading-none text-slate-700 dark:text-slate-300">
+                                                            <div className="flex items-center justify-between text-[9.5px] font-extrabold uppercase leading-none text-slate-600 dark:text-slate-400">
                                                                 <span>{item.weekday}</span>
-                                                                <span className="text-[8.5px] font-black text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-1 py-0.2 rounded">Off</span>
+                                                                <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-1 py-0.2 rounded">Off</span>
                                                             </div>
                                                             <div className="flex items-baseline justify-center gap-1 my-auto">
-                                                                <span className="text-base sm:text-lg font-black leading-none text-slate-800 dark:text-slate-200 line-through decoration-slate-400 decoration-2">{item.dateNum}</span>
-                                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-none">{item.monthStr}</span>
+                                                                <span className="text-sm sm:text-base font-black leading-none text-slate-700 dark:text-slate-300 line-through decoration-slate-400 decoration-1.5">{item.dateNum}</span>
+                                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 leading-none">{item.monthStr}</span>
                                                             </div>
-                                                            <div className="pt-1 border-t border-slate-300/80 dark:border-slate-700 flex justify-center">
-                                                                <span className="text-[8.5px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 bg-slate-200/90 dark:bg-slate-700 px-1.5 py-0.2 rounded-sm leading-tight">
+                                                            <div className="pt-0.5 border-t border-slate-300/60 dark:border-slate-700 flex justify-center">
+                                                                <span className="text-[8px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-200/90 dark:bg-slate-700 px-1 py-0.2 rounded-xs leading-none">
                                                                     Sunday
                                                                 </span>
                                                             </div>
@@ -2375,18 +2373,18 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - ${item.holidayName || "Public Holiday"} - Unavailable`}
-                                                            className="px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
+                                                            className="px-1 py-1 sm:px-1.5 sm:py-1 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-center select-none flex flex-col justify-between cursor-not-allowed h-[58px] sm:h-[62px]"
                                                         >
-                                                            <div className="flex items-center justify-between text-[10px] font-black uppercase leading-none text-amber-900 dark:text-amber-200">
+                                                            <div className="flex items-center justify-between text-[9.5px] font-black uppercase leading-none text-amber-900 dark:text-amber-200">
                                                                 <span>{item.weekday}</span>
-                                                                <span className="text-[8.5px] font-black text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900 px-1 py-0.2 rounded">Holiday</span>
+                                                                <span className="text-[8px] font-black text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900 px-1 py-0.2 rounded">Holiday</span>
                                                             </div>
                                                             <div className="flex items-baseline justify-center gap-1 my-auto">
-                                                                <span className="text-base sm:text-lg font-black leading-none text-amber-950 dark:text-amber-100">{item.dateNum}</span>
-                                                                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 leading-none">{item.monthStr}</span>
+                                                                <span className="text-sm sm:text-base font-black leading-none text-amber-950 dark:text-amber-100">{item.dateNum}</span>
+                                                                <span className="text-[9px] font-bold text-amber-800 dark:text-amber-300 leading-none">{item.monthStr}</span>
                                                             </div>
-                                                            <div className="pt-1 border-t border-amber-300 dark:border-amber-800 flex justify-center" title={item.holidayName || "Holiday"}>
-                                                                <span className="text-[8.5px] font-black uppercase tracking-tight text-white bg-amber-700 dark:bg-amber-600 px-1.5 py-0.2 rounded-sm truncate max-w-full leading-tight">
+                                                            <div className="pt-0.5 border-t border-amber-300 dark:border-amber-800 flex justify-center" title={item.holidayName || "Holiday"}>
+                                                                <span className="text-[8px] font-black uppercase tracking-tight text-white bg-amber-700 dark:bg-amber-600 px-1 py-0.2 rounded-xs truncate max-w-full leading-none">
                                                                     {item.holidayName || "Holiday"}
                                                                 </span>
                                                             </div>
@@ -2400,14 +2398,14 @@ export default function CreateOrderPage() {
                                                             key={item.day}
                                                             aria-disabled="true"
                                                             title={`${item.formattedDate} - Unavailable for this order area/specifications`}
-                                                            className="px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border border-border/80 bg-muted/30 text-center select-none flex flex-col justify-between cursor-not-allowed h-[72px] sm:h-[76px]"
+                                                            className="px-1 py-1 sm:px-1.5 sm:py-1 rounded-lg border border-border/80 bg-muted/30 text-center select-none flex flex-col justify-between cursor-not-allowed h-[58px] sm:h-[62px]"
                                                         >
-                                                            <div className="text-[10px] font-bold uppercase leading-none text-muted-foreground">{item.weekday}</div>
+                                                            <div className="text-[9.5px] font-bold uppercase leading-none text-muted-foreground">{item.weekday}</div>
                                                             <div className="flex items-baseline justify-center gap-1 my-auto">
-                                                                <span className="text-base sm:text-lg font-black leading-none text-muted-foreground line-through">{item.dateNum}</span>
-                                                                <span className="text-[10px] font-bold text-muted-foreground leading-none">{item.monthStr}</span>
+                                                                <span className="text-sm sm:text-base font-black leading-none text-muted-foreground line-through">{item.dateNum}</span>
+                                                                <span className="text-[9px] font-bold text-muted-foreground leading-none">{item.monthStr}</span>
                                                             </div>
-                                                            <div className="pt-1 border-t border-border/60 text-[9px] font-black text-muted-foreground">
+                                                            <div className="pt-0.5 border-t border-border/60 text-[8.5px] font-black text-muted-foreground leading-none">
                                                                 N/A
                                                             </div>
                                                         </div>
@@ -2424,31 +2422,31 @@ export default function CreateOrderPage() {
                                                             setUnitPrice(item.unitPrice);
                                                         }}
                                                         title={`${item.formattedDate} (${item.weekday}) • ${item.workingDayNum} Working Days • Base: ₹${parseFloat(item.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (₹${(parseFloat(item.orderValue) / qtyPcs).toFixed(2)}/pc)`}
-                                                        className={`px-1 py-1 sm:px-1.5 sm:py-1.5 rounded-lg border text-center transition-all cursor-pointer select-none flex flex-col justify-between h-[72px] sm:h-[76px] ${
+                                                        className={`px-1 py-1 sm:px-1.5 sm:py-1 rounded-lg border text-center transition-all cursor-pointer select-none flex flex-col justify-between h-[58px] sm:h-[62px] ${
                                                             isSelected
-                                                                ? "bg-emerald-600 text-white border-2 border-emerald-700 shadow-sm ring-2 ring-emerald-500/40 z-10"
+                                                                ? "bg-emerald-600 text-white border-2 border-emerald-700 shadow-xs ring-2 ring-emerald-500/40 z-10"
                                                                 : "bg-card hover:bg-emerald-500/10 border-border/90 hover:border-emerald-500/60 text-foreground"
                                                         }`}
                                                     >
-                                                        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase leading-none">
+                                                        <div className="flex items-center justify-between text-[9.5px] font-extrabold uppercase leading-none">
                                                             <span className={isSelected ? "text-white" : "text-slate-700 dark:text-slate-200"}>{item.weekday}</span>
                                                             {isSelected ? (
                                                                 <span className="bg-white/25 p-0.5 rounded-full"><Check className="w-2.5 h-2.5 text-white stroke-[3]" /></span>
                                                             ) : (
-                                                                <span className="text-[8.5px] font-black text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-300/40">
+                                                                <span className="text-[8px] font-black text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-300/40">
                                                                     W{item.workingDayNum}
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-baseline justify-center gap-1 my-auto">
-                                                            <span className={`text-base sm:text-lg font-black leading-none ${isSelected ? "text-white" : "text-foreground"}`}>
+                                                        <div className="flex items-baseline justify-center gap-0.5 my-auto">
+                                                            <span className={`text-sm sm:text-base font-black leading-none ${isSelected ? "text-white" : "text-foreground"}`}>
                                                                 {item.dateNum}
                                                             </span>
-                                                            <span className={`text-[10px] font-bold leading-none ${isSelected ? "text-emerald-100" : "text-muted-foreground"}`}>
+                                                            <span className={`text-[9px] font-bold leading-none ${isSelected ? "text-emerald-100" : "text-muted-foreground"}`}>
                                                                 {item.monthStr}
                                                             </span>
                                                         </div>
-                                                        <div className={`pt-1 border-t text-[9.5px] sm:text-[10px] font-bold tracking-tight leading-none whitespace-nowrap text-center max-w-full inline-block ${
+                                                        <div className={`pt-0.5 border-t text-[9px] sm:text-[9.5px] font-bold font-mono tracking-tight leading-none whitespace-nowrap text-center max-w-full inline-block ${
                                                             isSelected ? "border-white/25 text-white" : "border-border/60 text-emerald-700 dark:text-emerald-400"
                                                         }`}>
                                                             {getCardDisplayPrice(item.orderValue)}
@@ -2459,158 +2457,264 @@ export default function CreateOrderPage() {
                                         </div>
 
                                         {/* Calendar Selection Banner */}
-                                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-xs">
-                                            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                                                <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                                        <div className="flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-xs">
+                                            <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                                                <CalendarDays className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                                 {selectedDayItem ? (
-                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">
-                                                        Selected Delivery: <b className="font-black text-slate-950 dark:text-white">{selectedDayItem.formattedDate} ({selectedDayItem.weekday})</b> • Lead Time: <b className="font-black text-slate-950 dark:text-white">{selectedDayItem.workingDayNum} Working Days</b>
+                                                    <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                                                        Selected: <b className="font-black text-slate-950 dark:text-white">{selectedDayItem.formattedDate} ({selectedDayItem.weekday})</b> • Lead Time: <b className="font-black text-slate-950 dark:text-white">{selectedDayItem.workingDayNum} Working Days</b>
                                                     </span>
                                                 ) : (
-                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                                    <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">
                                                         Delivery Date: <b className="font-black text-slate-950 dark:text-white">{deliveryDate || "Not Selected"}</b>
                                                     </span>
                                                 )}
                                             </div>
                                             {selectedDayItem && (
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    <span className="font-mono text-slate-700 dark:text-slate-300 text-xs">
-                                                        Per Piece: <b className="text-emerald-800 dark:text-emerald-300 font-black">₹{(parseFloat(selectedDayItem.orderValue) / qtyPcs).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
+                                                <div className="flex items-center gap-2.5 text-[11px]">
+                                                    <span className="font-mono text-slate-600 dark:text-slate-400">
+                                                        Per Piece: <b className="text-emerald-700 dark:text-emerald-300 font-black">₹{(parseFloat(selectedDayItem.orderValue) / qtyPcs).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
                                                     </span>
                                                     <span className="font-mono font-black text-slate-900 dark:text-slate-100">
-                                                        Matrix Base: <span className="text-emerald-800 dark:text-emerald-300">₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        Matrix Base: <span className="text-emerald-700 dark:text-emerald-300">₹{parseFloat(selectedDayItem.orderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                     </span>
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Shipping Method Selector (Directly under calendar for unified logistics) */}
+                                        <div className="pt-2 border-t border-border/60 space-y-1.5">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-1.5 font-bold text-foreground">
+                                                    <Truck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                    <span className="text-xs font-black uppercase tracking-wider">Shipping Method</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10.5px] text-muted-foreground font-medium">
+                                                        Area: <b className="text-foreground font-mono">{totalAreaSqm.toFixed(2)} m²</b>
+                                                        <span className="text-[9.5px] text-muted-foreground"> ({calculatedEstWeightKg} kg{calculatedEstWeightKg < 1 ? ' → 1 kg min' : ''})</span>
+                                                    </span>
+                                                    {deliveryMethod && deliveryMethod !== "none" && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDeliveryMethod(null)}
+                                                            className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline font-bold cursor-pointer"
+                                                            title="Remove delivery method"
+                                                        >
+                                                            (Clear)
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* 4 Shipping Options in a Compact Row */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                                {/* Option: None */}
+                                                <div
+                                                    onClick={() => setDeliveryMethod(null)}
+                                                    className={`p-1.5 rounded-lg border transition-all cursor-pointer select-none flex flex-col justify-between ${
+                                                        !deliveryMethod || deliveryMethod === "none"
+                                                            ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/30"
+                                                            : "bg-card border-border/70 hover:border-emerald-500/40"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={`w-3 h-3 rounded-full border flex items-center justify-center shrink-0 ${
+                                                            !deliveryMethod || deliveryMethod === "none" ? "border-emerald-600 bg-emerald-600" : "border-muted-foreground/40"
+                                                        }`}>
+                                                            {(!deliveryMethod || deliveryMethod === "none") && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                        </span>
+                                                        <span className={`text-[11px] font-bold leading-tight truncate ${
+                                                            !deliveryMethod || deliveryMethod === "none" ? "text-emerald-700 dark:text-emerald-300" : "text-foreground"
+                                                        }`}>
+                                                            None
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 flex items-baseline justify-between text-[10px]">
+                                                        <span className="font-extrabold text-foreground">₹0</span>
+                                                        <span className="text-[9px] text-muted-foreground">No Delivery</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Dynamic Shipping Options */}
+                                                {shippingOptions.map((opt: any) => {
+                                                    const charge = Math.round(Number(opt.rate || 0) * chargedWeightKg);
+                                                    const isSelected = deliveryMethod === opt.key || deliveryMethod === opt.method?.toLowerCase();
+                                                    const title = (!opt.method || opt.location === opt.method) ? (opt.location || opt.method) : `${opt.location}`;
+
+                                                    return (
+                                                        <div
+                                                            key={opt.key}
+                                                            onClick={() => {
+                                                                if (isSelected) {
+                                                                    setDeliveryMethod(null);
+                                                                } else {
+                                                                    setDeliveryMethod(opt.key);
+                                                                }
+                                                            }}
+                                                            className={`p-1.5 rounded-lg border transition-all cursor-pointer select-none flex flex-col justify-between ${
+                                                                isSelected
+                                                                    ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/30"
+                                                                    : "bg-card border-border/70 hover:border-emerald-500/40"
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={`w-3 h-3 rounded-full border flex items-center justify-center shrink-0 ${
+                                                                    isSelected ? "border-emerald-600 bg-emerald-600" : "border-muted-foreground/40"
+                                                                }`}>
+                                                                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                                </span>
+                                                                <span className={`text-[11px] font-bold leading-tight truncate ${
+                                                                    isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-foreground"
+                                                                }`}>
+                                                                    {title}
+                                                                </span>
+                                                            </div>
+                                                            <div className="mt-1 flex items-baseline justify-between text-[10px]">
+                                                                <span className={`font-mono font-extrabold ${isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-foreground"}`}>
+                                                                    +₹{charge}
+                                                                </span>
+                                                                <span className="text-[9px] text-muted-foreground">₹{opt.rate}/kg</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Right Column: Pricing & Manual Method Controls (5 Cols on lg) */}
-                                    <div className="lg:col-span-5 space-y-3">
-                                        <div className="bg-muted/20 border border-border/80 p-3.5 sm:p-4 rounded-xl space-y-3">
-                                            <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Sliders className="w-4 h-4 text-emerald-500" />
-                                                    <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
-                                                        Pricing & Manual Method
-                                                    </h4>
-                                                </div>
-                                                <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
-                                                    {pricingMethod === "auto" && !hasManualOverride ? "Auto Matrix" : hasManualOverride ? "Manual Override" : pricingMethod === "pcb_rate" ? "PCB Rate" : "SQM Rate"}
-                                                </span>
+                                    {/* Right Column: Pricing Controls & Financial Summary (5 Cols on lg) */}
+                                    <div className="lg:col-span-5 bg-muted/15 border border-border/70 p-3 sm:p-3.5 rounded-xl space-y-2.5">
+                                        <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                                            <div className="flex items-center gap-1.5">
+                                                <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+                                                <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
+                                                    Pricing & Order Summary
+                                                </h4>
                                             </div>
+                                            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-200 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                                                {pricingMethod === "auto" && !hasManualOverride ? "Auto Matrix" : hasManualOverride ? "Manual Override" : pricingMethod === "pcb_rate" ? "PCB Rate" : "SQM Rate"}
+                                            </span>
+                                        </div>
 
-                                            {/* Pricing Method Selector */}
-                                            <div>
-                                                <label className="text-xs font-bold text-muted-foreground block mb-1">Pricing Mode</label>
-                                                <div className="grid grid-cols-3 gap-1 bg-muted/40 p-1 rounded-lg border border-border/60">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setPricingMethod("auto")}
-                                                        className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                                                            pricingMethod === "auto"
-                                                                ? "bg-emerald-500 text-white shadow-xs"
-                                                                : "text-muted-foreground hover:bg-muted"
-                                                        }`}
-                                                    >
-                                                        Auto (Matrix)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setPricingMethod("pcb_rate")}
-                                                        className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                                                            pricingMethod === "pcb_rate"
-                                                                ? "bg-emerald-500 text-white shadow-xs"
-                                                                : "text-muted-foreground hover:bg-muted"
-                                                        }`}
-                                                    >
-                                                        PCB Rate
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setPricingMethod("price_per_sqm")}
-                                                        className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                                                            pricingMethod === "price_per_sqm"
-                                                                ? "bg-emerald-500 text-white shadow-xs"
-                                                                : "text-muted-foreground hover:bg-muted"
-                                                        }`}
-                                                    >
-                                                        SQM Rate
-                                                    </button>
-                                                </div>
+                                        {/* Pricing Method Selector */}
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-[11px] font-bold text-muted-foreground">Pricing Mode</label>
+                                                <span className="text-[10px] text-muted-foreground font-medium">{pricingModeLabel}</span>
                                             </div>
+                                            <div className="grid grid-cols-3 gap-1 bg-muted/50 p-0.5 rounded-lg border border-border/60">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPricingMethod("auto")}
+                                                    className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                                        pricingMethod === "auto"
+                                                            ? "bg-emerald-500 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:bg-muted"
+                                                    }`}
+                                                >
+                                                    Auto (Matrix)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPricingMethod("pcb_rate")}
+                                                    className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                                        pricingMethod === "pcb_rate"
+                                                            ? "bg-emerald-500 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:bg-muted"
+                                                    }`}
+                                                >
+                                                    PCB Rate
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPricingMethod("price_per_sqm")}
+                                                    className={`py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                                        pricingMethod === "price_per_sqm"
+                                                            ? "bg-emerald-500 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:bg-muted"
+                                                    }`}
+                                                >
+                                                    SQM Rate
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                            {/* Conditional Rate Inputs */}
-                                            {pricingMethod === "pcb_rate" && (
-                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <label className="text-xs font-bold text-muted-foreground">PCB Rate (₹ / pc)</label>
-                                                        <span className="text-[11px] font-mono text-muted-foreground">{qtyPcs} pcs</span>
-                                                    </div>
+                                        {/* Conditional Rate Inputs */}
+                                        {pricingMethod === "pcb_rate" && (
+                                            <div className="p-2 rounded-lg bg-card border border-border/80 flex items-center justify-between gap-2">
+                                                <div className="text-[11px] font-bold text-muted-foreground shrink-0">
+                                                    Rate / pc:
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-1 max-w-[140px]">
                                                     <Input
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
                                                         value={pcbRate}
                                                         onChange={(e) => setPcbRate(e.target.value)}
-                                                        className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground"
-                                                        placeholder="Rate per board"
+                                                        className="h-7.5 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground px-2"
+                                                        placeholder="Rate"
                                                     />
-                                                    <p className="text-[10px] text-muted-foreground">
-                                                        ₹{pcbRate || 0} × {qtyPcs} = <b className="text-foreground">₹{((parseFloat(pcbRate) || 0) * qtyPcs).toFixed(2)}</b>
-                                                    </p>
                                                 </div>
-                                            )}
+                                                <div className="text-[11px] font-mono text-muted-foreground shrink-0">
+                                                    × {qtyPcs} = <b className="text-foreground">₹{((parseFloat(pcbRate) || 0) * qtyPcs).toFixed(2)}</b>
+                                                </div>
+                                            </div>
+                                        )}
 
-                                            {pricingMethod === "price_per_sqm" && (
-                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <label className="text-xs font-bold text-muted-foreground">Price per SQM (₹ / m²)</label>
-                                                        <span className="text-[11px] font-mono text-muted-foreground">{totalAreaSqm.toFixed(4)} m²</span>
-                                                    </div>
+                                        {pricingMethod === "price_per_sqm" && (
+                                            <div className="p-2 rounded-lg bg-card border border-border/80 flex items-center justify-between gap-2">
+                                                <div className="text-[11px] font-bold text-muted-foreground shrink-0">
+                                                    Rate / m²:
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-1 max-w-[140px]">
                                                     <Input
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
                                                         value={pricePerSqm}
                                                         onChange={(e) => setPricePerSqm(e.target.value)}
-                                                        className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground"
-                                                        placeholder="Rate per SQM"
+                                                        className="h-7.5 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground px-2"
+                                                        placeholder="Rate/m²"
                                                     />
-                                                    <p className="text-[10px] text-muted-foreground">
-                                                        {totalAreaSqm.toFixed(4)} m² × ₹{pricePerSqm || 0} = <b className="text-foreground">₹{((parseFloat(pricePerSqm) || 0) * totalAreaSqm).toFixed(2)}</b>
-                                                    </p>
                                                 </div>
-                                            )}
+                                                <div className="text-[11px] font-mono text-muted-foreground shrink-0">
+                                                    × {totalAreaSqm.toFixed(4)}m² = <b className="text-foreground">₹{((parseFloat(pricePerSqm) || 0) * totalAreaSqm).toFixed(2)}</b>
+                                                </div>
+                                            </div>
+                                        )}
 
+                                        {/* Compact Controls Grid: Manual Override, Delivery Date, GST Rate */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                                             {/* Manual Base PCB Price Override */}
-                                            <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
+                                            <div className="sm:col-span-5 space-y-1">
                                                 <div className="flex items-center justify-between">
-                                                    <label className="text-xs font-bold text-muted-foreground">Manual Base PCB Price</label>
+                                                    <label className="text-[10.5px] font-bold text-muted-foreground">Manual Override</label>
                                                     {hasManualOverride ? (
-                                                        <span className="text-[9.5px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                                                            Override Active
+                                                        <span className="text-[8.5px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1 py-0.2 rounded">
+                                                            Active
                                                         </span>
                                                     ) : (
-                                                        <span className="text-[9.5px] text-muted-foreground font-medium">Optional</span>
+                                                        <span className="text-[8.5px] text-muted-foreground">Optional</span>
                                                     )}
                                                 </div>
                                                 <div className="relative">
-                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
                                                     <Input
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
                                                         value={manualPrice}
                                                         onChange={(e) => setManualPrice(e.target.value)}
-                                                        className="w-full h-8.5 pl-6 pr-7 rounded-md bg-background border-border/80 text-xs font-mono font-bold text-foreground focus:ring-amber-500"
-                                                        placeholder="Direct subtotal override"
+                                                        className="w-full h-7.5 pl-5 pr-6 rounded-md bg-card border-border/80 text-xs font-mono font-bold text-foreground placeholder:text-[10px]"
+                                                        placeholder="Override subtotal"
                                                     />
                                                     {manualPrice && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setManualPrice("")}
-                                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
                                                             title="Clear manual override"
                                                         >
                                                             ✕
@@ -2619,227 +2723,112 @@ export default function CreateOrderPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Manual Expected Delivery Date Override & GST */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <label className="text-xs font-bold text-muted-foreground">Delivery Date</label>
-                                                        {selectedDayItem ? (
-                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400">
-                                                                Synced
-                                                            </span>
-                                                        ) : deliveryDate ? (
-                                                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400">
-                                                                Custom
-                                                            </span>
-                                                        ) : null}
-                                                    </div>
-                                                    <Input
-                                                        type="date"
-                                                        value={deliveryDate}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            setDeliveryDate(val);
-                                                            const match = deliveryCalendarDays.find((d) => d.isoDateStr === val);
-                                                            if (match && !match.isUnavailable) {
-                                                                setSelectedDay(match.day);
-                                                                setOrderValue(match.orderValue);
-                                                                setUnitPrice(match.unitPrice);
-                                                            }
-                                                        }}
-                                                        className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-semibold text-foreground"
-                                                    />
+                                            {/* Delivery Date */}
+                                            <div className="sm:col-span-4 space-y-1">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10.5px] font-bold text-muted-foreground">Delivery Date</label>
+                                                    {selectedDayItem ? (
+                                                        <span className="text-[8.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                            Synced
+                                                        </span>
+                                                    ) : deliveryDate ? (
+                                                        <span className="text-[8.5px] font-bold text-blue-600 dark:text-blue-400">
+                                                            Custom
+                                                        </span>
+                                                    ) : null}
                                                 </div>
-
-                                                <div className="p-2.5 rounded-lg bg-card border border-border/80 space-y-1">
-                                                    <label className="text-xs font-bold text-muted-foreground block">GST Rate</label>
-                                                    <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
-                                                        <SelectTrigger className="w-full h-8.5 rounded-md bg-background border-border/80 text-xs font-bold text-foreground">
-                                                            <SelectValue placeholder="Select GST" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {gstOptionsList.map((rate) => (
-                                                                <SelectItem key={rate} value={rate.toString()}>
-                                                                    {rate}% GST
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
+                                                <Input
+                                                    type="date"
+                                                    value={deliveryDate}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setDeliveryDate(val);
+                                                        const match = deliveryCalendarDays.find((d) => d.isoDateStr === val);
+                                                        if (match && !match.isUnavailable) {
+                                                            setSelectedDay(match.day);
+                                                            setOrderValue(match.orderValue);
+                                                            setUnitPrice(match.unitPrice);
+                                                        }
+                                                    }}
+                                                    className="w-full h-7.5 rounded-md bg-card border-border/80 text-xs font-semibold text-foreground px-2"
+                                                />
                                             </div>
 
-                                            {/* Shipping & Delivery Method Card (Matching Cart Calculation & Styling - Image 2) */}
-                                            <div className="bg-[#8DD3A5]/10 dark:bg-emerald-950/25 border border-[#41A96A]/35 dark:border-emerald-700/50 rounded-xl p-3.5 shadow-2xs space-y-3">
-                                                <div className="flex justify-between items-center text-xs">
-                                                    <span className="text-slate-600 dark:text-slate-300 font-semibold">Total Area:</span>
-                                                    <span className="font-extrabold text-[#0F7438] dark:text-[#8DD3A5]">
-                                                        {totalAreaSqm.toFixed(2)} m²
-                                                        <span className="text-[10px] font-normal text-slate-500"> ({calculatedEstWeightKg} kg est.{calculatedEstWeightKg < 1 ? ' → 1 kg min' : ''})</span>
-                                                    </span>
-                                                </div>
-
-                                                {/* Shipping Option Selection */}
-                                                <div className="pt-2 border-t border-[#41A96A]/20 space-y-2">
-                                                    <div className="flex justify-between items-center text-xs font-bold text-[#0F7438] dark:text-[#8DD3A5]">
-                                                        <span className="flex items-center gap-1.5">
-                                                            <Truck className="w-3.5 h-3.5 text-[#0F7438] dark:text-[#8DD3A5]" />
-                                                            Shipping Method
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-medium text-slate-500">
-                                                                {deliveryMethod && deliveryMethod !== "none" ? "Selected" : "No delivery method"}
-                                                            </span>
-                                                            {deliveryMethod && deliveryMethod !== "none" && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setDeliveryMethod(null)}
-                                                                    className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline font-bold cursor-pointer"
-                                                                    title="Remove delivery method"
-                                                                >
-                                                                    (Clear)
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="bg-[#8DD3A5]/15 dark:bg-slate-800/80 p-2.5 rounded-2xl border border-[#41A96A]/25 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                        {/* Option to create without delivery method */}
-                                                        <label
-                                                            onClick={() => setDeliveryMethod(null)}
-                                                            className={`flex items-start gap-2 p-2 rounded-xl transition-all cursor-pointer select-none ${
-                                                                !deliveryMethod || deliveryMethod === "none"
-                                                                    ? "bg-white/95 dark:bg-slate-700/90 shadow-2xs border-2 border-[#238E4E]"
-                                                                    : "bg-white/40 dark:bg-slate-800/40 border border-transparent hover:bg-white/60"
-                                                            }`}
-                                                        >
-                                                            <input
-                                                                type="radio"
-                                                                name="shippingOption"
-                                                                checked={!deliveryMethod || deliveryMethod === "none"}
-                                                                onChange={() => setDeliveryMethod(null)}
-                                                                className="w-4 h-4 mt-0.5 text-[#238E4E] focus:ring-[#238E4E] accent-[#238E4E] cursor-pointer shrink-0"
-                                                            />
-                                                            <div className="flex flex-col min-w-0">
-                                                                <span className={`text-xs font-bold leading-tight ${
-                                                                    !deliveryMethod || deliveryMethod === "none" ? "text-[#0F7438] dark:text-[#8DD3A5]" : "text-slate-800 dark:text-slate-200"
-                                                                }`}>
-                                                                    None (No Delivery)
-                                                                </span>
-                                                                <span className="text-[10px] font-semibold mt-0.5 text-slate-500 dark:text-slate-400">
-                                                                    ₹0 <span className="font-normal text-slate-400 text-[9px]">(Without delivery method)</span>
-                                                                </span>
-                                                            </div>
-                                                        </label>
-
-                                                        {/* Dynamic Options from Database Table */}
-                                                        {shippingOptions.map((opt: any) => {
-                                                            const charge = Math.round(Number(opt.rate || 0) * chargedWeightKg);
-                                                            const isSelected = deliveryMethod === opt.key || deliveryMethod === opt.method?.toLowerCase();
-                                                            const title = (!opt.method || opt.location === opt.method) ? (opt.location || opt.method) : `${opt.location} - ${opt.method}`;
-
-                                                            return (
-                                                                <label
-                                                                    key={opt.key}
-                                                                    onClick={() => {
-                                                                        if (isSelected) {
-                                                                            setDeliveryMethod(null);
-                                                                        } else {
-                                                                            setDeliveryMethod(opt.key);
-                                                                        }
-                                                                    }}
-                                                                    className={`flex items-start gap-2 p-2 rounded-xl transition-all cursor-pointer select-none ${
-                                                                        isSelected
-                                                                            ? "bg-white/95 dark:bg-slate-700/90 shadow-2xs border-2 border-[#238E4E]"
-                                                                            : "bg-white/40 dark:bg-slate-800/40 border border-transparent hover:bg-white/60"
-                                                                    }`}
-                                                                >
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="shippingOption"
-                                                                        checked={isSelected}
-                                                                        onChange={() => setDeliveryMethod(opt.key)}
-                                                                        className="w-4 h-4 mt-0.5 text-[#238E4E] focus:ring-[#238E4E] accent-[#238E4E] cursor-pointer shrink-0"
-                                                                    />
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        <span className={`text-xs font-bold leading-tight ${
-                                                                            isSelected ? "text-[#0F7438] dark:text-[#8DD3A5]" : "text-slate-800 dark:text-slate-200"
-                                                                        }`}>
-                                                                            {title}
-                                                                        </span>
-                                                                        <span className={`text-[10px] font-semibold mt-0.5 ${
-                                                                            isSelected ? "text-[#0F7438]" : "text-slate-600 dark:text-slate-300"
-                                                                        }`}>
-                                                                            +₹{charge} <span className="font-normal text-slate-400 text-[9px]">(₹{opt.rate}/kg)</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
+                                            {/* GST Rate */}
+                                            <div className="sm:col-span-3 space-y-1">
+                                                <label className="text-[10.5px] font-bold text-muted-foreground block">GST Rate</label>
+                                                <Select value={gstRate.toString()} onValueChange={(val) => setGstRate(Number(val))}>
+                                                    <SelectTrigger className="w-full h-7.5 rounded-md bg-card border-border/80 text-xs font-bold text-foreground px-2">
+                                                        <SelectValue placeholder="GST" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {gstOptionsList.map((rate) => (
+                                                            <SelectItem key={rate} value={rate.toString()}>
+                                                                {rate}% GST
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
+                                        </div>
 
-                                            {/* Financial Summary Card */}
-                                            <div className="bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 p-3 rounded-lg space-y-2 text-xs">
-                                                <div className="font-bold text-foreground text-xs border-b border-emerald-200 dark:border-emerald-800/80 pb-1.5 flex justify-between items-center">
-                                                    <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100 font-black">
-                                                        <Calculator className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-                                                        Financial Summary
-                                                    </span>
-                                                    <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-200 bg-emerald-200/80 dark:bg-emerald-900/80 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
-                                                        Live Total
+                                        {/* Financial Summary Card */}
+                                        <div className="bg-emerald-500/5 dark:bg-emerald-950/25 border border-emerald-500/20 dark:border-emerald-800/40 p-2.5 rounded-lg space-y-1.5 text-xs">
+                                            <div className="border-b border-emerald-500/15 pb-1 flex justify-between items-center">
+                                                <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100 font-black text-[11px] uppercase tracking-wider">
+                                                    <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                    Financial Breakdown
+                                                </span>
+                                                <span className="text-[9.5px] font-black text-emerald-800 dark:text-emerald-200 bg-emerald-500/15 px-1.5 py-0.2 rounded-full">
+                                                    Live Total
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1 pt-0.5 text-[11px]">
+                                                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold">
+                                                    <span>Subtotal (Base PCB):</span>
+                                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                                        ₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </span>
                                                 </div>
-                                                <div className="space-y-1.5 pt-0.5">
-                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
-                                                        <span>Subtotal (Base PCB):</span>
-                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
-                                                            ₹{subtotalCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
-                                                        <span className="flex items-center gap-1">
-                                                            Per Piece Price (Unit Price):
-                                                             <span className="text-[9.5px] font-normal text-muted-foreground">({qtyPcs} {qtyPcs === 1 ? "pc" : "pcs"})</span>
-                                                        </span>
-                                                        <span className="font-mono font-bold text-emerald-800 dark:text-emerald-300">
-                                                            ₹{unitPriceCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9.5px] text-muted-foreground font-normal">/ pc</span>
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
-                                                        <span className="flex items-center gap-1.5">
-                                                            Delivery Charges:
-                                                            {activeShipping ? (
-                                                                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.2 rounded border border-emerald-300/40">
-                                                                    {activeShipping.location || activeShipping.method}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded border border-slate-300/40">
-                                                                    None
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
-                                                            ₹{deliveryCharge.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
-                                                        <span>GST ({gstRate}%):</span>
-                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
-                                                            ₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center pt-1.5 border-t border-emerald-200 dark:border-emerald-800/80">
-                                                        <div>
-                                                            <span className="font-black text-xs text-slate-900 dark:text-slate-100 block">Final Order Total:</span>
-                                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                                                                (₹{unitPriceWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / pc with GST & Delivery)
+                                                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold">
+                                                    <span>Per Piece (Unit Price): <span className="text-[9.5px] font-normal text-muted-foreground">({qtyPcs} pcs)</span></span>
+                                                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                                                        ₹{unitPriceCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / pc
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold">
+                                                    <span className="flex items-center gap-1">
+                                                        Delivery Charges:
+                                                        {activeShipping ? (
+                                                            <span className="text-[8.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-1 py-0.2 rounded border border-emerald-500/20">
+                                                                {activeShipping.location || activeShipping.method}
                                                             </span>
-                                                        </div>
-                                                        <span className="font-mono font-black text-emerald-800 dark:text-emerald-300 text-base">
-                                                            ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        ) : (
+                                                            <span className="text-[8.5px] font-bold text-slate-500 bg-slate-200/50 dark:bg-slate-800 px-1 py-0.2 rounded">
+                                                                None
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                                        ₹{deliveryCharge.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 font-semibold">
+                                                    <span>GST ({gstRate}%):</span>
+                                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                                        ₹{gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center pt-1.5 border-t border-emerald-500/20">
+                                                    <div>
+                                                        <span className="font-black text-xs text-slate-900 dark:text-slate-100 block">Final Order Total:</span>
+                                                        <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-medium">
+                                                            (₹{unitPriceWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / pc incl. GST & Delivery)
                                                         </span>
                                                     </div>
+                                                    <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-base sm:text-lg">
+                                                        ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -2849,7 +2838,7 @@ export default function CreateOrderPage() {
                         })()}
 
                         {/* Manual Payment Section */}
-                        <div className="pt-3 border-t border-border/60 space-y-3">
+                        <div className="pt-2 border-t border-border/60 space-y-2">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
@@ -2858,18 +2847,18 @@ export default function CreateOrderPage() {
                                         setPaymentCompleted(e.target.checked);
                                         if (e.target.checked) setPaymentMethod("Manual Payment");
                                     }}
-                                    className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 border-border/80 bg-muted/30 cursor-pointer"
+                                    className="w-3.5 h-3.5 rounded text-emerald-500 focus:ring-emerald-500 border-border/80 bg-muted/30 cursor-pointer"
                                 />
                                 <span className="text-xs font-bold text-foreground">Mark Payment Completed Manually</span>
                             </label>
 
                             {(paymentCompleted || paymentMethod === "Manual Payment") && (
-                                <div className="space-y-3 bg-muted/20 border border-border/80 p-4 rounded-xl">
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="space-y-2.5 bg-muted/20 border border-border/80 p-3 rounded-xl">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                         <div>
-                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Method</label>
+                                            <label className="text-[11px] font-bold text-muted-foreground block mb-0.5">Payment Method</label>
                                             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                                                <SelectTrigger className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground">
+                                                <SelectTrigger className="w-full h-8 rounded-lg bg-card border-border/80 text-xs font-semibold text-foreground">
                                                     <SelectValue placeholder="Select Payment Method" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -2884,34 +2873,34 @@ export default function CreateOrderPage() {
                                         </div>
 
                                         <div>
-                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Reference / Txn ID</label>
+                                            <label className="text-[11px] font-bold text-muted-foreground block mb-0.5">Payment Reference / Txn ID</label>
                                             <Input
                                                 type="text"
                                                 value={paymentReference}
                                                 onChange={(e) => setPaymentReference(e.target.value)}
-                                                className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-mono font-semibold text-foreground"
+                                                className="w-full h-8 rounded-lg bg-card border-border/80 text-xs font-mono font-semibold text-foreground"
                                                 placeholder="Auto-generated if empty"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Date</label>
+                                            <label className="text-[11px] font-bold text-muted-foreground block mb-0.5">Payment Date</label>
                                             <Input
                                                 type="date"
                                                 value={paymentDate}
                                                 onChange={(e) => setPaymentDate(e.target.value)}
-                                                className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground"
+                                                className="w-full h-8 rounded-lg bg-card border-border/80 text-xs font-semibold text-foreground"
                                             />
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="text-xs font-bold text-muted-foreground block mb-1">Payment Notes / Remarks</label>
+                                        <label className="text-[11px] font-bold text-muted-foreground block mb-0.5">Payment Notes / Remarks</label>
                                         <Input
                                             type="text"
                                             value={paymentNotes}
                                             onChange={(e) => setPaymentNotes(e.target.value)}
-                                            className="w-full h-10 rounded-xl bg-card border-border/80 text-xs font-semibold text-foreground"
+                                            className="w-full h-8 rounded-lg bg-card border-border/80 text-xs font-semibold text-foreground"
                                             placeholder="Optional notes regarding manual payment transaction..."
                                         />
                                     </div>
