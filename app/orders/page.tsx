@@ -72,6 +72,7 @@ interface ApiOrder {
     user?: CustomerUser | null;
     status_id: number | null;
     order_number: string;
+    layers?: string | number | null;
     pn_number?: string | null;
     order_type?: string | null;
     quotation_source?: string | null;
@@ -247,6 +248,7 @@ function OrdersContent() {
     const [startDate, setStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
     const [endDate, setEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
     const [cgFilter, setCgFilter] = useState(() => searchParams?.get("c_g") || searchParams?.get("cg") || "All");
+    const [layerFilter, setLayerFilter] = useState<string>(() => searchParams?.get("layer") || searchParams?.get("layers") || "All");
     // Temporary dates for Popover drafting before clicking Apply
     const [tempStartDate, setTempStartDate] = useState(() => searchParams?.get("start_date") || searchParams?.get("from") || "");
     const [tempEndDate, setTempEndDate] = useState(() => searchParams?.get("end_date") || searchParams?.get("to") || "");
@@ -268,6 +270,15 @@ function OrdersContent() {
         setPage(1);
         updateUrlParams({
             c_g: cg === "All" ? null : cg,
+            page: 1
+        });
+    };
+
+    const handleSelectLayer = (layer: string) => {
+        setLayerFilter(layer);
+        setPage(1);
+        updateUrlParams({
+            layer: layer === "All" ? null : layer,
             page: 1
         });
     };
@@ -297,6 +308,7 @@ function OrdersContent() {
         const sd = searchParams.get("start_date") || searchParams.get("from") || "";
         const ed = searchParams.get("end_date") || searchParams.get("to") || "";
         const cgParam = searchParams.get("c_g") || searchParams.get("cg") || "All";
+        const layerParam = searchParams.get("layer") || searchParams.get("layers") || "All";
 
         const pRaw = parseInt(searchParams.get("page") || "1", 10);
         const p = isNaN(pRaw) || pRaw < 1 ? 1 : pRaw;
@@ -311,6 +323,7 @@ function OrdersContent() {
         setDebouncedSearch(s);
         setStatusFilter(st);
         setCgFilter(cgParam);
+        setLayerFilter(layerParam);
         setStartDate(sd);
         setEndDate(ed);
         setTempStartDate(sd);
@@ -1578,6 +1591,9 @@ function OrdersContent() {
             if (cgFilter && cgFilter !== "All") {
                 url += `&c_g=${encodeURIComponent(cgFilter)}`;
             }
+            if (layerFilter && layerFilter !== "All") {
+                url += `&layer=${encodeURIComponent(layerFilter)}`;
+            }
 
             const [ordersRes, statusesRes] = await Promise.all([
                 fetch(url, { headers, signal: controller.signal }),
@@ -1633,13 +1649,14 @@ function OrdersContent() {
 
     useEffect(() => {
         fetchData(debouncedSearch);
-    }, [debouncedSearch, startDate, endDate, statusFilter, cgFilter, pageSize, page, sortBy, sortOrder]);
+    }, [debouncedSearch, startDate, endDate, statusFilter, cgFilter, layerFilter, pageSize, page, sortBy, sortOrder]);
 
     const handleResetFilter = () => {
         setSearch("");
         setDebouncedSearch("");
         setStatusFilter("In Production");
         setCgFilter("All");
+        setLayerFilter("All");
         setStartDate("");
         setEndDate("");
         setTempStartDate("");
@@ -1655,6 +1672,8 @@ function OrdersContent() {
             status: null,
             c_g: null,
             cg: null,
+            layer: null,
+            layers: null,
             start_date: null,
             end_date: null,
             from: null,
@@ -2264,24 +2283,65 @@ function OrdersContent() {
                         </div>
                     )}
 
-                    {/* Search & Filter Header Bar */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full pb-1">
-                        <div className="relative flex-1 min-w-[200px]">
-                            {isSearching ? (
-                                <RefreshCw className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
-                            ) : (
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            )}
-                            <Input
-                                type="search"
-                                placeholder="Search orders by number, board, email, mobile..."
-                                value={search}
-                                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                                className="w-full h-10 sm:h-11 pl-10 pr-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
-                            />
+                    {/* Row 1 — Search and Layer Filters */}
+                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3 w-full pb-1">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+                            {/* Existing order search bar, made narrower */}
+                            <div className="relative w-full sm:w-64 md:w-72 shrink-0">
+                                {isSearching ? (
+                                    <RefreshCw className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
+                                ) : (
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                )}
+                                <Input
+                                    type="search"
+                                    placeholder="Search orders by number, board, email, mobile..."
+                                    value={search}
+                                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                                    className="w-full h-10 sm:h-11 pl-10 pr-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
+                                />
+                            </div>
+
+                            {/* Layer Quick-Filter Buttons: All, 1 Layer, 2 Layers */}
+                            <div className="flex items-center p-1 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-1">
+                                <span className="text-[11px] font-bold text-muted-foreground px-1.5 flex items-center gap-1 select-none">
+                                    <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                                    Layer:
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectLayer("All")}
+                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "All"
+                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                        : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                        }`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectLayer("1")}
+                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "1"
+                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                        : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                        }`}
+                                >
+                                    1 Layer
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectLayer("2")}
+                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "2"
+                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                        : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                        }`}
+                                >
+                                    2 Layers
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="flex items-center gap-2.5 shrink-0 self-end lg:self-auto">
                             {/* C/G Filter Dropdown */}
                             <Select
                                 value={cgFilter || "All"}
@@ -2448,70 +2508,89 @@ function OrdersContent() {
                                     </div>
                                 </PopoverContent>
                             </Popover>
+                        </div>
+                    </div>
 
-                            {/* Compact Drag and Drop Status Filter */}
-                            {(() => {
-                                const MAIN_STATUSES = ["Pending", "Ready to Ship", "In Production", "Deleted"];
-                                const otherStatuses = (() => {
-                                    const list: string[] = ["All"];
-                                    statuses.forEach((s) => {
-                                        if (s && s.name && !MAIN_STATUSES.includes(s.name) && !list.includes(s.name)) {
-                                            list.push(s.name);
-                                        }
-                                    });
-                                    const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval", "Deleted"];
-                                    defaults.forEach((d) => {
-                                        if (!MAIN_STATUSES.includes(d) && !list.includes(d)) {
-                                            list.push(d);
-                                        }
-                                    });
-                                    if (!list.includes("Deleted")) {
-                                        list.push("Deleted");
+                    {/* Row 2 — Existing Quick Status Controls */}
+                    <div className="w-full pb-1 overflow-x-auto scrollbar-none">
+                        {(() => {
+                            const MAIN_STATUSES = ["Pending", "Traveler", "Traveller", "Ready to Ship", "In Production", "Deleted"];
+                            const otherStatuses = (() => {
+                                const list: string[] = ["All"];
+                                statuses.forEach((s) => {
+                                    if (s && s.name && !MAIN_STATUSES.includes(s.name) && !list.includes(s.name)) {
+                                        list.push(s.name);
                                     }
-                                    return list;
-                                })();
-                                const isOtherStatusActive = !MAIN_STATUSES.includes(statusFilter);
+                                });
+                                const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval", "Deleted"];
+                                defaults.forEach((d) => {
+                                    if (!MAIN_STATUSES.includes(d) && !list.includes(d)) {
+                                        list.push(d);
+                                    }
+                                });
+                                if (!list.includes("Deleted")) {
+                                    list.push("Deleted");
+                                }
+                                return list;
+                            })();
+                            const isOtherStatusActive = !MAIN_STATUSES.includes(statusFilter);
 
-                                return (
-                                    <div
-                                        onDragOver={(e) => {
-                                            e.preventDefault();
-                                            e.dataTransfer.dropEffect = "copy";
-                                            setIsStatusDragOver(true);
-                                        }}
-                                        onDragLeave={() => setIsStatusDragOver(false)}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            setIsStatusDragOver(false);
-                                            const dropped = e.dataTransfer.getData("text/plain");
-                                            if (dropped) {
-                                                handleSelectStatus(dropped);
-                                            }
-                                        }}
-                                        className={`flex flex-wrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
+                            return (
+                                <div
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.dataTransfer.dropEffect = "copy";
+                                        setIsStatusDragOver(true);
+                                    }}
+                                    onDragLeave={() => setIsStatusDragOver(false)}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        setIsStatusDragOver(false);
+                                        const dropped = e.dataTransfer.getData("text/plain");
+                                        if (dropped) {
+                                            handleSelectStatus(dropped);
+                                        }
+                                    }}
+                                    className={`flex flex-wrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
+                                        }`}
+                                >
+                                    <span className="text-xs font-bold text-muted-foreground px-1.5 sm:px-2 flex items-center gap-1 shrink-0 select-none">
+                                        Status:
+                                    </span>
+
+                                    {/* 1. Pending */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectStatus("Pending")}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
+                                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
+                                            : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                             }`}
                                     >
-                                        <span className="text-xs font-bold text-muted-foreground px-1.5 sm:px-2 flex items-center gap-1 shrink-0 select-none">
-                                            Status:
+                                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            }`}>
+                                            {statusFilter === "Pending" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                         </span>
+                                        Pending
+                                    </button>
 
-                                        {/* 1. Pending */}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectStatus("Pending")}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
-                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
-                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
-                                                }`}
-                                        >
-                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
-                                                }`}>
-                                                {statusFilter === "Pending" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                            </span>
-                                            Pending
-                                        </button>
+                                    {/* 1.5. Traveller */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelectStatus("Traveler")}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Traveler" || statusFilter === "Traveller"
+                                            ? "bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/40 shadow-2xs"
+                                            : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                            }`}
+                                    >
+                                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Traveler" || statusFilter === "Traveller" ? "bg-lime-500 border-lime-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            }`}>
+                                            {(statusFilter === "Traveler" || statusFilter === "Traveller") && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                        </span>
+                                        Traveller
+                                    </button>
 
-                                        {/* 2. Ready to Ship */}
+                                    {/* 2. Ready to Ship */}
                                         <button
                                             type="button"
                                             onClick={() => handleSelectStatus("Ready to Ship")}
@@ -2677,7 +2756,6 @@ function OrdersContent() {
                                     </div>
                                 );
                             })()}
-                        </div>
                     </div>
 
                     {/* Orders Data Table */}
