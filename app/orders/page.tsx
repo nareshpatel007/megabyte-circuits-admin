@@ -2283,35 +2283,35 @@ function OrdersContent() {
                         </div>
                     )}
 
-                    {/* Row 1 — Search and Layer Filters */}
-                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3 w-full pb-1">
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
-                            {/* Existing order search bar, made narrower */}
-                            <div className="relative w-full sm:w-64 md:w-72 shrink-0">
+                    {/* Orders Filter & Search Toolbar (Single Row: Search → Layer Filters → Status Toolbar → All C/G → Date Filter) */}
+                    <div className="w-full pb-1 overflow-x-auto scrollbar-none">
+                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-max">
+                            {/* 1. Search */}
+                            <div className="relative w-52 sm:w-60 md:w-64 lg:w-72 shrink-0">
                                 {isSearching ? (
-                                    <RefreshCw className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
+                                    <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500 animate-spin" />
                                 ) : (
-                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 )}
                                 <Input
                                     type="search"
                                     placeholder="Search orders by number, board, email, mobile..."
                                     value={search}
                                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                                    className="w-full h-10 sm:h-11 pl-10 pr-3 text-xs sm:text-sm bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
+                                    className="w-full h-9 pl-9 pr-3 text-xs bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
                                 />
                             </div>
 
-                            {/* Layer Quick-Filter Buttons: All, 1 Layer, 2 Layers */}
-                            <div className="flex items-center p-1 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-1">
-                                <span className="text-[11px] font-bold text-muted-foreground px-1.5 flex items-center gap-1 select-none">
+                            {/* 2. Layer Quick-Filter Buttons: All, 1 Layer, 2 Layers */}
+                            <div className="flex items-center p-0.5 sm:p-1 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-0.5 sm:gap-1">
+                                <span className="text-[11px] font-bold text-muted-foreground px-1 sm:px-1.5 flex items-center gap-1 select-none">
                                     <Layers className="w-3.5 h-3.5 text-indigo-500" />
                                     Layer:
                                 </span>
                                 <button
                                     type="button"
                                     onClick={() => handleSelectLayer("All")}
-                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "All"
+                                    className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "All"
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                                         : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                         }`}
@@ -2321,7 +2321,7 @@ function OrdersContent() {
                                 <button
                                     type="button"
                                     onClick={() => handleSelectLayer("1")}
-                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "1"
+                                    className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "1"
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                                         : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                         }`}
@@ -2331,7 +2331,7 @@ function OrdersContent() {
                                 <button
                                     type="button"
                                     onClick={() => handleSelectLayer("2")}
-                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "2"
+                                    className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "2"
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                                         : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                         }`}
@@ -2339,17 +2339,310 @@ function OrdersContent() {
                                     2 Layers
                                 </button>
                             </div>
-                        </div>
 
-                        <div className="flex items-center gap-2.5 shrink-0 self-end lg:self-auto">
-                            {/* C/G Filter Dropdown */}
+                            {/* 3. Status Toolbar */}
+                            {(() => {
+                                const MAIN_STATUSES = ["Pending", "Traveler", "Traveller", "Ready to Ship", "In Production", "Deleted"];
+                                const otherStatuses = (() => {
+                                    const list: string[] = ["All"];
+                                    statuses.forEach((s) => {
+                                        if (s && s.name && !MAIN_STATUSES.includes(s.name) && !list.includes(s.name)) {
+                                            list.push(s.name);
+                                        }
+                                    });
+                                    const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval", "Deleted"];
+                                    defaults.forEach((d) => {
+                                        if (!MAIN_STATUSES.includes(d) && !list.includes(d)) {
+                                            list.push(d);
+                                        }
+                                    });
+                                    if (!list.includes("Deleted")) {
+                                        list.push("Deleted");
+                                    }
+                                    return list;
+                                })();
+                                const isOtherStatusActive = !MAIN_STATUSES.includes(statusFilter);
+
+                                return (
+                                    <div
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.dataTransfer.dropEffect = "copy";
+                                            setIsStatusDragOver(true);
+                                        }}
+                                        onDragLeave={() => setIsStatusDragOver(false)}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsStatusDragOver(false);
+                                            const dropped = e.dataTransfer.getData("text/plain");
+                                            if (dropped) {
+                                                handleSelectStatus(dropped);
+                                            }
+                                        }}
+                                        className={`flex items-center gap-1 sm:gap-1.5 p-0.5 sm:p-1 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
+                                            }`}
+                                    >
+                                        <span className="text-[11px] font-bold text-muted-foreground px-1 sm:px-1.5 flex items-center gap-1 shrink-0 select-none">
+                                            Status:
+                                        </span>
+
+                                        {/* 1. Pending */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Pending")}
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.dataTransfer.dropEffect = "copy";
+                                                setIsStatusDragOver(true);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                                const dropped = e.dataTransfer.getData("text/plain");
+                                                handleSelectStatus(dropped || "Pending");
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
+                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "Pending" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            Pending
+                                        </button>
+
+                                        {/* 1.5. Traveller */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Traveler")}
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.dataTransfer.dropEffect = "copy";
+                                                setIsStatusDragOver(true);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                                const dropped = e.dataTransfer.getData("text/plain");
+                                                handleSelectStatus(dropped || "Traveler");
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Traveler" || statusFilter === "Traveller"
+                                                ? "bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Traveler" || statusFilter === "Traveller" ? "bg-lime-500 border-lime-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {(statusFilter === "Traveler" || statusFilter === "Traveller") && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            Traveller
+                                        </button>
+
+                                        {/* 2. Ready to Ship */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Ready to Ship")}
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.dataTransfer.dropEffect = "copy";
+                                                setIsStatusDragOver(true);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                                const dropped = e.dataTransfer.getData("text/plain");
+                                                handleSelectStatus(dropped || "Ready to Ship");
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Ready to Ship"
+                                                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Ready to Ship" ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "Ready to Ship" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            Ready to Ship
+                                        </button>
+
+                                        {/* 3. In Production */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("In Production")}
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.dataTransfer.dropEffect = "copy";
+                                                setIsStatusDragOver(true);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                                const dropped = e.dataTransfer.getData("text/plain");
+                                                handleSelectStatus(dropped || "In Production");
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "In Production"
+                                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "In Production" ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "In Production" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </span>
+                                            In Production
+                                        </button>
+
+                                        {/* 4. Deleted */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectStatus("Deleted")}
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.dataTransfer.dropEffect = "copy";
+                                                setIsStatusDragOver(true);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsStatusDragOver(false);
+                                                const dropped = e.dataTransfer.getData("text/plain");
+                                                handleSelectStatus(dropped || "Deleted");
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Deleted"
+                                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-2xs"
+                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
+                                                }`}
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Deleted" ? "bg-rose-500 border-rose-500 text-white" : "border-muted-foreground/40 bg-background"
+                                                }`}>
+                                                {statusFilter === "Deleted" ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />}
+                                            </span>
+                                            Deleted
+                                        </button>
+
+                                        {/* Active Other Status Chip (rendered only when an other status is active, no visible placeholder box) */}
+                                        {isOtherStatusActive && (
+                                            <div
+                                                onDragOver={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    e.dataTransfer.dropEffect = "copy";
+                                                    setIsStatusDragOver(true);
+                                                }}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setIsStatusDragOver(false);
+                                                    const dropped = e.dataTransfer.getData("text/plain");
+                                                    if (dropped) {
+                                                        handleSelectStatus(dropped);
+                                                    }
+                                                }}
+                                                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all border border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 shadow-2xs select-none"
+                                            >
+                                                <span className="w-3.5 h-3.5 rounded bg-purple-500 text-white flex items-center justify-center text-[10px]">
+                                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                                </span>
+                                                <span>{statusFilter}</span>
+                                                <span
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSelectStatus("In Production");
+                                                    }}
+                                                    className="ml-0.5 p-0.5 rounded-md hover:bg-purple-500/20 text-purple-500 hover:text-purple-700 cursor-pointer"
+                                                    title="Clear status filter"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* 5. Other Statuses Dropdown */}
+                                        <Popover open={otherStatusesOpen} onOpenChange={setOtherStatusesOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className={`h-7 sm:h-8 px-2 sm:px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shrink-0 ${isOtherStatusActive
+                                                        ? "border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                                        : "border-border/80 bg-background/60 hover:bg-accent text-foreground"
+                                                        }`}
+                                                >
+                                                    Other Statuses
+                                                    <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${otherStatusesOpen ? "rotate-180" : ""}`} />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="z-50 w-56 sm:w-64 p-2 bg-card border border-border/80 rounded-xl shadow-xl space-y-1 text-foreground"
+                                                align="end"
+                                                sideOffset={6}
+                                            >
+                                                <div className="px-2 py-1.5 border-b border-border/50 flex items-center justify-between">
+                                                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                                                        Other Statuses
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground/70 font-medium">
+                                                        Drag or click
+                                                    </span>
+                                                </div>
+
+                                                <div className="max-h-56 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                                                    {otherStatuses.map((stName) => {
+                                                        const isSelected = statusFilter === stName;
+                                                        return (
+                                                            <div
+                                                                key={stName}
+                                                                draggable
+                                                                onDragStart={(e) => {
+                                                                    e.dataTransfer.setData("text/plain", stName);
+                                                                    e.dataTransfer.effectAllowed = "copy";
+                                                                }}
+                                                                onClick={() => {
+                                                                    handleSelectStatus(stName);
+                                                                    setOtherStatusesOpen(false);
+                                                                }}
+                                                                className={`group flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-grab active:cursor-grabbing transition-all border ${isSelected
+                                                                    ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs"
+                                                                    : "bg-background hover:bg-muted/70 text-foreground border-transparent hover:border-border/50"
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-muted-foreground shrink-0" />
+                                                                    <span className="truncate">{stName}</span>
+                                                                </div>
+                                                                {isSelected && (
+                                                                    <span className="w-4 h-4 rounded-full bg-purple-500 text-white flex items-center justify-center shrink-0">
+                                                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* 4. C/G Filter Dropdown */}
                             <Select
                                 value={cgFilter || "All"}
                                 onValueChange={(val) => {
                                     handleSelectCg(val);
                                 }}
                             >
-                                <SelectTrigger className="h-10 sm:h-11 min-w-[110px] px-3 bg-card border-border/80 rounded-xl text-xs sm:text-sm font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer">
+                                <SelectTrigger className="h-9 min-w-[95px] sm:min-w-[105px] px-2.5 sm:px-3 bg-card border-border/80 rounded-xl text-xs font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer shrink-0">
                                     <SelectValue placeholder="C/G: All" />
                                 </SelectTrigger>
                                 <SelectContent className="font-semibold">
@@ -2360,7 +2653,7 @@ function OrdersContent() {
                                 </SelectContent>
                             </Select>
 
-                            {/* Popover Date Range & Presets Selector */}
+                            {/* 5. Popover Date Range & Presets Selector */}
                             <Popover open={popoverOpen} onOpenChange={(open) => {
                                 setPopoverOpen(open);
                                 if (open) {
@@ -2369,9 +2662,9 @@ function OrdersContent() {
                                 }
                             }}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="h-10 sm:h-11 min-w-[150px] sm:min-w-[170px] flex items-center justify-between gap-2 px-3.5 bg-card border-border/80 rounded-xl text-xs sm:text-sm font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <CalendarIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <Button variant="outline" className="h-9 min-w-[135px] sm:min-w-[155px] flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 bg-card border-border/80 rounded-xl text-xs font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5 sm:gap-2">
+                                            <CalendarIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                                             <span>
                                                 {activePreset
                                                     ? PRESET_OPTIONS.find(p => p.value === activePreset)?.label || MONTH_OPTIONS.find(m => m.key === activePreset)?.label
@@ -2509,253 +2802,6 @@ function OrdersContent() {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                    </div>
-
-                    {/* Row 2 — Existing Quick Status Controls */}
-                    <div className="w-full pb-1 overflow-x-auto scrollbar-none">
-                        {(() => {
-                            const MAIN_STATUSES = ["Pending", "Traveler", "Traveller", "Ready to Ship", "In Production", "Deleted"];
-                            const otherStatuses = (() => {
-                                const list: string[] = ["All"];
-                                statuses.forEach((s) => {
-                                    if (s && s.name && !MAIN_STATUSES.includes(s.name) && !list.includes(s.name)) {
-                                        list.push(s.name);
-                                    }
-                                });
-                                const defaults = ["Completed", "Cancelled", "On Hold", "Awaiting Approval", "Deleted"];
-                                defaults.forEach((d) => {
-                                    if (!MAIN_STATUSES.includes(d) && !list.includes(d)) {
-                                        list.push(d);
-                                    }
-                                });
-                                if (!list.includes("Deleted")) {
-                                    list.push("Deleted");
-                                }
-                                return list;
-                            })();
-                            const isOtherStatusActive = !MAIN_STATUSES.includes(statusFilter);
-
-                            return (
-                                <div
-                                    onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.dataTransfer.dropEffect = "copy";
-                                        setIsStatusDragOver(true);
-                                    }}
-                                    onDragLeave={() => setIsStatusDragOver(false)}
-                                    onDrop={(e) => {
-                                        e.preventDefault();
-                                        setIsStatusDragOver(false);
-                                        const dropped = e.dataTransfer.getData("text/plain");
-                                        if (dropped) {
-                                            handleSelectStatus(dropped);
-                                        }
-                                    }}
-                                    className={`flex flex-wrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
-                                        }`}
-                                >
-                                    <span className="text-xs font-bold text-muted-foreground px-1.5 sm:px-2 flex items-center gap-1 shrink-0 select-none">
-                                        Status:
-                                    </span>
-
-                                    {/* 1. Pending */}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSelectStatus("Pending")}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
-                                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
-                                            : "bg-background/60 hover:bg-accent text-foreground border-border/60"
-                                            }`}
-                                    >
-                                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
-                                            }`}>
-                                            {statusFilter === "Pending" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                        </span>
-                                        Pending
-                                    </button>
-
-                                    {/* 1.5. Traveller */}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSelectStatus("Traveler")}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Traveler" || statusFilter === "Traveller"
-                                            ? "bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/40 shadow-2xs"
-                                            : "bg-background/60 hover:bg-accent text-foreground border-border/60"
-                                            }`}
-                                    >
-                                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Traveler" || statusFilter === "Traveller" ? "bg-lime-500 border-lime-500 text-white" : "border-muted-foreground/40 bg-background"
-                                            }`}>
-                                            {(statusFilter === "Traveler" || statusFilter === "Traveller") && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                        </span>
-                                        Traveller
-                                    </button>
-
-                                    {/* 2. Ready to Ship */}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectStatus("Ready to Ship")}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Ready to Ship"
-                                                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-2xs"
-                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
-                                                }`}
-                                        >
-                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Ready to Ship" ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/40 bg-background"
-                                                }`}>
-                                                {statusFilter === "Ready to Ship" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                            </span>
-                                            Ready to Ship
-                                        </button>
-
-                                        {/* 3. In Production */}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectStatus("In Production")}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "In Production"
-                                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-2xs"
-                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
-                                                }`}
-                                        >
-                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "In Production" ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 bg-background"
-                                                }`}>
-                                                {statusFilter === "In Production" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                            </span>
-                                            In Production
-                                        </button>
-
-                                        {/* 4. Deleted */}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectStatus("Deleted")}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Deleted"
-                                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-2xs"
-                                                : "bg-background/60 hover:bg-accent text-foreground border-border/60"
-                                                }`}
-                                        >
-                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] transition-colors ${statusFilter === "Deleted" ? "bg-rose-500 border-rose-500 text-white" : "border-muted-foreground/40 bg-background"
-                                                }`}>
-                                                {statusFilter === "Deleted" ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />}
-                                            </span>
-                                            Deleted
-                                        </button>
-
-                                        {/* Drop Status Container */}
-                                        <div
-                                            onDragOver={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                e.dataTransfer.dropEffect = "copy";
-                                                setIsStatusDragOver(true);
-                                            }}
-                                            onDragLeave={(e) => {
-                                                e.stopPropagation();
-                                                setIsStatusDragOver(false);
-                                            }}
-                                            onDrop={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setIsStatusDragOver(false);
-                                                const dropped = e.dataTransfer.getData("text/plain");
-                                                if (dropped) {
-                                                    handleSelectStatus(dropped);
-                                                }
-                                            }}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isStatusDragOver
-                                                ? "border-emerald-500 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border-dashed scale-[1.02]"
-                                                : isOtherStatusActive
-                                                    ? "border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold border-solid shadow-2xs"
-                                                    : "border-dashed border-border/80 bg-muted/30 text-muted-foreground"
-                                                }`}
-                                        >
-                                            {isOtherStatusActive ? (
-                                                <div className="flex items-center gap-1.5 select-none">
-                                                    <span className="w-3.5 h-3.5 rounded bg-purple-500 text-white flex items-center justify-center text-[10px]">
-                                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                                                    </span>
-                                                    <span>{statusFilter}</span>
-                                                    <span
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleSelectStatus("In Production");
-                                                        }}
-                                                        className="ml-1 p-0.5 rounded-md hover:bg-purple-500/20 text-purple-500 hover:text-purple-700 cursor-pointer"
-                                                        title="Clear status filter"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="select-none text-[11px] sm:text-xs">
-                                                    {isStatusDragOver ? "Drop status here" : "[ Drop status here ]"}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Expandable "Other Statuses" Panel */}
-                                        <Popover open={otherStatusesOpen} onOpenChange={setOtherStatusesOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className={`h-8 sm:h-9 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shrink-0 ${isOtherStatusActive
-                                                        ? "border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                                                        : "border-border/80 bg-background/60 hover:bg-accent text-foreground"
-                                                        }`}
-                                                >
-                                                    [ Other Statuses ]
-                                                    <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${otherStatusesOpen ? "rotate-180" : ""}`} />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent
-                                                className="z-50 w-56 sm:w-64 p-2 bg-card border border-border/80 rounded-xl shadow-xl space-y-1 text-foreground"
-                                                align="end"
-                                                sideOffset={6}
-                                            >
-                                                <div className="px-2 py-1.5 border-b border-border/50 flex items-center justify-between">
-                                                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                                                        Other Statuses
-                                                    </span>
-                                                    <span className="text-[10px] text-muted-foreground/70 font-medium">
-                                                        Drag or click
-                                                    </span>
-                                                </div>
-
-                                                <div className="max-h-56 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                                                    {otherStatuses.map((stName) => {
-                                                        const isSelected = statusFilter === stName;
-                                                        return (
-                                                            <div
-                                                                key={stName}
-                                                                draggable
-                                                                onDragStart={(e) => {
-                                                                    e.dataTransfer.setData("text/plain", stName);
-                                                                    e.dataTransfer.effectAllowed = "copy";
-                                                                }}
-                                                                onClick={() => {
-                                                                    handleSelectStatus(stName);
-                                                                    setOtherStatusesOpen(false);
-                                                                }}
-                                                                className={`group flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-grab active:cursor-grabbing transition-all border ${isSelected
-                                                                    ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs"
-                                                                    : "bg-background hover:bg-muted/70 text-foreground border-transparent hover:border-border/50"
-                                                                    }`}
-                                                            >
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-muted-foreground shrink-0" />
-                                                                    <span className="truncate">{stName}</span>
-                                                                </div>
-                                                                {isSelected && (
-                                                                    <span className="w-4 h-4 rounded-full bg-purple-500 text-white flex items-center justify-center shrink-0">
-                                                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                );
-                            })()}
                     </div>
 
                     {/* Orders Data Table */}
