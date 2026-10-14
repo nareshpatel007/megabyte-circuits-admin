@@ -1817,6 +1817,17 @@ function OrdersContent() {
         }
         const filmStatus = isFilmApplied ? `yes ${filmVal} ${formatDate(filmVal).toLowerCase()}` : 'no';
 
+        const rawComboList = Array.isArray(o.combo_orders) && o.combo_orders.length > 0
+            ? o.combo_orders.map(c => (c.order_number || "").toLowerCase().trim())
+            : String(o.combo || '').toLowerCase().split(/[\+,\s]+/).map(s => s.trim()).filter(Boolean);
+        const cleanQuery = query.replace(/^#/, "").trim();
+        const matchCombo = rawComboList.some(c => c === query || c === cleanQuery || (cleanQuery.length >= 3 && c.includes(cleanQuery)));
+
+        const rawOldList = Array.isArray(o.old_orders) && o.old_orders.length > 0
+            ? o.old_orders.map(c => (c.order_number || "").toLowerCase().trim())
+            : String(o.old_order_number || '').toLowerCase().split(/[\+,\s]+/).map(s => s.trim()).filter(Boolean);
+        const matchOld = rawOldList.some(c => c === query || c === cleanQuery || (cleanQuery.length >= 3 && c.includes(cleanQuery)));
+
         const matchSearch =
             orderNum.includes(query) ||
             boardName.includes(query) ||
@@ -1829,7 +1840,9 @@ function OrdersContent() {
             paymentStatus.includes(query) ||
             paymentMode.includes(query) ||
             orderValue.includes(query) ||
-            filmStatus.includes(query);
+            filmStatus.includes(query) ||
+            matchCombo ||
+            matchOld;
 
         let matchStatus = false;
         const currentStatusStr = (o.status || "").toString().toLowerCase().trim();
