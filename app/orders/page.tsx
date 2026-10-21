@@ -2898,6 +2898,18 @@ function OrdersContent() {
                                                 </div>
                                             </th>
                                             <th
+                                                onClick={() => handleSort('pn_number')}
+                                                className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
+                                                title="Click to sort by P/N Number"
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <span>P/N Number</span>
+                                                    <span className={`inline-flex items-center ${sortBy === 'pn_number' ? "text-emerald-600 dark:text-emerald-400 font-bold opacity-100" : "opacity-35 group-hover:opacity-75"}`}>
+                                                        {sortBy === 'pn_number' ? (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5" />}
+                                                    </span>
+                                                </div>
+                                            </th>
+                                            <th
                                                 onClick={() => handleSort('layers')}
                                                 className="py-2 px-3.5 cursor-pointer select-none hover:bg-muted/90 transition-colors group"
                                                 title="Click to sort by Layers"
@@ -3177,6 +3189,20 @@ function OrdersContent() {
                                                                     </span>
                                                                 );
                                                             })()}
+                                                        </td>
+
+                                                        {/* P/N Number */}
+                                                        <td className="py-1.5 px-3.5 whitespace-nowrap">
+                                                            {order.pn_number && String(order.pn_number).trim() !== "" ? (
+                                                                <span
+                                                                    className="font-mono text-xs font-semibold text-foreground max-w-[160px] truncate block"
+                                                                    title={String(order.pn_number)}
+                                                                >
+                                                                    {String(order.pn_number)}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground font-medium text-xs">—</span>
+                                                            )}
                                                         </td>
 
                                                         {/* 3. Layers */}
