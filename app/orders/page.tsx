@@ -2298,33 +2298,33 @@ function OrdersContent() {
 
                     {/* Orders Filter & Search Toolbar (Single Row: Search → Layer Filters → Status Toolbar → All C/G → Date Filter) */}
                     <div className="w-full pb-1 overflow-x-auto scrollbar-thin">
-                        <div className="flex flex-nowrap items-center gap-2 w-full min-w-max">
+                        <div className="flex flex-nowrap items-center gap-2 sm:gap-2.5 w-full min-w-max">
                             {/* 1. Search */}
-                            <div className="relative w-40 sm:w-44 shrink-0">
+                            <div className="relative flex-1 min-w-[200px] sm:min-w-[260px]">
                                 {isSearching ? (
-                                    <RefreshCw className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500 animate-spin" />
+                                    <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />
                                 ) : (
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 )}
                                 <Input
                                     type="search"
                                     placeholder="Search orders..."
                                     value={search}
                                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                                    className="w-full h-8 pl-8 pr-2.5 text-xs bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
+                                    className="w-full h-9 sm:h-10 pl-9 pr-3 text-xs bg-card border-border/80 rounded-xl placeholder:text-muted-foreground focus-visible:ring-emerald-500 font-medium transition-all shadow-xs"
                                 />
                             </div>
 
                             {/* 2. Layer Quick-Filter Buttons: All, 1 Layer, 2 Layers */}
-                            <div className="flex items-center h-8 px-1 py-0.5 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-1">
-                                <span className="text-[11px] font-bold text-muted-foreground px-1 flex items-center gap-1 select-none">
+                            <div className="flex items-center h-9 sm:h-10 px-1.5 py-1 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-1">
+                                <span className="text-xs font-bold text-muted-foreground px-1.5 flex items-center gap-1.5 select-none">
                                     <Layers className="w-3.5 h-3.5 text-indigo-500" />
                                     Layer:
                                 </span>
                                 <button
                                     type="button"
                                     onClick={() => handleSelectLayer("All")}
-                                    className={`px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer select-none border ${layerFilter === "All"
+                                    className={`h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "All"
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                                         : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                         }`}
@@ -2334,7 +2334,7 @@ function OrdersContent() {
                                 <button
                                     type="button"
                                     onClick={() => handleSelectLayer("1")}
-                                    className={`px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer select-none border ${layerFilter === "1"
+                                    className={`h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "1"
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                                         : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                         }`}
@@ -2344,7 +2344,7 @@ function OrdersContent() {
                                 <button
                                     type="button"
                                     onClick={() => handleSelectLayer("2")}
-                                    className={`px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer select-none border ${layerFilter === "2"
+                                    className={`h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border ${layerFilter === "2"
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                                         : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                         }`}
@@ -2392,10 +2392,10 @@ function OrdersContent() {
                                                 handleSelectStatus(dropped);
                                             }
                                         }}
-                                        className={`flex items-center h-8 gap-1 px-1 py-0.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
+                                        className={`flex items-center h-9 sm:h-10 gap-1 px-1.5 py-1 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
                                             }`}
                                     >
-                                        <span className="text-[11px] font-bold text-muted-foreground px-1 flex items-center gap-1 shrink-0 select-none">
+                                        <span className="text-xs font-bold text-muted-foreground px-1.5 flex items-center gap-1 shrink-0 select-none">
                                             Status:
                                         </span>
 
@@ -2416,14 +2416,14 @@ function OrdersContent() {
                                                 const dropped = e.dataTransfer.getData("text/plain");
                                                 handleSelectStatus(dropped || "Pending");
                                             }}
-                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
+                                            className={`flex items-center gap-1.5 h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Pending"
                                                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-2xs"
                                                 : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
-                                            <span className={`w-3 h-3 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Pending" ? "bg-amber-500 border-amber-500 text-white" : "border-muted-foreground/40 bg-background"
                                                 }`}>
-                                                {statusFilter === "Pending" && <Check className="w-2 h-2 stroke-[3]" />}
+                                                {statusFilter === "Pending" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                             </span>
                                             Pending
                                         </button>
@@ -2445,14 +2445,14 @@ function OrdersContent() {
                                                 const dropped = e.dataTransfer.getData("text/plain");
                                                 handleSelectStatus(dropped || "Traveler");
                                             }}
-                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border select-none ${statusFilter === "Traveler" || statusFilter === "Traveller"
+                                            className={`flex items-center gap-1.5 h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Traveler" || statusFilter === "Traveller"
                                                 ? "bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/40 shadow-2xs"
                                                 : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
-                                            <span className={`w-3 h-3 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Traveler" || statusFilter === "Traveller" ? "bg-lime-500 border-lime-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Traveler" || statusFilter === "Traveller" ? "bg-lime-500 border-lime-500 text-white" : "border-muted-foreground/40 bg-background"
                                                 }`}>
-                                                {(statusFilter === "Traveler" || statusFilter === "Traveller") && <Check className="w-2 h-2 stroke-[3]" />}
+                                                {(statusFilter === "Traveler" || statusFilter === "Traveller") && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                             </span>
                                             Traveller
                                         </button>
@@ -2474,14 +2474,14 @@ function OrdersContent() {
                                                 const dropped = e.dataTransfer.getData("text/plain");
                                                 handleSelectStatus(dropped || "Ready to Ship");
                                             }}
-                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border select-none ${statusFilter === "Ready to Ship"
+                                            className={`flex items-center gap-1.5 h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Ready to Ship"
                                                 ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-2xs"
                                                 : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
-                                            <span className={`w-3 h-3 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Ready to Ship" ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Ready to Ship" ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/40 bg-background"
                                                 }`}>
-                                                {statusFilter === "Ready to Ship" && <Check className="w-2 h-2 stroke-[3]" />}
+                                                {statusFilter === "Ready to Ship" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                             </span>
                                             Ready to Ship
                                         </button>
@@ -2503,14 +2503,14 @@ function OrdersContent() {
                                                 const dropped = e.dataTransfer.getData("text/plain");
                                                 handleSelectStatus(dropped || "In Production");
                                             }}
-                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border select-none ${statusFilter === "In Production"
+                                            className={`flex items-center gap-1.5 h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "In Production"
                                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-2xs"
                                                 : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
-                                            <span className={`w-3 h-3 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "In Production" ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "In Production" ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 bg-background"
                                                 }`}>
-                                                {statusFilter === "In Production" && <Check className="w-2 h-2 stroke-[3]" />}
+                                                {statusFilter === "In Production" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                             </span>
                                             In Production
                                         </button>
@@ -2532,14 +2532,14 @@ function OrdersContent() {
                                                 const dropped = e.dataTransfer.getData("text/plain");
                                                 handleSelectStatus(dropped || "Deleted");
                                             }}
-                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border select-none ${statusFilter === "Deleted"
+                                            className={`flex items-center gap-1.5 h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${statusFilter === "Deleted"
                                                 ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-2xs"
                                                 : "bg-background/60 hover:bg-accent text-foreground border-border/60"
                                                 }`}
                                         >
-                                            <span className={`w-3 h-3 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Deleted" ? "bg-rose-500 border-rose-500 text-white" : "border-muted-foreground/40 bg-background"
+                                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] transition-colors ${statusFilter === "Deleted" ? "bg-rose-500 border-rose-500 text-white" : "border-muted-foreground/40 bg-background"
                                                 }`}>
-                                                {statusFilter === "Deleted" ? <Check className="w-2 h-2 stroke-[3]" /> : <Trash2 className="w-2 h-2 text-muted-foreground" />}
+                                                {statusFilter === "Deleted" ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />}
                                             </span>
                                             Deleted
                                         </button>
@@ -2562,10 +2562,10 @@ function OrdersContent() {
                                                         handleSelectStatus(dropped);
                                                     }
                                                 }}
-                                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold transition-all border border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 shadow-2xs select-none"
+                                                className="flex items-center gap-1.5 h-7 sm:h-8 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300 shadow-2xs select-none"
                                             >
-                                                <span className="w-3 h-3 rounded bg-purple-500 text-white flex items-center justify-center text-[9px]">
-                                                    <Check className="w-2 h-2 stroke-[3]" />
+                                                <span className="w-3.5 h-3.5 rounded bg-purple-500 text-white flex items-center justify-center text-[9px]">
+                                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
                                                 </span>
                                                 <span>{statusFilter}</span>
                                                 <span
@@ -2576,7 +2576,7 @@ function OrdersContent() {
                                                     className="ml-0.5 p-0.5 rounded-md hover:bg-purple-500/20 text-purple-500 hover:text-purple-700 cursor-pointer"
                                                     title="Clear status filter"
                                                 >
-                                                    <X className="w-2.5 h-2.5" />
+                                                    <X className="w-3 h-3" />
                                                 </span>
                                             </div>
                                         )}
@@ -2586,13 +2586,13 @@ function OrdersContent() {
                                             <PopoverTrigger asChild>
                                                 <Button
                                                     variant="outline"
-                                                    className={`h-7 px-1.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all cursor-pointer shrink-0 ${isOtherStatusActive
+                                                    className={`h-7 sm:h-8 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shrink-0 ${isOtherStatusActive
                                                         ? "border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400"
                                                         : "border-border/80 bg-background/60 hover:bg-accent text-foreground"
                                                         }`}
                                                 >
                                                     Other<span className="hidden xl:inline">&nbsp;Statuses</span>
-                                                    <ChevronDown className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${otherStatusesOpen ? "rotate-180" : ""}`} />
+                                                    <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${otherStatusesOpen ? "rotate-180" : ""}`} />
                                                 </Button>
                                             </PopoverTrigger>
                                             <PopoverContent
@@ -2655,7 +2655,7 @@ function OrdersContent() {
                                     handleSelectCg(val);
                                 }}
                             >
-                                <SelectTrigger className="h-8 w-[95px] shrink-0 px-2.5 bg-card border-border/80 rounded-xl text-[11px] font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer">
+                                <SelectTrigger className="h-9 sm:h-10 w-[105px] shrink-0 px-3 bg-card border-border/80 rounded-xl text-xs font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer">
                                     <SelectValue placeholder="All C/G" />
                                 </SelectTrigger>
                                 <SelectContent className="font-semibold text-xs">
@@ -2675,9 +2675,9 @@ function OrdersContent() {
                                 }
                             }}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="h-8 shrink-0 flex items-center justify-between gap-1.5 px-2.5 bg-card border-border/80 rounded-xl text-[11px] font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs cursor-pointer whitespace-nowrap">
-                                        <div className="flex items-center gap-1 sm:gap-1.5">
-                                            <CalendarIcon className="w-3 h-3 text-emerald-500 shrink-0" />
+                                    <Button variant="outline" className="h-9 sm:h-10 shrink-0 flex items-center justify-between gap-2 px-3 bg-card border-border/80 rounded-xl text-xs font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs cursor-pointer whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5 sm:gap-2">
+                                            <CalendarIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                                             <span>
                                                 {activePreset
                                                     ? PRESET_OPTIONS.find(p => p.value === activePreset)?.label || MONTH_OPTIONS.find(m => m.key === activePreset)?.label
@@ -2700,10 +2700,10 @@ function OrdersContent() {
                                                     setPage(1);
                                                     updateUrlParams({ start_date: null, end_date: null, page: 1 });
                                                 }}
-                                                className="p-0.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-0.5"
+                                                className="p-0.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors ml-1"
                                                 title="Clear date filter"
                                             >
-                                                <X className="w-3 h-3" />
+                                                <X className="w-3.5 h-3.5" />
                                             </span>
                                         )}
                                     </Button>
