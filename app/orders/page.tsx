@@ -2297,10 +2297,10 @@ function OrdersContent() {
                     )}
 
                     {/* Orders Filter & Search Toolbar (Single Row: Search → Layer Filters → Status Toolbar → All C/G → Date Filter) */}
-                    <div className="w-full pb-1 overflow-x-auto sm:overflow-x-visible">
-                        <div className="flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 w-full min-w-max sm:min-w-0">
+                    <div className="w-full pb-1 overflow-x-auto scrollbar-thin">
+                        <div className="flex flex-nowrap items-center gap-2 w-full min-w-max">
                             {/* 1. Search */}
-                            <div className="relative w-36 sm:w-40 md:w-44 shrink-0">
+                            <div className="relative w-40 sm:w-44 shrink-0">
                                 {isSearching ? (
                                     <RefreshCw className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500 animate-spin" />
                                 ) : (
@@ -2316,7 +2316,7 @@ function OrdersContent() {
                             </div>
 
                             {/* 2. Layer Quick-Filter Buttons: All, 1 Layer, 2 Layers */}
-                            <div className="flex items-center p-0.5 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-0.5">
+                            <div className="flex items-center h-8 px-1 py-0.5 bg-card border border-border/80 rounded-xl shadow-xs shrink-0 gap-1">
                                 <span className="text-[11px] font-bold text-muted-foreground px-1 flex items-center gap-1 select-none">
                                     <Layers className="w-3.5 h-3.5 text-indigo-500" />
                                     Layer:
@@ -2392,7 +2392,7 @@ function OrdersContent() {
                                                 handleSelectStatus(dropped);
                                             }
                                         }}
-                                        className={`flex items-center gap-0.5 sm:gap-1 p-0.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
+                                        className={`flex items-center h-8 gap-1 px-1 py-0.5 bg-card border rounded-xl shadow-xs transition-colors shrink-0 ${isStatusDragOver ? "border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20" : "border-border/80"
                                             }`}
                                     >
                                         <span className="text-[11px] font-bold text-muted-foreground px-1 flex items-center gap-1 shrink-0 select-none">
@@ -2655,8 +2655,8 @@ function OrdersContent() {
                                     handleSelectCg(val);
                                 }}
                             >
-                                <SelectTrigger className="h-8 min-w-[76px] sm:min-w-[82px] px-2 bg-card border-border/80 rounded-xl text-[11px] font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer shrink-0">
-                                    <SelectValue placeholder="C/G: All" />
+                                <SelectTrigger className="h-8 w-[95px] shrink-0 px-2.5 bg-card border-border/80 rounded-xl text-[11px] font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-xs cursor-pointer">
+                                    <SelectValue placeholder="All C/G" />
                                 </SelectTrigger>
                                 <SelectContent className="font-semibold text-xs">
                                     <SelectItem value="All">All C/G</SelectItem>
@@ -2675,7 +2675,7 @@ function OrdersContent() {
                                 }
                             }}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="h-8 min-w-[105px] sm:min-w-[115px] flex items-center justify-between gap-1 px-2 bg-card border-border/80 rounded-xl text-[11px] font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap">
+                                    <Button variant="outline" className="h-8 shrink-0 flex items-center justify-between gap-1.5 px-2.5 bg-card border-border/80 rounded-xl text-[11px] font-bold text-foreground hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-xs cursor-pointer whitespace-nowrap">
                                         <div className="flex items-center gap-1 sm:gap-1.5">
                                             <CalendarIcon className="w-3 h-3 text-emerald-500 shrink-0" />
                                             <span>
